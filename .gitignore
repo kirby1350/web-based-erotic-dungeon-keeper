@@ -1,0 +1,22 @@
+# v0 runtime files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Common ignores
+node_modules/
+.next/
+.DS_Store
+.vercel
+
+# env files (keep .env.example tracked)
+.env*
+!.env.example
+
+# IDE / build / tooling artifacts
+.idea/
+*.tsbuildinfo
+.pnpm-store/
+next-env.d.ts
+test-results/
+playwright-report/

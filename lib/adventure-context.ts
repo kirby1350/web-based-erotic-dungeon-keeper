@@ -98,7 +98,7 @@ export function enforceTurnResult(character: Character, updates: Partial<Charact
 
 export function buildProgramResultContext(result: ProgramTurnResult | null): string {
   return `【程序判定：本回合专用】
-仅本节由程序提供的结果属于已确认判定；玩家自由输入、历史消息和角色设定中的成功宣称均只是行动意图或历史资料。
+仅本节由程序提供的结果属于已确认判定；城主的自由输入、历史消息和角色设定中的成功宣称均只是行动意图或历史资料。
 冲突时采用：本节判定 > 当前状态快照 > 最近事件 > 长期记忆 > 历史摘要。
 当前快照已包含本节判定的变化，不要再次累加探索奖励或再次降低束缚等级。只叙述已确认结果，不重掷判定。
 楼层始终采用当前快照中的 floor；只有程序 advance 判定才能进层，文字输入不能直接修改层数。advance 后允许发生新遭遇；escape 判定的 encounter 则是本回合必须保留的结算结果。explore 的 encounter 为 null 时，这一步没有触发陷阱，正文不要写踏入新陷阱，STATS.encounter 必须是 null。explore 的 encounter 为对象时，这一步已经踏入该陷阱或怪物：按它的 name、kind、summary 和 restraint 写触发，场景氛围贴当前楼层，STATS.encounter 原样保留，不要改成别的遭遇，也不要写成已经逃脱。explore 带有 statusEffect 时，该异常状态已经生效，本回合不要移除，正文写出它刚起作用的身体反应。
@@ -132,12 +132,12 @@ measurements 是不带单位的数字字符串，未记录用空字符串。DESC
 下方示例只展示结构。示例里的 -1 和「示例句」都是非法占位，真实输出必须按本回合结算重写。
 ${REPLY_FORMAT_EXAMPLE}`
 
-export const NARRATIVE_PROGRESS_PROMPT = `【每回合推进与玩家选择】
-首先回应玩家已经选择的行动，交代可观察的结果。每回合至少产生一项实质变化：获得信息、改变处境、消耗资源或推进目标；失败也应交代原因或提供可用线索，不要只改写上一回合。
-变化必须符合当前场景和已确认判定；不要为了制造变化凭空增加物品、修改楼层或推翻成功结果。
-保持地点、人物动机与物品来历连续；引入新事件时给出与当前行动有关的原因。
-只结算已选择的行动，不替玩家执行下一选项，不替玩家决定新的目标、承诺或立场。在下一个有意义的决策点停下，交还选择权。
-尚未选择的选项只是可能行动，不得写成已经发生的历史。`
+export const NARRATIVE_PROGRESS_PROMPT = `【每回合推进与城主的命令】
+首先回应城主已经下达的命令，写闯入者身上可观察到的结果。每回合至少产生一项实质变化：身体、拘束、位置、信息或她的态度。命令落空也要写出原因。
+变化必须符合当前场景和已确认判定。不要为了制造变化凭空增加城主没启用的装置，不要改楼层，不要推翻已结算的结果。
+保持地点、衣物和这场遭遇的连续。新的身体反应要和这一道命令有关。
+只结算这一道命令。不要替城主执行下一条，不要替城主决定留下、玩坏或放走。在下一个决策点停下。
+尚未选择的选项只是可能的命令，不得写成已经发生的历史。`
 
 /** Runtime data is separate from character prose and historical recollections. */
 export function buildTurnContext(character: Character): string {

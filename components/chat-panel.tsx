@@ -2,14 +2,24 @@
 
 import { useState, useRef, useEffect, type MutableRefObject } from 'react'
 import { Send, Loader2, BookOpen, Square, RotateCcw, Wrench, Zap, Sparkles, ShieldAlert, Unlock, HeartCrack } from 'lucide-react'
-import { Character, AppSettings, StatusEffect, Encounter, EXPLORE_GAIN, ENCOUNTER_CLEAR_GAIN, TARGET_FLOOR, getFloorTheme } from '@/lib/types'
-import { rollExploreEncounter, statusForTrap, type ProgramTurnResult } from '@/lib/adventure-context'
+import { Character, AppSettings, StatusEffect, Encounter, EXPLORE_GAIN, ENCOUNTER_CLEAR_GAIN, getFloorTheme } from '@/lib/types'
+import { statusForTrap, type ProgramTurnResult } from '@/lib/adventure-context'
+import { getKeep } from '@/lib/storage'
+import { defensesOnFloor, encounterId, keeperPromptContext } from '@/lib/keeper'
+import { buildOpeningUserPrompt, startScreenCopy } from '@/lib/prompts'
 import { cn } from '@/lib/utils'
 import { cleanContent } from '@/lib/chat-protocol'
 import { MEMORY_CATEGORIES } from '@/lib/adventure-memory'
 import { useAdventureSession } from '@/hooks/use-adventure-session'
 import { TrapGenerator } from '@/components/trap-generator'
 import { StatusPicker } from '@/components/status-picker'
+
+function rollPlacedDefense(floor: number): Encounter | null {
+  const placed = defensesOnFloor(getKeep(), floor)
+  if (placed.length === 0 || Math.random() >= 0.65) return null
+  const pick = placed[Math.floor(Math.random() * placed.length)]
+  return { id: encounterId(pick.id), name: pick.name, kind: pick.kind, summary: pick.summary.slice(0, 180), restraint: 2 }
+}
 
 function dispelChance(character: Character): number {
   const arousal = ((character.pleasure ?? 0) + (character.desire ?? 0)) / 2
@@ -40,7 +50,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
     if (loading || summarising || pending) return
     const result = pendingResultRef.current
     pendingResultRef.current = null
-    beginTurn(isStart ? character.name + '踏入地下城入口，请介绍起始场景并提供行动选项。' : text, result)
+    beginTurn(isStart ? buildOpeningUserPrompt(character.name, keeperPromptContext(getKeep())) : text, result)
     setInput('')
   }
   useEffect(() => {
@@ -69,19 +79,18 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
     const newRestraint = enc.restraint - 1
     if (newRestraint <= 0) {
       pendingResultRef.current = { kind: 'escape', encounter: null, explorationProgress: Math.min(100, (character.explorationProgress ?? 0) + ENCOUNTER_CLEAR_GAIN) }
-      sendMessage(`${character.name}尝试挣脱${enc.name}。`)
+      sendMessage(`城主让「${enc.name}」松开，${character.name}从这场遭遇里脱出来。`)
     } else {
-      // weaken the bindings by one level, still trapped
       const weakened: Encounter = { ...enc, restraint: newRestraint }
       pendingResultRef.current = { kind: 'escape', encounter: weakened, explorationProgress: character.explorationProgress ?? 0 }
-      sendMessage(`${character.name}尝试挣脱${enc.name}。`)
+      sendMessage(`城主把「${enc.name}」的束缚放松一档，看${character.name}能挣到哪一步。`)
     }
   }
 
   // Surrender button — let the encounter ruin and discard her, then it ends.
   const acceptBroken = () => {
     if (loading || summarising || pending || !character.encounter) return
-    sendMessage(`${character.name}彻底放弃抵抗，张开身体迎接${character.encounter.name}的肆意蹂躏，任由自己被玩弄、榨干到精神彻底崩坏，直到对方玩腻后，将这具失神瘫软、淫液淋漓的躯体随意丢弃在一旁。（请详细描写她被玩坏丢弃的过程，并在结束后让她脱离当前遭遇）`)
+    sendMessage(`城主下令把${character.name}在「${character.encounter.name}」里玩到崩坏，然后丢在一旁。写这个过程，结束后让她脱离当前遭遇。`)
   }
 
   // Explore the current floor: a real DM turn narrating exploration (+ possible new
@@ -90,13 +99,13 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
     if (loading || summarising || pending || character.encounter) return
     const cur = character.explorationProgress ?? 0
     if (cur >= 100) return
-    const encounter = rollExploreEncounter()
+    const encounter = rollPlacedDefense(character.floor ?? 1)
     const statusEffect = statusForTrap(encounter)
     pendingResultRef.current = { kind: 'explore', explorationProgress: Math.min(100, cur + EXPLORE_GAIN), encounter, statusEffect }
     const theme = getFloorTheme(character.floorThemes, character.floor ?? 1)
     sendMessage(encounter
-      ? `${character.name}继续探索本层「${theme.name}」，这一步踏入了「${encounter.name}」${statusEffect ? `，并陷入「${statusEffect.title}」。` : '。'}`
-      : `${character.name}继续探索本层「${theme.name}」。`)
+      ? `城主把${character.name}往「${theme.name}」更里面赶了一步。她撞上了「${encounter.name}」${statusEffect ? `，并陷入「${statusEffect.title}」。` : '。'}`
+      : `城主把${character.name}往「${theme.name}」更里面赶了一步。这一步没有撞上已启用的布置。`)
   }
 
   // Descend to the next floor — only enabled once exploration hits 100% and no active
@@ -104,11 +113,11 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
   const advanceFloor = () => {
     if (loading || summarising || pending || character.encounter) return
     const curFloor = character.floor ?? 1
-    if ((character.explorationProgress ?? 0) < 100 || curFloor >= TARGET_FLOOR) return
+    if ((character.explorationProgress ?? 0) < 100 || curFloor >= getKeep().progress.depth) return
     const next = curFloor + 1
     const theme = getFloorTheme(character.floorThemes, next)
     pendingResultRef.current = { kind: 'advance', floor: next }
-    sendMessage(`${character.name}前进到第 ${next} 层「${theme.name}」。`)
+    sendMessage(`城主把${character.name}送进第 ${next} 层「${theme.name}」。`)
   }
 
   // expose explore/advance to the sibling CharacterCard (buttons live next to the progress bar)
@@ -125,10 +134,10 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
     const success = Math.random() * 100 < chance
     if (success) {
       pendingResultRef.current = { kind: 'dispel', removed: true, effect }
-      sendMessage(`${character.name}尝试解除「${effect.title}」状态。`)
+      sendMessage(`城主试着解除${character.name}身上的「${effect.title}」。`)
     } else {
       pendingResultRef.current = { kind: 'dispel', removed: false, effect }
-      sendMessage(`${character.name}尝试解除「${effect.title}」状态。`)
+      sendMessage(`城主试着解除${character.name}身上的「${effect.title}」。`)
     }
   }
 
@@ -140,19 +149,20 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
   }
 
   if (!started) {
+    const arrival = startScreenCopy(keeperPromptContext(getKeep()))
     return (
       <div className="h-full flex flex-col items-center justify-center gap-6 p-8">
         <div className="text-center space-y-3">
-          <p className="gold-text text-xl font-bold tracking-wider">冒险者，准备好了吗？</p>
+          <p className="gold-text text-xl font-bold tracking-wider">{arrival.title}</p>
           <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">
-            前方是充满极致情欲的地下城。<br />你的每一次选择都会带来最淫荡的遭遇。
+            {arrival.lines.map((line) => <span key={line}>{line}<br /></span>)}
           </p>
         </div>
         <button
           onClick={startAdventure}
           className="px-8 py-3 rounded-lg bg-primary text-primary-foreground font-bold tracking-widest glow-btn text-sm"
         >
-          开始探险
+          开始调教
         </button>
         {statsError && <p className="text-sm text-yellow-400" role="alert">{statsError}</p>}
       </div>
@@ -194,7 +204,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] uppercase tracking-widest text-rose-400/70">
-                  {character.encounter.kind === 'monster' ? '遭遇怪物' : '陷入陷阱'}
+                  {character.encounter.kind === 'monster' ? '魔物在执行' : '陷阱在生效'}
                 </span>
                 <span className="text-sm font-bold text-rose-200">{character.encounter.name}</span>
                 <span className="text-[10px] text-rose-300/80 bg-rose-500/15 px-1.5 py-0.5 rounded-full">
@@ -211,20 +221,20 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
               <button
                 onClick={attemptEscape}
                 disabled={loading || summarising || !!pending}
-                title="全力挣脱当前束缚"
+                title="把束缚放松一档，看她能挣到哪一步"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-400/50 bg-rose-500/15 text-rose-200 text-xs font-bold hover:bg-rose-500/25 hover:border-rose-300 transition-all disabled:opacity-40"
               >
                 <Unlock className="w-3.5 h-3.5" />
-                奋力挣脱
+                看她挣
               </button>
               <button
                 onClick={acceptBroken}
                 disabled={loading || summarising || !!pending}
-                title="放弃抵抗，被玩坏后丢弃"
+                title="下令把她玩到崩坏，然后丢在一旁"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-purple-400/40 bg-purple-500/15 text-purple-200 text-xs font-bold hover:bg-purple-500/25 hover:border-purple-300 transition-all disabled:opacity-40"
               >
                 <HeartCrack className="w-3.5 h-3.5" />
-                被玩坏丢掉
+                玩到丢掉
               </button>
             </div>
           </div>
@@ -234,7 +244,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
       {/* Active status effects — click a chip to attempt dispelling it in-fiction */}
       {character.statusEffects && character.statusEffects.length > 0 && (
         <div className="px-4 py-2 border-b border-yellow-500/20 bg-yellow-500/5 flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] uppercase tracking-widest text-yellow-400/60 mr-0.5">异常状态 · 点击尝试解除（成功率 {dispelChance(character)}%）</span>
+          <span className="text-[10px] tracking-widest text-yellow-400/60 mr-0.5">异常状态 · 点一下尝试抹掉（成功率 {dispelChance(character)}%）</span>
           {character.statusEffects.map((e) => (
             <button
               key={e.id}
@@ -252,7 +262,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
 
       {pending && (
         <div className="px-4 py-3 border-b border-amber-500/30 bg-amber-500/10 text-xs space-y-2" role="status">
-          <p>{loading ? '正在生成本回合，角色数值将在完成后一起结算。' : '有一个待完成回合，角色数值尚未改变。刷新后也可继续。'}</p>
+          <p>{loading ? '正在生成本回合，她的身体会在完成后一起结算。' : '有一个待完成回合，她的身体还没改。刷新后也可继续。'}</p>
           {!loading && <div className="flex gap-3">
             <button onClick={retryPending} className="text-primary underline">{pending.phase === 'ready' ? '重试保存' : pending.phase === 'repair' ? '重试状态修复' : '继续生成'}</button>
             <button onClick={discardPending} className="text-muted-foreground underline">放弃本回合</button>
@@ -261,7 +271,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
       )}
       {memory.entries.length > 0 && (
         <details className="px-4 py-2 border-b border-border text-xs max-h-52 overflow-y-auto">
-          <summary className="cursor-pointer text-primary">冒险记忆 · {memory.entries.filter((entry) => entry.status === 'active').length} 条进行中</summary>
+          <summary className="cursor-pointer text-primary">地下城记忆 · {memory.entries.filter((entry) => entry.status === 'active').length} 条进行中</summary>
           <ul className="mt-2 space-y-2">
             {memory.entries.map((entry) => <li key={entry.id}>
               <p>{MEMORY_CATEGORIES[entry.category]} · {entry.status === 'resolved' ? '已解决' : '进行中'}：{entry.text}</p>
@@ -423,7 +433,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入你的行动或选择..."
+            placeholder="下达对她的命令..."
             rows={2}
             disabled={loading || summarising || !!pending}
             className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors resize-none disabled:opacity-50"

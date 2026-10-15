@@ -1,10 +1,12 @@
 import { AppSettings, GameSession, Character, IMAGE_STYLES, IMAGE_MODELS, IMAGE_TAG_PRESETS, PROSE_STYLE_LABELS, TENSORART_MODELS } from '@/lib/types'
 import { readMemory } from '@/lib/adventure-memory'
+import { emptyKeep, normalizeKeep, type KeeperSave } from '@/lib/keeper'
 
 const SETTINGS_KEY = 'dungeon_settings'
 const CHARACTER_KEY = 'dungeon_character'
 const SESSION_KEY = 'dungeon_session'
 const GAME_KEY = 'dungeon_game_v2'
+const KEEP_KEY = 'dungeon_keep'
 
 interface StoredGame { version: 2; character: unknown; session: GameSession | null }
 
@@ -54,7 +56,7 @@ export function getSettings(): AppSettings {
     if (!VALID_PROSE_STYLES.includes(merged.proseStyle)) merged.proseStyle = 'standard'
     if (!VALID_TENSORART_MODELS.includes(merged.tensorartModel)) merged.tensorartModel = 'wai_nsfw_v16'
     merged.chatApiKey = ''
-    if (merged.chatModel === 'x-apex-neo-16k') merged.chatModel = 'x-apex-surge-0505-16k'
+    if (merged.chatModel === 'x-apex-neo-16k' || merged.chatModel === 'Apex-Neo-0213-16k') merged.chatModel = 'x-apex-surge-0505-16k'
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged)) } catch { /* storage may be full */ }
     return merged
   } catch {
@@ -125,6 +127,22 @@ export function clearSession(): void {
   localStorage.removeItem('dungeon_conversation_id')
 }
 
+export function getKeep(): KeeperSave {
+  if (typeof window === 'undefined') return emptyKeep()
+  try {
+    const raw = localStorage.getItem(KEEP_KEY)
+    if (!raw) return emptyKeep()
+    return normalizeKeep(JSON.parse(raw))
+  } catch {
+    return emptyKeep()
+  }
+}
+
+export function saveKeep(save: KeeperSave): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(KEEP_KEY, JSON.stringify(normalizeKeep(save)))
+}
+
 // ---- Backup: export / import the whole save (settings + character + session) ----
 
 export interface SaveBundle {
@@ -132,6 +150,7 @@ export interface SaveBundle {
   settings: AppSettings
   character: unknown
   session: GameSession | null
+  keep?: KeeperSave
 }
 
 export function exportAll(): string {
@@ -147,6 +166,7 @@ export function exportAll(): string {
     },
     character: getCharacter(),
     session: getSession(),
+    keep: getKeep(),
   }
   return JSON.stringify(bundle, null, 2)
 }
@@ -170,5 +190,6 @@ export function importAll(raw: string): boolean {
   }
   if (data.character) saveGame(data.character, normalizeSession(data.session))
   else if (data.session) saveSession(normalizeSession(data.session) ?? { messages: [], summary: '' })
+  if (data.keep) saveKeep(data.keep)
   return true
 }

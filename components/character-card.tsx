@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Character, BodyPart, RACE_INFO, TARGET_FLOOR, getFloorTheme } from '@/lib/types'
+import { useEffect, useState } from 'react'
+import { Character, BodyPart, RACE_INFO, getFloorTheme } from '@/lib/types'
+import { getKeep } from '@/lib/storage'
 import {
-  Heart, RotateCcw,
+  Heart, ArrowLeft,
   Flame, Sparkles, ChevronDown, ChevronUp,
   AlertTriangle, Layers, Compass, ChevronsDown,
 } from 'lucide-react'
@@ -74,6 +75,13 @@ export function CharacterCard({ character, onReset, onExplore, onAdvanceFloor, b
   const raceInfo = RACE_INFO[character.race]
   const [showBody, setShowBody] = useState(false)
   const [showStatus, setShowStatus] = useState(false)
+  const [depth, setDepth] = useState(3)
+  const [roomName, setRoomName] = useState('')
+  useEffect(() => {
+    const keep = getKeep()
+    setDepth(keep.progress.depth)
+    setRoomName(keep.floors[(character.floor ?? 1) - 1]?.name ?? '')
+  }, [character.floor, character.explorationProgress])
 
   const statusEffects = character?.statusEffects ?? []
   const bodyDevelopment = character?.bodyDevelopment ?? { breast: 0, clitoris: 0, urethra: 0, vagina: 0, anus: 0 }
@@ -102,16 +110,16 @@ export function CharacterCard({ character, onReset, onExplore, onAdvanceFloor, b
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground flex-shrink-0">{raceInfo.label}</p>
               <span
-                title={getFloorTheme(character.floorThemes, character.floor ?? 1).name}
+                title={`她被放在「${roomName || getFloorTheme(character.floorThemes, character.floor ?? 1).name}」`}
                 className="flex items-center gap-1 text-[10px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full flex-shrink-0"
               >
                 <Layers className="w-3 h-3" />
-                第 {character.floor ?? 1}/{TARGET_FLOOR} 层
+                第 {character.floor ?? 1}/{depth} 层
               </span>
               {/* exploration progress toward unlocking the next floor */}
               <div
                 className="flex-1 min-w-0 flex items-center gap-1.5"
-                title={`本层探索进度 ${exploreProgress}%`}
+                title={`本层驱赶进度 ${exploreProgress}%`}
               >
                 <Compass className="w-3 h-3 text-primary/60 flex-shrink-0" />
                 <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden min-w-[1.5rem]">
@@ -125,26 +133,26 @@ export function CharacterCard({ character, onReset, onExplore, onAdvanceFloor, b
               {/* explore / descend actions (drive the ChatPanel via game-screen) */}
               {!character.encounter && (
                 exploreProgress >= 100 ? (
-                  (character.floor ?? 1) < TARGET_FLOOR && (
+                  (character.floor ?? 1) < depth && (
                     <button
                       onClick={onAdvanceFloor}
                       disabled={busy}
-                      title="本层探索完毕，前进到下一层"
+                      title="这一层已经赶完，把她送去下一层"
                       className="flex items-center gap-0.5 px-2 py-0.5 rounded-full border border-amber-400/50 bg-amber-500/15 text-amber-200 text-[10px] font-bold hover:bg-amber-500/25 hover:border-amber-300 transition-all flex-shrink-0"
                     >
                       <ChevronsDown className="w-3 h-3" />
-                      前进
+                      送下层
                     </button>
                   )
                 ) : (
                   <button
                     onClick={onExplore}
                     disabled={busy}
-                    title="探索本层，推进探索进度"
+                    title="把她往这一层更里面赶"
                     className="flex items-center gap-0.5 px-2 py-0.5 rounded-full border border-primary/50 bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary/20 hover:border-primary transition-all flex-shrink-0"
                   >
                     <Compass className="w-3 h-3" />
-                    探索
+                    往里赶
                   </button>
                 )
               )}
@@ -154,10 +162,10 @@ export function CharacterCard({ character, onReset, onExplore, onAdvanceFloor, b
           <button
             onClick={onReset}
             disabled={busy}
-            title="重新创建角色"
+            title="回到城主厅，这场调教会留着"
             className="w-7 h-7 rounded flex items-center justify-center hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-3.5 h-3.5" />
           </button>
         </div>
 

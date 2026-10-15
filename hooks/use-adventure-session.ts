@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings, Character, GameSession } from '@/lib/types'
-import { getSession, saveGame } from '@/lib/storage'
+import { getKeep, getSession, saveGame, saveKeep } from '@/lib/storage'
 import { chatStream } from '@/lib/dzmm'
-import { buildSystemPrompt, withQualityPrefix } from '@/lib/prompts'
-import { buildProgramResultContext, buildTurnContext, REPLY_PROTOCOL_PROMPT, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
+import { buildStateRepairPrompt, buildSystemPrompt, withQualityPrefix } from '@/lib/prompts'
+import { essenceFromPleasure, grantEssence, keeperPromptContext } from '@/lib/keeper'
+import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
-import { inspectReply, parseOptions, replaceStateMetadata } from '@/lib/chat-protocol'
+import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
 import { completeTurn, pendingMessages, PROMPT_VERSION, type PendingTurn } from '@/lib/turn-engine'
 
 interface SessionOptions {
@@ -84,17 +85,27 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       let repaired = !!pending.repaired || pending.phase === 'repair'
       if (inspection.metadataErrors.length) {
         checkpoint('repair', content)
+        const prior = content
         let metadata = ''
-        await chatStream({ model: pending.model, grokApiKey: settings.grokApiKey, signal: controller.signal, messages: [
-          { role: 'system', content: [REPLY_PROTOCOL_PROMPT, buildTurnContext(current), buildProgramResultContext(pending.result),
-            '本请求只修复状态数据。仅输出 [STATS:完整JSON] 和 [DESC:完整JSON]，不要生成或修改剧情、选项、图片标签。根据已发生事实结算；没有依据的字段沿用快照。'].join('\n\n') },
+        await chatStream({ model: pending.model, grokApiKey: settings.grokApiKey, signal: controller.signal, conversationId: crypto.randomUUID(), messages: [
+          { role: 'system', content: [buildStateRepairPrompt(inspection.metadataErrors), buildTurnContext(current), buildProgramResultContext(pending.result)].join('\n\n') },
           { role: 'user', content: JSON.stringify({ narrative: inspection.narrative, errors: inspection.metadataErrors }) },
         ] }, (delta) => { if (!controller.signal.aborted) metadata += delta })
         assertActive()
-        content = replaceStateMetadata(content, metadata)
+        content = replaceStateMetadata(prior, metadata)
         inspection = inspectReply(content, current, pending.result)
         repaired = true
-        if (inspection.metadataErrors.length || inspection.errors.length) throw new Error('状态数据修复未通过校验，可重试修复')
+        if (inspection.metadataErrors.length && !inspection.errors.length) {
+          const salvaged = salvageStateMetadata(metadata, current, prior)
+          if (salvaged) {
+            content = replaceStateMetadata(prior, salvaged)
+            inspection = inspectReply(content, current, pending.result)
+          }
+        }
+        if (inspection.metadataErrors.length || inspection.errors.length) {
+          const detail = [...inspection.errors, ...inspection.metadataErrors].slice(0, 4).join('、')
+          throw new Error(`状态数据修复未通过校验（${detail}），可重试修复`)
+        }
       }
       assertActive()
       // A validated response can be saved again after storage recovery without another model call.
@@ -102,6 +113,10 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       const completed = completeTurn(sessionRef.current, pending, content, repaired)
       // This single write commits story, character, audit record and removal of pending work.
       saveGame(completed.character, completed.session)
+      try {
+        const gain = essenceFromPleasure(pending.before.pleasure ?? 0, completed.character.pleasure ?? 0)
+        if (gain > 0) saveKeep(grantEssence(getKeep(), gain))
+      } catch { /* 淫髓没记上时，这一回合的正文和身体仍然算数 */ }
       committed = true
       characterRef.current = completed.character
       sessionRef.current = completed.session
@@ -133,7 +148,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     const pending: PendingTurn = { id: crypto.randomUUID(), input, startedAt: Date.now(), before,
       result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '',
       requestMessages: [
-        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory()) },
+        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep())) },
         ...saved.messages.map((message) => ({ role: message.role, content: message.content })),
         { role: 'user', content: input },
       ],

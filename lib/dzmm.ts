@@ -6,6 +6,7 @@
 // /api/* routes. This keeps ONE codebase serving both targets at runtime.
 
 import { streamChatDeltas } from '@/lib/sse'
+import { getSettings, saveSettings } from '@/lib/storage'
 
 interface DzmmCompletionsOpts {
   model: string
@@ -79,6 +80,8 @@ export interface ChatStreamOpts {
   apiKey?: string
   grokApiKey?: string
   signal?: AbortSignal
+  /** 不传则沿用当前这场调教的会话。修复和处置对白要另开，避免续写旧对话。 */
+  conversationId?: string
 }
 
 // Stream assistant text, invoking onDelta with incremental chunks.
@@ -123,7 +126,7 @@ export async function chatStream(opts: ChatStreamOpts, onDelta: (delta: string) 
       messages: opts.messages,
       model: opts.model,
       userId: getLocalId('dungeon_user_id'),
-      conversationId: getLocalId('dungeon_conversation_id'),
+      conversationId: opts.conversationId || getLocalId('dungeon_conversation_id'),
       grokApiKey: opts.grokApiKey,
     }),
     signal: opts.signal,
@@ -131,6 +134,13 @@ export async function chatStream(opts: ChatStreamOpts, onDelta: (delta: string) 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || '请求失败')
+  }
+  const resolved = res.headers.get('x-resolved-model')
+  if (resolved) {
+    try {
+      const settings = getSettings()
+      if (settings.chatModel !== resolved) saveSettings({ ...settings, chatModel: resolved })
+    } catch { /* 记下替换后的模型失败时，这一回合仍继续 */ }
   }
   await streamChatDeltas(res, onDelta)
 }

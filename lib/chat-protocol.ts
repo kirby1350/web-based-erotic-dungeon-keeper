@@ -147,6 +147,193 @@ export function replaceStateMetadata(content: string, metadata: string): string 
   return `${(index < 0 ? content : content.slice(0, index)).trimEnd()}\n${metadata.trim()}`
 }
 
+function completeObjects(raw: string): Record<string, unknown>[] {
+  const source = normalizeJsonPunctuation(raw)
+  const found: Record<string, unknown>[] = []
+  let quoted = false
+  let escaped = false
+  let depth = 0
+  let start = -1
+  for (let index = 0; index < source.length; index++) {
+    const char = source[index]
+    if (escaped) { escaped = false; continue }
+    if (char === '\\' && quoted) { escaped = true; continue }
+    if (char === '"') { quoted = !quoted; continue }
+    if (quoted) continue
+    if (char === '{') {
+      if (depth === 0) start = index
+      depth++
+    } else if (char === '}' && depth > 0 && --depth === 0 && start >= 0) {
+      const parsed = parseObject(source.slice(start, index + 1))
+      if (parsed) found.push(parsed)
+      start = -1
+    }
+  }
+  return found
+}
+
+function parseObject(raw: string): Record<string, unknown> | null {
+  const read = (value: string) => {
+    try {
+      const parsed = JSON.parse(value)
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null
+    } catch { return null }
+  }
+  return read(raw) ?? read(dropTrailingCommas(raw))
+}
+
+function dropTrailingCommas(value: string): string {
+  let out = ''
+  let quoted = false
+  let escaped = false
+  for (let index = 0; index < value.length; index++) {
+    const char = value[index]
+    if (escaped) { escaped = false; out += char; continue }
+    if (char === '\\' && quoted) { escaped = true; out += char; continue }
+    if (char === '"') quoted = !quoted
+    if (!quoted && char === ',') {
+      let next = index + 1
+      while (value[next] === ' ' || value[next] === '\n' || value[next] === '\r' || value[next] === '\t') next++
+      if (value[next] === '}' || value[next] === ']') continue
+    }
+    out += char
+  }
+  return out
+}
+
+function asStats(value: Record<string, unknown>): Record<string, unknown> | null {
+  if ('hp' in value || 'pleasure' in value || 'bodyDevelopment' in value) return value
+  for (const nested of Object.values(value)) {
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      const record = nested as Record<string, unknown>
+      if ('hp' in record || 'pleasure' in record || 'bodyDevelopment' in record) return record
+    }
+  }
+  return null
+}
+
+function integerIn(value: unknown, max: number): number | undefined {
+  if (typeof value === 'string' && /^-?\d+$/.test(value.trim())) value = Number(value.trim())
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max ? value : undefined
+}
+
+function measurementOf(value: unknown, fallback: string): string {
+  const raw = typeof value === 'number' && Number.isFinite(value) ? String(value) : value
+  if (typeof raw !== 'string') return fallback
+  const trimmed = raw.trim()
+  return /^(?:\d+(?:\.\d+)?|)$/.test(trimmed) && trimmed.length <= 12 ? trimmed : fallback
+}
+
+function isPlaceholder(value: Record<string, unknown>): boolean {
+  return value.hp === -1 || value.pleasure === -1 || value.desire === -1 || value.floor === -1
+}
+
+function knownIds(character: Character): Set<string> {
+  return new Set([...(character.statusEffects ?? []).map((effect) => effect.id), character.encounter?.id].filter((id): id is string => !!id))
+}
+
+function validEffectId(id: string, known: Set<string>): boolean {
+  return known.has(id) || /^[a-z][a-z0-9_-]*$/.test(id)
+}
+
+/** Turn a model repair into one schema-valid STATS/DESC block. Incomplete output stays null. */
+export function salvageStateMetadata(metadata: string, character: Character, prior = ''): string | null {
+  const repaired = [...completeObjects(metadata)].reverse().map(asStats).find((value): value is Record<string, unknown> => !!value)
+  if (!repaired) return null
+  const earlier = [...completeObjects(prior)].reverse().map(asStats).find((value): value is Record<string, unknown> => !!value)
+  const maxHp = integerIn(character.maxHp, 9999) ?? 100
+  const exp: Partial<Record<typeof PARTS[number], number>> = {}
+  const body: Record<string, unknown> = {}
+  for (const part of PARTS) {
+    body[part] = integerIn(character.bodyDevelopment?.[part], 5) ?? 0
+    const partExp = integerIn(character.bodyDevelopment?.exp?.[part], 100)
+    if (partExp != null) exp[part] = partExp
+  }
+  if (Object.keys(exp).length) body.exp = exp
+  const known = knownIds(character)
+  const effects = (character.statusEffects ?? []).filter((effect) => effectSchema.safeParse(effect).success && validEffectId(effect.id, known))
+  const encounter = character.encounter && encounterSchema.safeParse(character.encounter).success && validEffectId(character.encounter.id, known)
+    ? character.encounter : null
+  const merged: Record<string, unknown> = {
+    hp: integerIn(character.hp, maxHp) ?? 0,
+    pleasure: integerIn(character.pleasure, 100) ?? 0,
+    desire: integerIn(character.desire, 100) ?? 0,
+    floor: Math.min(TARGET_FLOOR, Math.max(1, Math.trunc(character.floor ?? 1) || 1)),
+    encounter,
+    measurements: {
+      bust: measurementOf(character.measurements?.bust, ''),
+      waist: measurementOf(character.measurements?.waist, ''),
+      hip: measurementOf(character.measurements?.hip, ''),
+    },
+    bodyDevelopment: body,
+    statusEffects: effects,
+  }
+  const apply = (source: Record<string, unknown>) => {
+    if (isPlaceholder(source)) return
+    const hp = integerIn(source.hp, maxHp)
+    const pleasure = integerIn(source.pleasure, 100)
+    const desire = integerIn(source.desire, 100)
+    if (hp != null) merged.hp = hp
+    if (pleasure != null) merged.pleasure = pleasure
+    if (desire != null) merged.desire = desire
+    const sizes = source.measurements
+    if (sizes && typeof sizes === 'object' && !Array.isArray(sizes)) {
+      const current = merged.measurements as { bust: string; waist: string; hip: string }
+      const record = sizes as Record<string, unknown>
+      merged.measurements = {
+        bust: measurementOf(record.bust, current.bust),
+        waist: measurementOf(record.waist, current.waist),
+        hip: measurementOf(record.hip, current.hip),
+      }
+    }
+    if (source.encounter === null && !character.encounter) merged.encounter = null
+    else if (source.encounter && typeof source.encounter === 'object' && !Array.isArray(source.encounter)) {
+      const parsed = encounterSchema.safeParse(source.encounter)
+      const id = parsed.success ? parsed.data.id : ''
+      if (parsed.success && validEffectId(id, known)) merged.encounter = parsed.data
+    }
+    if (Array.isArray(source.statusEffects) && (source.statusEffects.length > 0 || effects.length === 0)) {
+      const accepted: { id: string; title: string; description: string }[] = []
+      const seen = new Set<string>()
+      for (const effect of source.statusEffects) {
+        const parsed = effectSchema.safeParse(effect)
+        if (!parsed.success || !validEffectId(parsed.data.id, known) || seen.has(parsed.data.id)) {
+          accepted.length = 0
+          break
+        }
+        seen.add(parsed.data.id)
+        accepted.push(parsed.data)
+      }
+      if (accepted.length === source.statusEffects.length) merged.statusEffects = accepted
+    }
+  }
+  if (earlier) apply(earlier)
+  apply(repaired)
+  const parsed = statsSchema(character).safeParse(merged)
+  if (!parsed.success) return null
+  const bodyDevelopment = { ...parsed.data.bodyDevelopment }
+  delete bodyDevelopment.descriptions
+  const descriptions: Partial<Record<typeof PARTS[number], string>> = {}
+  const takeDescriptions = (source: Record<string, unknown> | null) => {
+    if (!source) return
+    const pool = source.bodyDevelopment && typeof source.bodyDevelopment === 'object'
+      ? (source.bodyDevelopment as Record<string, unknown>).descriptions : null
+    const direct = PARTS.some((part) => part in source) && !('hp' in source) ? source : null
+    for (const record of [pool, direct]) {
+      if (!record || typeof record !== 'object' || Array.isArray(record)) continue
+      for (const part of PARTS) {
+        const text = (record as Record<string, unknown>)[part]
+        if (typeof text !== 'string') continue
+        const trimmed = text.trim().slice(0, 300)
+        if (trimmed) descriptions[part] = trimmed
+      }
+    }
+  }
+  for (const source of completeObjects(metadata)) takeDescriptions(source)
+  if (!Object.keys(descriptions).length) takeDescriptions(repaired)
+  return `[STATS:${JSON.stringify({ ...parsed.data, bodyDevelopment })}]\n[DESC:${JSON.stringify(descriptions)}]`
+}
+
 export function serializeReply(inspection: ReplyInspection, character: Character): string {
   const { descriptions: desc, ...bodyDevelopment } = character.bodyDevelopment
   const stats = { hp: character.hp, pleasure: character.pleasure, desire: character.desire, floor: character.floor ?? 1,

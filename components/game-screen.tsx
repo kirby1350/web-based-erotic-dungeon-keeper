@@ -4,15 +4,21 @@ import { useState, useCallback, useRef } from 'react'
 import { Settings } from 'lucide-react'
 import { Character, AppSettings } from '@/lib/types'
 import { getSettings, saveCharacter } from '@/lib/storage'
+import type { IntruderFate } from '@/lib/keeper'
 import { CharacterCard } from '@/components/character-card'
 import { ChatPanel } from '@/components/chat-panel'
 import { ImagePanel } from '@/components/image-panel'
 import { SettingsPanel } from '@/components/settings-panel'
+import { FateActions } from '@/components/fate-actions'
 
 export type ExploreActions = { explore: () => void; advanceFloor: () => void }
-interface GameScreenProps { character: Character; onReset: () => void }
+interface GameScreenProps {
+  character: Character
+  onBack: () => void
+  onSettle: (character: Character, fate: IntruderFate) => void
+}
 
-export function GameScreen({ character: initialCharacter, onReset }: GameScreenProps) {
+export function GameScreen({ character: initialCharacter, onBack, onSettle }: GameScreenProps) {
   const [character, setCharacter] = useState<Character>(initialCharacter)
   const [settings, setSettings] = useState<AppSettings>(() => getSettings())
   const [showSettings, setShowSettings] = useState(false)
@@ -32,22 +38,25 @@ export function GameScreen({ character: initialCharacter, onReset }: GameScreenP
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <header className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0">
-        <h1 className="text-base font-bold gold-text tracking-widest">地下城探险</h1>
-        <button onClick={() => setShowSettings(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground">
-          <Settings className="w-3.5 h-3.5" />设置
-        </button>
+      <header className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0">
+        <h1 className="text-base font-bold gold-text tracking-widest flex-shrink-0">地下城城主</h1>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <FateActions character={character} disabled={busy} onSettle={(fate) => onSettle(character, fate)} />
+          <button onClick={() => setShowSettings(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground">
+            <Settings className="w-3.5 h-3.5" />设置
+          </button>
+        </div>
       </header>
       <div className="flex md:hidden border-b border-border">
         {(['chat', 'image'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2.5 text-xs ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}>
-            {tab === 'chat' ? '冒险日志' : `场景插图${pendingScene ? ' •' : ''}`}
+            {tab === 'chat' ? '调教' : `场景插图${pendingScene ? ' •' : ''}`}
           </button>
         ))}
       </div>
       <main className="flex flex-1 min-h-0 overflow-hidden">
         <section className={`${activeTab === 'chat' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-[55%] md:border-r border-border min-h-0`}>
-          <CharacterCard character={character} busy={busy} onReset={() => { if (!busy) onReset() }}
+          <CharacterCard character={character} busy={busy} onReset={() => { if (!busy) onBack() }}
             onExplore={() => { if (!busy) actions.current.explore() }} onAdvanceFloor={() => { if (!busy) actions.current.advanceFloor() }} />
           <div className="flex-1 min-h-0 overflow-hidden">
             <ChatPanel character={character} settings={settings} onRequestImage={handleRequestImage}

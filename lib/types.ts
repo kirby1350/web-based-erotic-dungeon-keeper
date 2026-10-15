@@ -56,7 +56,7 @@ export interface Character {
   statusEffects: StatusEffect[]
   // current dungeon floor (depth); starts at 1
   floor?: number
-  // per-floor theme names rolled at creation (index 0 = floor 1 … TARGET_FLOOR-1 = floor 10)
+  // per-floor theme names rolled at creation (index 0 = floor 1). Length follows TARGET_FLOOR, the deepest the keeper can dig.
   floorThemes?: string[]
   // current trap/monster encounter, or null when free
   encounter?: Encounter | null
@@ -264,13 +264,17 @@ export const RACE_INFO: Record<Race, { label: string; description: string; trait
 // 地下城层数与每层风貌
 // ---------------------------------------------------------------------------
 
+/** 城主最多能挖到的层。不是通关层，也不再单设最终 Boss。 */
 export const TARGET_FLOOR = 10
+
+/** 旧冒险者存档里第 10 层的固定名字。读档时换成普通风貌，不再当作终点。 */
+export const RETIRED_BOSS_FLOOR_NAME = '魔王核心·淫狱王座'
 
 export interface FloorTheme {
   name: string
   // 给 DM 的环境/危险氛围描述
   ambience: string
-  // 该层基调的 danbooru 场景标签（供 DM 写 [SCENE] 时融入）
+  // 这一层可能看得见的环境标签。提示词只让模型从中取 2 到 4 个，不要整串抄进 [SCENE]。
   scene: string
 }
 
@@ -300,32 +304,20 @@ export const FLOOR_THEMES: FloorTheme[] = [
   { name: '淫兽竞技场', ambience: '环形石造竞技场，猎物被推入场中，四周虚影观众的欢呼中被魔兽当众凌辱', scene: 'arena, colosseum, stone, crowd silhouette, public, torchlight' },
 ]
 
-// 第 10 层固定的最终层
-export const BOSS_FLOOR_THEME: FloorTheme = {
-  name: '魔王核心·淫狱王座',
-  ambience: '地下城最深处的淫狱核心，魔王盘踞于血肉王座之上，这里是冒险的终点与最终对决',
-  scene: 'demon, throne, dark fantasy, ominous, magic, boss, grand hall',
-}
-
-// 开局为 1~TARGET_FLOOR 层各抽一个风貌名；第 TARGET_FLOOR 层固定为魔王核心
+/** 为 1 到 TARGET_FLOOR 层各抽一个普通风貌。不再把最深层固定成魔王核心。 */
 export function rollFloorThemes(): string[] {
   const pool = [...FLOOR_THEMES]
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[pool[i], pool[j]] = [pool[j], pool[i]]
   }
-  const names: string[] = []
-  for (let f = 1; f <= TARGET_FLOOR; f++) {
-    names.push(f >= TARGET_FLOOR ? BOSS_FLOOR_THEME.name : pool[(f - 1) % pool.length].name)
-  }
-  return names
+  return Array.from({ length: TARGET_FLOOR }, (_, index) => pool[index % pool.length].name)
 }
 
-// 取某层的风貌，兼容缺少 floorThemes 的旧存档（按层数确定性回退）
+/** 取某层的风貌。旧存档里的魔王核心名字按层数回退到普通风貌。 */
 export function getFloorTheme(floorThemes: string[] | undefined, floor: number): FloorTheme {
-  if (floor >= TARGET_FLOOR) return BOSS_FLOOR_THEME
   const name = floorThemes?.[floor - 1]
-  const found = name ? FLOOR_THEMES.find((t) => t.name === name) : undefined
+  const found = name && name !== RETIRED_BOSS_FLOOR_NAME ? FLOOR_THEMES.find((theme) => theme.name === name) : undefined
   return found ?? FLOOR_THEMES[(Math.max(1, floor) - 1) % FLOOR_THEMES.length]
 }
 

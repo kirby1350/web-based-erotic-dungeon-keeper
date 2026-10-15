@@ -1,6 +1,7 @@
 import {
   CHARACTER_PRESETS,
   getFloorTheme,
+  RETIRED_BOSS_FLOOR_NAME,
   rollFloorThemes,
   type Character,
   type CharacterPreset,
@@ -244,9 +245,11 @@ function readFloors(value: unknown, depth: number, traps: KeeperTrap[], monsters
     const row = saved[index] && typeof saved[index] === 'object' ? saved[index] as Partial<DungeonFloor> : {}
     const base = defaultFloor(index)
     const ids = (list: unknown) => Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string' && id.length > 0) : []
+    const savedName = text(row.name, 24)
+    const retired = savedName === RETIRED_BOSS_FLOOR_NAME
     return {
-      name: text(row.name, 24) || base.name,
-      ambience: text(row.ambience, 240) || base.ambience,
+      name: !retired && savedName ? savedName : base.name,
+      ambience: !retired && text(row.ambience, 240) ? text(row.ambience, 240) : base.ambience,
       trapIds: [...new Set(ids(row.trapIds))],
       monsterIds: [...new Set(ids(row.monsterIds))],
     }

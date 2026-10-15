@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Character, BodyPart, RACE_INFO, getFloorTheme } from '@/lib/types'
+import { keeperFloorCap } from '@/lib/floor-limit'
 import { getKeep } from '@/lib/storage'
 import {
   Heart, ArrowLeft,
@@ -79,7 +80,7 @@ export function CharacterCard({ character, onReset, onExplore, onAdvanceFloor, b
   const [roomName, setRoomName] = useState('')
   useEffect(() => {
     const keep = getKeep()
-    setDepth(keep.progress.depth)
+    setDepth(keeperFloorCap())
     setRoomName(keep.floors[(character.floor ?? 1) - 1]?.name ?? '')
   }, [character.floor, character.explorationProgress])
 

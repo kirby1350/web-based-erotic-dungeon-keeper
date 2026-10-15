@@ -1,5 +1,6 @@
 import { buildTurnContext, buildProgramResultContext, REPLY_PROTOCOL_PROMPT, NARRATIVE_PROGRESS_PROMPT, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryContext, emptyMemory, type AdventureMemory } from '@/lib/adventure-memory'
+import { keeperFloorCap } from '@/lib/floor-limit'
 import type { KeeperPromptContext } from '@/lib/keeper'
 import { Character, Race, RACE_INFO, getFloorTheme, ProseStyle, type ImagePromptFamily } from '@/lib/types'
 
@@ -267,8 +268,8 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
 5. 异常状态改变她的身体和城主可利用的反应，但不能覆盖程序判定。发情可以表现为扭腰、漏出求欢、难以把话说完。四条命令里仍要有一条是观察、停手或换目标。
 
 `,
-    `【地下城环境】\n这座地下城目前只挖通到第 ${depth} 层，再往下还没挖通。当前房间「${roomName}」：${roomAmbience}。场景标签参考：${theme.scene}。floor 是城主把她放到的深度，不得超过 ${depth}。explorationProgress 是城主把她往本层更里面赶的进度。她不是来通关的，也不存在要由她打倒的主人。已有遭遇未结束时延续其 id 和 name。没有程序判定的新遭遇时，不要让她自己掉进一件新的具名陷阱，也不要让她撞上其他层里的装置。`,
-    `【角色外观锚点，每回合原样前置】\n${buildAppearanceAnchor(character)}\n场景标签只补充地点、动作、拘束和光线，不要改写锚点里的发色、瞳色、种族和服装。`,
+    `【地下城环境】\n这座地下城目前只挖通到第 ${depth} 层，再往下还没挖通。当前房间「${roomName}」：${roomAmbience}。floor 是城主把她放到的深度，只能是 1 到 ${depth}。explorationProgress 是城主把她往本层更里面赶的进度。她不是来通关的，也不存在要由她打倒的主人。已有遭遇未结束时延续其 id 和 name。没有程序判定的新遭遇时，不要让她自己掉进一件新的具名陷阱，也不要让她撞上其他层里的装置。写 [SCENE] 时，环境最多从这里取此刻看得见的 2 到 4 个，不要整串照抄：${theme.scene}。`,
+    `【角色外观，只给正文对照】\n${buildAppearanceAnchor(character)}\n这些标签由出图程序拼在画面前面。[SCENE] 不要再写发色、瞳色、种族、服装、角色名，也不要原样抄上面这一串。`,
     REPLY_PROTOCOL_PROMPT,
     `【城主的选项】\n四个选项是城主此刻能下达的不同命令，在目标、代价或风险上彼此不同。可以是加码、换用上面已启用的另一件布置、停手观察、改碰别的部位。不要写成闯入者的四种自救，也不要四条都是继续插入。她若还在挣扎，可以有一条是看她反抗、再决定怎么接。`,
     ...(proseStyle === 'dense' ? [`【重油用词】本回合正文 1200 至 1600 字，覆盖上面的 250 至 500 字，也覆盖「简单行动可以更短」。字数用来写完三股和巡礼，不要用来把一句话拉长。进门第一段仍写一条至少四十字的「似是专为」定语。从第一次身体接触起，同一动作写三股，每股先第三人称再让她喊出来，再按马眼到她刚被用过的孔做巡礼。乳和穴用固定长名词原样再贴，这一串里已经包含至少四个质地原词。不要改成奶子很大、小穴湿润。没被这道命令碰到的部位不要硬堆。喷奶和喷水仍只按词库里的条件使用。标记必须写完。写不下就停在当前这一股的对白末尾。`] : []),
@@ -319,11 +320,11 @@ export function buildOpeningUserPrompt(characterName: string, keeper: KeeperProm
 }
 
 /** 状态修复只交 JSON。不附带带有非法占位数字的全文格式示例。 */
-export function buildStateRepairPrompt(errors: string[]): string {
+export function buildStateRepairPrompt(errors: string[], floorCap = keeperFloorCap()): string {
   return [
     '本请求只修复状态数据。仅输出一个 [STATS:单行JSON] 和一个 [DESC:单行JSON]。',
     '不要写正文、选项、场景标签、代码围栏或解释。不要照抄格式示例里的 -1、空尺寸和全 0。',
-    '以当前状态快照为底稿。只改本回合真正变了的 hp、pleasure、desire、encounter、statusEffects、measurements。floor 与 bodyDevelopment 的等级和 exp 原样抄快照。',
+    `以当前状态快照为底稿。只改本回合真正变了的 hp、pleasure、desire、encounter、statusEffects、measurements。floor 原样抄快照，并且必须是 1 到 ${floorCap} 的整数。bodyDevelopment 的等级和 exp 也原样抄快照。`,
     'hp 是 0 到快照 maxHp 的整数。pleasure 与 desire 是 0 到 100 的整数。encounter 为 null 或含 id、name、kind、summary、restraint 的对象，kind 只能是 trap 或 monster。statusEffects 的 id 只用英文小写、数字和下划线，不能重复。measurements 是不带单位的数字字符串。',
     'DESC 只含 breast、clitoris、urethra、vagina、anus。没有新的身体描写就沿用快照里的描述，每条不超过 300 字。',
     `上次没通过的字段：${errors.join('、') || '结构'}`,

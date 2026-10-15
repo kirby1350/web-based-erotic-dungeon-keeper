@@ -5,6 +5,7 @@ import { Send, Loader2, BookOpen, Square, RotateCcw, Wrench, Zap, Sparkles, Shie
 import { Character, AppSettings, StatusEffect, Encounter, EXPLORE_GAIN, ENCOUNTER_CLEAR_GAIN, getFloorTheme } from '@/lib/types'
 import { statusForTrap, type ProgramTurnResult } from '@/lib/adventure-context'
 import { getKeep } from '@/lib/storage'
+import { keeperFloorCap } from '@/lib/floor-limit'
 import { defensesOnFloor, encounterId, keeperPromptContext } from '@/lib/keeper'
 import { buildOpeningUserPrompt, startScreenCopy } from '@/lib/prompts'
 import { cn } from '@/lib/utils'
@@ -113,7 +114,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
   const advanceFloor = () => {
     if (loading || summarising || pending || character.encounter) return
     const curFloor = character.floor ?? 1
-    if ((character.explorationProgress ?? 0) < 100 || curFloor >= getKeep().progress.depth) return
+    if ((character.explorationProgress ?? 0) < 100 || curFloor >= keeperFloorCap()) return
     const next = curFloor + 1
     const theme = getFloorTheme(character.floorThemes, next)
     pendingResultRef.current = { kind: 'advance', floor: next }

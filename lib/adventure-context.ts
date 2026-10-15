@@ -1,4 +1,11 @@
+import { keeperFloorCap } from '@/lib/floor-limit'
 import { EXPLORE_ENCOUNTER_CHANCE, PRESET_STATUS_EFFECTS, PRESET_TRAPS, type Character, type Encounter, type StatusEffect } from '@/lib/types'
+
+function boundedFloor(floor: number | undefined): number {
+  const value = Math.trunc(floor ?? 1)
+  if (!Number.isFinite(value)) return 1
+  return Math.min(keeperFloorCap(), Math.max(1, value))
+}
 
 export type ProgramTurnResult =
   | { kind: 'escape'; encounter: Encounter | null; explorationProgress: number }
@@ -41,27 +48,28 @@ export function rollExploreEncounter(random: () => number = Math.random): Encoun
 
 /** Apply already-settled button actions before constructing any model context. */
 export function resolveTurnCharacter(character: Character, result: ProgramTurnResult | null): Character {
-  if (!result) return character
+  const current = { ...character, floor: boundedFloor(character.floor) }
+  if (!result) return current
   switch (result.kind) {
     case 'escape':
-      return { ...character, encounter: result.encounter && result.encounter.restraint > 0 ? result.encounter : null, explorationProgress: result.explorationProgress }
+      return { ...current, encounter: result.encounter && result.encounter.restraint > 0 ? result.encounter : null, explorationProgress: result.explorationProgress }
     case 'explore':
       return {
-        ...character,
+        ...current,
         explorationProgress: result.explorationProgress,
         encounter: result.encounter ?? null,
-        statusEffects: withStatus(character.statusEffects, result.statusEffect),
+        statusEffects: withStatus(current.statusEffects, result.statusEffect),
       }
     case 'advance':
-      return { ...character, floor: result.floor, explorationProgress: 0, encounter: null }
+      return { ...current, floor: boundedFloor(result.floor), explorationProgress: 0, encounter: null }
     case 'dispel':
       return {
-        ...character,
+        ...current,
         statusEffects: result.removed
-          ? character.statusEffects.filter((effect) => effect.id !== result.effect.id)
-          : character.statusEffects.some((effect) => effect.id === result.effect.id)
-            ? character.statusEffects
-            : [...character.statusEffects, result.effect],
+          ? current.statusEffects.filter((effect) => effect.id !== result.effect.id)
+          : current.statusEffects.some((effect) => effect.id === result.effect.id)
+            ? current.statusEffects
+            : [...current.statusEffects, result.effect],
       }
   }
 }
@@ -107,22 +115,22 @@ ${JSON.stringify(result)}`
 
 /** Marker order only. Every number and sentence in it is an illegal placeholder. */
 export const REPLY_FORMAT_EXAMPLE = `【格式示例，只展示标记顺序。示例数值全部非法，禁止照抄事件、楼层、人物和数字。】
-石室潮热，角色被残留的触手缠在腰上，尚未决定是挣开还是顺着粘液往侧室爬。
+石室又热又湿。触手还缠在她腰上，城主的手按住小腹，这一下还没往腿间去。她咬着牙，腿已经在抖。
 [OPTIONS]
-1. 扳开腰间触手，换取片刻行动自由
-2. 顺着粘液爬向侧室，寻找能切断触手的器物
-3. 停在原地换气，观察触手是否还在收紧
-4. 主动把重心送回去，换取它松开手腕
+1. 按住她的小腹，命令腰上的触手再收紧一档
+2. 用手拨开腿根，只摸到湿处就停
+3. 让触手松开，看她还能不能自己站住
+4. 先不碰她，只盯着她喘，等下一道命令
 [/OPTIONS]
-[SCENE: dungeon, stone_chamber, tentacles, waist_grab, slime, dim_lighting, adult]
+[SCENE: waist grab, pinned to wall, trembling, flushed face, slime, drool, close-up, stone wall, torchlight]
 [STATS:{"hp":-1,"pleasure":-1,"desire":-1,"floor":-1,"encounter":null,"measurements":{"bust":"","waist":"","hip":""},"bodyDevelopment":{"breast":0,"clitoris":0,"urethra":0,"vagina":0,"anus":0,"exp":{"breast":0,"clitoris":0,"urethra":0,"vagina":0,"anus":0}},"statusEffects":[]}]
 [DESC:{"breast":"示例句，禁止照抄。","clitoris":"示例句，禁止照抄。","urethra":"示例句，禁止照抄。","vagina":"示例句，禁止照抄。","anus":"示例句，禁止照抄。"}]`
 
 export const REPLY_PROTOCOL_PROMPT = `【输出协议与合法示例】
 固定顺序：正文 → [OPTIONS]四个选项[/OPTIONS] → [SCENE: 英文标签] → [STATS: 单行JSON对象] → [DESC: 单行JSON对象]。
 正文通常 250 至 500 字。简单行动可以更短。先写完已选行动的结果，不为凑字数重复高潮或拟声。标记必须留在输出末尾，不要被正文挤掉。
-选项区只放四条编号行动，不写分类说明。四条必须在目标、代价或风险上彼此不同，不能是同一动作的四种形容词。
-[SCENE] 只写纯英文 Danbooru 标签，英文逗号分隔，禁止中文、禁止整句、禁止 Markdown。标签必须包含：角色外观锚点、当前层场景、本回合关键动作或拘束、adult。不要写 masterpiece 或 best quality。
+选项区只放四条编号命令，不写分类说明。四条都是城主此刻能下达的不同命令，在目标、代价或风险上彼此不同，不能是同一动作的四种形容词，也不要写成闯入者的自救。
+[SCENE] 只写纯英文 Danbooru 标签，英文逗号分隔，12 到 20 个。禁止中文、整句、Markdown、masterpiece、best quality。不要写发色、瞳色、种族、服装、角色名，也不要写 adult；外观和 adult 由出图程序另拼。只写本回合的动作、表情、体液、镜头，再加上当前画面里真的看得见的 2 到 4 个环境标签。
 JSON 使用实际数值、字符串、数组和 null。不输出「数字」、取值范围或省略号。不用代码围栏，不讲解协议。
 hp 范围是 0 至当前快照的 maxHp。pleasure 与 desire 为 0 至 100 的整数。仍被困住时 restraint 为 1 至 3，降到 0 表示这场遭遇已经解除，encounter 必须是 null。开发等级与 exp 由程序结算：STATS 里照抄当前快照，不要自行增减，也不要因为示例里的 0 把已有经验清掉。程序只给本回合正文里被触碰或进入的部位加经验，轻微 +10，出现高潮或快感比回合开始至少高 20 时 +40；满 100 升 1 级并保留余数，上限 Lv5。没写到的部位不加。写部位时用明确说法，如乳头、阴蒂、尿道、阴道、肛门。exp 缺失表示未记录，不编造历史。
 STATS 必须完整包含 hp、pleasure、desire、floor、encounter、measurements、bodyDevelopment、statusEffects。

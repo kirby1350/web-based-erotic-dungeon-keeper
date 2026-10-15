@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { ENCOUNTER_CLEAR_GAIN, TARGET_FLOOR, type Character } from '@/lib/types'
+import { keeperFloorCap } from '@/lib/floor-limit'
+import { ENCOUNTER_CLEAR_GAIN, type Character } from '@/lib/types'
 import { enforceTurnResult, type ProgramTurnResult } from '@/lib/adventure-context'
 import { settleBodyDevelopment } from '@/lib/body-development'
 
@@ -27,7 +28,7 @@ function statsSchema(character: Character) {
   const validId = (id: string) => knownIds.has(id) || /^[a-z][a-z0-9_-]*$/.test(id)
   return z.object({
     hp: bounded(character.maxHp), pleasure: bounded(100), desire: bounded(100),
-    floor: z.number().int().min(1).max(TARGET_FLOOR),
+    floor: z.number().int().min(1).max(keeperFloorCap()),
     encounter: encounterSchema.refine((value) => validId(value.id), 'invalid encounter id').nullable(),
     measurements: z.object({ bust: measurement, waist: measurement, hip: measurement }).strict(),
     bodyDevelopment: development,
@@ -258,7 +259,7 @@ export function salvageStateMetadata(metadata: string, character: Character, pri
     hp: integerIn(character.hp, maxHp) ?? 0,
     pleasure: integerIn(character.pleasure, 100) ?? 0,
     desire: integerIn(character.desire, 100) ?? 0,
-    floor: Math.min(TARGET_FLOOR, Math.max(1, Math.trunc(character.floor ?? 1) || 1)),
+    floor: Math.min(keeperFloorCap(), Math.max(1, Math.trunc(character.floor ?? 1) || 1)),
     encounter,
     measurements: {
       bust: measurementOf(character.measurements?.bust, ''),

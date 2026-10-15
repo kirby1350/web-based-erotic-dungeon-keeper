@@ -695,17 +695,26 @@ export const FATE_LABEL: Record<IntruderFate, string> = {
 
 const MARKED_PARTS = ['breast', 'clitoris', 'urethra', 'vagina', 'anus'] as const
 
+/** 生命值到 0 时只剩玩坏。没写 hp 的旧数据不当作倒下。 */
+export function collapsed(character: { hp?: number }): boolean {
+  return typeof character.hp === 'number' && character.hp <= 0
+}
+
 /** 留下、玩坏、放走各自要她的身体先到某一档，不能随时点。 */
-export function fateGate(character: Pick<Character, 'pleasure' | 'desire' | 'bodyDevelopment'>, fate: IntruderFate): { ok: boolean; reason: string } {
+export function fateGate(character: Pick<Character, 'pleasure' | 'desire' | 'bodyDevelopment'> & { hp?: number }, fate: IntruderFate): { ok: boolean; reason: string } {
   const pleasure = character.pleasure ?? 0
   const desire = character.desire ?? 0
+  const down = collapsed(character)
   const marked = MARKED_PARTS.some((part) => (character.bodyDevelopment?.[part] ?? 0) >= 1)
+  if (down && fate !== 'broken') {
+    return { ok: false, reason: '生命值已经到 0。这是玩坏，不是留下或放走。' }
+  }
   if (fate === 'kept') {
     const ok = pleasure >= 30 || desire >= 40 || marked
     return { ok, reason: ok ? '' : '还没留下够用的痕迹。快感到 30、欲望到 40，或把一处开发到 1 级。' }
   }
   if (fate === 'broken') {
-    const ok = pleasure >= 80
+    const ok = pleasure >= 80 || down
     return { ok, reason: ok ? '' : '快感还没到 80，玩不坏。' }
   }
   const ok = pleasure < 80

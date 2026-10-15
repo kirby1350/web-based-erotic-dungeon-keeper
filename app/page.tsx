@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Character, type AppSettings, type GameSession } from '@/lib/types'
 import { getCharacter, getKeep, getSession, getSettings, saveGame, saveKeep } from '@/lib/storage'
 import { dzmmReady } from '@/lib/dzmm'
-import { adoptMonster, adoptTrap, appendRecall, buildCaptiveRecall, FATE_ESSENCE, FATE_LABEL, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
+import { adoptMonster, adoptTrap, appendRecall, buildCaptiveRecall, collapsed, FATE_ESSENCE, FATE_LABEL, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
 import { buildAftermathPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
@@ -150,10 +150,13 @@ export default function HomePage() {
     if (!entry) return
     const current = live.activeId === id ? (getCharacter() ?? entry.character) : entry.character
     if (!fateGate(current, fate).ok) return
+    const down = collapsed(current)
     const brief = fate === 'kept'
       ? '她被留在收藏室。这场调教到此结束，她记得城主和自己的身体。'
       : fate === 'broken'
-        ? '她被玩坏。记不清计划和说过的话，只剩身体。'
+        ? down
+          ? '她的生命值到了 0，身体撑不住。按玩坏结算。记不清计划和说过的话，只剩身体。'
+          : '她被玩坏。记不清计划和说过的话，只剩身体。'
         : '她被放走。她记得往外的路，也记得自己栽在哪一层。'
     aftermath.ask({
       title: `${FATE_LABEL[fate]} · ${current.name}`,
@@ -165,6 +168,7 @@ export default function HomePage() {
         desire: current.desire ?? 0,
         recall: entry.session?.summary,
       }),
+      locked: fate === 'broken' && down,
       onConfirm: (text) => settle(id, fate, text),
     })
   }

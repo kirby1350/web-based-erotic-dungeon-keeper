@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Settings } from 'lucide-react'
 import { Character, AppSettings } from '@/lib/types'
 import { getSettings, saveCharacter } from '@/lib/storage'
@@ -26,6 +26,14 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle }: Ga
   const [activeTab, setActiveTab] = useState<'chat' | 'image'>('chat')
   const [busy, setBusy] = useState(false)
   const actions = useRef<ExploreActions>({ explore: () => {}, advanceFloor: () => {} })
+  const collapseAsked = useRef(false)
+  const settleRef = useRef(onSettle)
+  settleRef.current = onSettle
+  useEffect(() => {
+    if ((character.hp ?? 1) > 0 || collapseAsked.current) return
+    collapseAsked.current = true
+    settleRef.current(character, 'broken')
+  }, [character])
   const handleRequestImage = useCallback((scene: string) => { setPendingScene(scene) }, [])
   const handleSceneHandled = useCallback(() => setPendingScene(undefined), [])
   const handleCharacterUpdate = useCallback((updates: Partial<Character>) => {
@@ -56,7 +64,7 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle }: Ga
       </div>
       <main className="flex flex-1 min-h-0 overflow-hidden">
         <section className={`${activeTab === 'chat' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-[55%] md:border-r border-border min-h-0`}>
-          <CharacterCard character={character} busy={busy} onReset={() => { if (!busy) onBack() }}
+          <CharacterCard character={character} busy={busy || (character.hp ?? 1) <= 0} onReset={() => { if (!busy && (character.hp ?? 1) > 0) onBack() }}
             onExplore={() => { if (!busy) actions.current.explore() }} onAdvanceFloor={() => { if (!busy) actions.current.advanceFloor() }} />
           <div className="flex-1 min-h-0 overflow-hidden">
             <ChatPanel character={character} settings={settings} onRequestImage={handleRequestImage}

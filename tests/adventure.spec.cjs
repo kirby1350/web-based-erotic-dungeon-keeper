@@ -231,6 +231,30 @@ test('storage failure at commit retries saving without regenerating', async ({ p
   expect(requests).toBe(1)
 })
 
+test('zero hp settles her as broken and returns to the hall', async ({ page }) => {
+  await setup(page)
+  let calls = 0
+  await page.route('**/api/chat', (route) => {
+    calls += 1
+    return respond(route, calls === 1 ? reply({ ...character, hp: 0 }) : '她倒在石地上，话已经说不成句。')
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: '往里赶', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: /玩坏 · 林/ })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '先不处置' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: '知道了', exact: true })).toBeEnabled()
+  await dialog.getByRole('button', { name: '知道了', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '地下城城主' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /迎接入侵者/ })).toBeEnabled()
+  const keep = await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_keep')))
+  expect(keep.roster).toEqual([])
+  expect(keep.collection[0].fate).toBe('broken')
+  expect(keep.collection[0].character.hp).toBe(0)
+  expect(keep.progress.essence).toBe(16)
+  expect((await read(page)).character).toBeNull()
+})
+
 test('keeper hall receives an intruder and stocks a trap', async ({ page }) => {
   await page.addInitScript(() => localStorage.clear())
   await page.route('https://**/*', (route) => route.abort())

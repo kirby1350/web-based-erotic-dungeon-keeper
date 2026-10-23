@@ -10,6 +10,7 @@ import {
 } from '@/lib/types'
 import { emptyMemory, readMemory, type AdventureMemory } from '@/lib/adventure-memory'
 import { cleanContent } from '@/lib/chat-protocol'
+import { floorSynergies, synergyPromptLine } from '@/lib/synergy'
 import { emptyCampaign, isRaidMember, readCampaign, threatPromptLine, type Campaign } from '@/lib/campaign'
 
 export type OpeningKind = 'personal' | 'trap' | 'monster' | 'corridor'
@@ -162,6 +163,7 @@ export interface KeeperPromptContext {
   dungeonDescription: string
   floors: KeeperFloorView[]
   threat?: string
+  combos?: string
 }
 
 const RACES = new Set<Race>(['human', 'elf', 'tauren', 'fox', 'cat', 'machine', 'dragon', 'succubus'])
@@ -476,6 +478,7 @@ export function keeperPromptContext(save: KeeperSave): KeeperPromptContext {
     dungeonName: save.dungeonName || '无名淫狱',
     dungeonDescription: save.dungeonDescription || '',
     floors: floorViews(save),
+    combos: synergyPromptLine(floorSynergies(save, save.roster?.find((entry) => entry.id === save.activeId)?.character.floor ?? 1)),
     threat: threatPromptLine(save.campaign ?? emptyCampaign(), isRaidMember(save.roster?.find((entry) => entry.id === save.activeId)?.character.name ?? '')),
   }
 }

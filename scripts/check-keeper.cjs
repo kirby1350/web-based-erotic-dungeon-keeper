@@ -46,3 +46,20 @@ const scaled = campaign.scaleIntruder({ maxHp: 100, hp: 100, pleasure: 10, desir
 assert.equal(scaled.maxHp, 130)
 assert.equal(keeper.normalizeKeep({ campaign: { infamy: 42, raid: true } }).campaign.infamy, 42)
 console.log('Keeper checks passed: campaign.')
+
+// 同层连携与自定义代价
+const synergy = load('@/lib/synergy')
+let s7 = keeper.emptyKeep()
+s7 = { ...s7, traps: [{ id: 't1', name: '催情花圃', mechanism: '花粉让人发情', prose: '', placed: true, source: 'preset' }],
+  monsters: [{ id: 'm1', name: '廊道触手看守', appearance: '触手', behavior: '缠住', placed: true, source: 'preset' }] }
+s7.floors = s7.floors.map((f, i) => i === 0 ? { ...f, trapIds: ['t1'], monsterIds: ['m1'] } : f)
+const combos = synergy.floorSynergies(s7, 1)
+assert.ok(combos.some((c) => c.id === 'aphro_tentacle'))
+assert.ok(synergy.synergyBonus(combos) <= synergy.SYNERGY_CAP)
+assert.deepEqual(synergy.floorSynergies(s7, 2), [])
+assert.ok(synergy.synergyPromptLine(combos).includes('催情触手'))
+assert.ok(synergy.customBlock('trap', s7).includes('淫髓'))
+const rich = cheat.cheatEssence(s7, 100)
+assert.equal(synergy.customBlock('trap', rich), '')
+assert.ok(synergy.customCost('monster', rich) >= 6)
+console.log('Keeper checks passed: synergy and custom caps.')

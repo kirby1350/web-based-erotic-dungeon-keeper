@@ -8,6 +8,7 @@ import {
   unstuffDefense,
   type KeeperSave,
 } from '@/lib/keeper'
+import { floorSynergies, synergyBonus } from '@/lib/synergy'
 
 interface DungeonEditorProps {
   keep: KeeperSave
@@ -71,6 +72,11 @@ export function DungeonEditor({ keep, onKeep, onBack }: DungeonEditorProps) {
           return (
             <section key={index} className="dungeon-border rounded-xl bg-card p-4 space-y-3">
               <p className="text-[11px] tracking-widest text-primary">第 {index + 1} 层</p>
+              {(() => { const combos = floorSynergies(keep, index + 1); return combos.length ? (
+                <div className="rounded-lg border border-fuchsia-400/40 bg-fuchsia-500/10 p-2 text-xs text-fuchsia-100" data-testid="synergy">
+                  连携 +{Math.round(synergyBonus(combos) * 100)}% 淫髓：{combos.map((item) => item.name).join('、')}
+                </div>
+              ) : <p className="text-[11px] text-muted-foreground">同层放一件陷阱和一只魔物，可能触发连携。</p> })()}
               <input value={floor.name} maxLength={24} onChange={(event) => onKeep(renameFloor(keep, index, { name: event.target.value }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-bold" />
               <textarea value={floor.ambience} maxLength={240} onChange={(event) => onKeep(renameFloor(keep, index, { ambience: event.target.value }))} className="w-full min-h-16 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <div className="space-y-2">

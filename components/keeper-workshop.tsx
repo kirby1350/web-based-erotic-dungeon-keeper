@@ -15,6 +15,7 @@ import {
   type KeeperSave,
   type KeeperTrap,
 } from '@/lib/keeper'
+import { CUSTOM_LIMITS, customBlock, customCost } from '@/lib/synergy'
 
 interface KeeperWorkshopProps {
   mode: 'trap' | 'monster'
@@ -80,13 +81,16 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
       setError(isTrap ? '要有名称和机械摘要，才能入库。' : '要有名称和行为，才能入库。')
       return
     }
+    const blockedBy = customBlock(isTrap ? 'trap' : 'monster', keep)
+    if (blockedBy) { setError(blockedBy); return }
+    const paid = { ...keep, progress: { ...keep.progress, essence: keep.progress.essence - customCost(isTrap ? 'trap' : 'monster', keep) } }
     const id = encounterId(`custom_${crypto.randomUUID().replace(/-/g, '')}`)
     if (isTrap) {
       const trap: KeeperTrap = { id, name: trimmedName.slice(0, 40), mechanism: trimmedPrimary.slice(0, 400), prose: secondary.trim().slice(0, 800), placed: false, source: 'custom' }
-      onKeep({ ...keep, traps: [...keep.traps, trap] })
+      onKeep({ ...paid, traps: [...paid.traps, trap] })
     } else {
       const monster: KeeperMonster = { id, name: trimmedName.slice(0, 40), appearance: secondary.trim().slice(0, 240), behavior: trimmedPrimary.slice(0, 400), placed: false, source: 'custom' }
-      onKeep({ ...keep, monsters: [...keep.monsters, monster] })
+      onKeep({ ...paid, monsters: [...paid.monsters, monster] })
     }
     setName('')
     setPrimary('')
@@ -169,7 +173,7 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
           <textarea value={secondary} onChange={(event) => setSecondary(event.target.value)} placeholder={isTrap ? '触发时她身上发生什么' : '外观'} className="w-full min-h-20 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           <textarea value={primary} onChange={(event) => setPrimary(event.target.value)} placeholder={isTrap ? '机械摘要：怎么束缚，主要碰哪里' : '行为：听令之后先做什么'} className="w-full min-h-20 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           {error && <p className="text-sm text-yellow-400" role="alert">{error}</p>}
-          <button type="button" onClick={saveCustom} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold">入库</button>
+          <button type="button" onClick={saveCustom} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold">入库 · {customCost(isTrap ? 'trap' : 'monster', keep)} 淫髓（自定义上限 {CUSTOM_LIMITS[isTrap ? 'trap' : 'monster']}）</button>
         </section>
       </div>
     </div>

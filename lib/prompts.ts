@@ -312,6 +312,7 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
     buildMemoryContext(memory), buildTurnContext(character), buildProgramResultContext(result),
     ...(proseStyle === 'dense' ? [DENSE_LEXICON_NOTE] : []),
     ...(keeper?.threat ? [keeper.threat] : []),
+    ...(keeper?.combos ? [keeper.combos] : []),
     MOAN_NOTE,
   ].join('\n\n')
 }

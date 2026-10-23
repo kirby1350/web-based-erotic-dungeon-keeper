@@ -11,6 +11,7 @@ import { essenceFromPleasure, grantEssence, keeperPromptContext } from '@/lib/ke
 import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
 import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
+import { floorSynergies, synergyBonus } from '@/lib/synergy'
 import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords } from '@/lib/prose-bank'
 import { completeTurn, pendingMessages, PROMPT_VERSION, type PendingTurn } from '@/lib/turn-engine'
 
@@ -122,8 +123,10 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       // This single write commits story, character, audit record and removal of pending work.
       saveGame(completed.character, savedSession)
       try {
-        const gain = essenceFromPleasure(pending.before.pleasure ?? 0, completed.character.pleasure ?? 0)
-        if (gain > 0) saveKeep(grantEssence(getKeep(), gain))
+        const live = getKeep()
+        const raw = essenceFromPleasure(pending.before.pleasure ?? 0, completed.character.pleasure ?? 0)
+        const gain = Math.round(raw * (1 + synergyBonus(floorSynergies(live, completed.character.floor ?? 1))))
+        if (gain > 0) saveKeep(grantEssence(live, gain))
       } catch { /* 淫髓没记上时，这一回合的正文和身体仍然算数 */ }
       committed = true
       characterRef.current = completed.character

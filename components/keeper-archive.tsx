@@ -46,7 +46,7 @@ export function KeeperArchive({ keep, onBack }: KeeperArchiveProps) {
   const person = open?.kind === 'roster' ? open.entry.character : open?.kind === 'captive' ? open.record.character : selectedPreset
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4">
       <div className="max-w-5xl mx-auto space-y-6">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
         <div>
@@ -55,7 +55,7 @@ export function KeeperArchive({ keep, onBack }: KeeperArchiveProps) {
         </div>
 
         {open && person && (
-          <article className="dungeon-border rounded-xl bg-card p-4 md:p-6 space-y-4">
+          <article className="dungeon-border rounded-xl bg-card p-4 space-y-4">
             <button type="button" onClick={() => setOpen(null)} className="text-xs text-muted-foreground">返回相册</button>
             <div className="flex gap-4">
               <Portrait name={person.name} url={'avatarUrl' in person ? person.avatarUrl : undefined} className="w-28 h-40 rounded-lg flex-shrink-0" />
@@ -101,7 +101,7 @@ export function KeeperArchive({ keep, onBack }: KeeperArchiveProps) {
         <section className="space-y-3">
           <h2 className="text-sm tracking-widest text-muted-foreground">这座狱里的人</h2>
           {keep.roster.length === 0 && keep.collection.length === 0 && <p className="text-sm text-muted-foreground">还没有人进来过。</p>}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {keep.roster.map((entry) => (
               <button key={entry.id} type="button" onClick={() => setOpen({ kind: 'roster', entry })} className="dungeon-border rounded-xl bg-card p-3 text-left">
                 <Portrait name={entry.character.name} url={entry.character.avatarUrl} className="w-full aspect-[3/4] rounded-lg" />
@@ -122,7 +122,7 @@ export function KeeperArchive({ keep, onBack }: KeeperArchiveProps) {
         <section className="space-y-3">
           <h2 className="text-sm tracking-widest text-muted-foreground">还没来过的角色库</h2>
           {waiting.length === 0 && <p className="text-sm text-muted-foreground">角色库里的人都已经进过这座狱。</p>}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {waiting.map((preset) => (
               <button key={preset.name} type="button" onClick={() => setOpen({ kind: 'library', name: preset.name })} className="dungeon-border rounded-xl bg-card p-3 text-left">
                 <Portrait name={preset.name} url={preset.avatarUrl} className="w-full aspect-[3/4] rounded-lg" />

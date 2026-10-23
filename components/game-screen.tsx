@@ -64,7 +64,7 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
         </div>
       </header>
       {(cheat || settings.cheatMode) && <SceneCheat character={character} onUpdate={handleCharacterUpdate} onForceFate={(fate) => onSettle(character, fate, true)} />}
-      <div className="flex md:hidden border-b border-border">
+      <div className="flex border-b border-border">
         {(['chat', 'image'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2.5 text-xs ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}>
             {tab === 'chat' ? chrome.tab : `场景插图${pendingScene ? ' •' : ''}`}
@@ -72,7 +72,7 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
         ))}
       </div>
       <main className="flex flex-1 min-h-0 overflow-hidden">
-        <section className={`${activeTab === 'chat' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-[55%] md:border-r border-border min-h-0`}>
+        <section className={`${activeTab === 'chat' ? 'flex' : 'hidden'} flex-col w-full border-border min-h-0`}>
           <CharacterCard character={character} busy={busy || (character.hp ?? 1) <= 0} onReset={() => { if (!busy && (character.hp ?? 1) > 0) onBack() }}
             onExplore={() => { if (!busy) actions.current.explore() }} onAdvanceFloor={() => { if (!busy) actions.current.advanceFloor() }} />
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -80,7 +80,7 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
               onCharacterUpdate={handleCharacterUpdate} onTurnCommit={setCharacter} onBusyChange={setBusy} exploreActionsRef={actions} />
           </div>
         </section>
-        <section className={`${activeTab === 'image' ? 'block' : 'hidden'} md:block w-full md:w-[45%] min-h-0 overflow-hidden`}>
+        <section className={`${activeTab === 'image' ? 'block' : 'hidden'} w-full min-h-0 overflow-hidden`}>
           <ImagePanel settings={settings} character={character} pendingScene={pendingScene} onSceneHandled={handleSceneHandled} />
         </section>
       </main>

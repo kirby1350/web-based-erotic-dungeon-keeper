@@ -10,7 +10,7 @@ interface AftermathPopupProps {
 
 export function AftermathPopup({ popup, onConfirm, onDismiss }: AftermathPopupProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 md:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4">
       <div role="dialog" aria-modal="true" aria-label={popup.title} className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
         <p className="text-xs tracking-widest text-primary">处置之后</p>
         <h2 className="text-lg font-bold mt-1">{popup.title}</h2>

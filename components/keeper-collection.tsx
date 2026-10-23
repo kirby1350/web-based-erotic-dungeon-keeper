@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { AppSettings } from '@/lib/types'
-import { RACE_INFO } from '@/lib/types'
+import { RACE_INFO, type AppSettings } from '@/lib/types'
 import { CAGES, FATE_LABEL, appendRecall, cageKind, collectionActions, collectionNeedsSlot, pickDiscardScene, planReturn, stampBrand, type CageKind, type CaptiveRecord, type CollectionAction, type KeeperSave, type KeeperTrap } from '@/lib/keeper'
 import { buildAftermathPrompt, buildWatchPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
@@ -96,7 +95,7 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
     onBringBack(record, '', planned)
   }
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4">
       {aftermath.popup && <AftermathPopup popup={aftermath.popup} onConfirm={aftermath.confirm} onDismiss={aftermath.dismiss} />}
       <div className="max-w-3xl mx-auto space-y-4">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>

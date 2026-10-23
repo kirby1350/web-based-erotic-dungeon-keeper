@@ -47,7 +47,7 @@ function rng(seed: number) {
   return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296 }
 }
 
-export interface BankOpts { stepIndex: number; climaxAllowed: boolean; seed: number; avoid?: string[] }
+export interface BankOpts { stepIndex: number; climaxAllowed: boolean; seed: number; avoid?: string[]; input?: string }
 
 export function availableWords(cat: string, o: Pick<BankOpts, 'stepIndex' | 'climaxAllowed'>): string[] {
   return PROSE_BANK[cat].words.filter((x) => (x.step ?? 0) <= o.stepIndex && (!x.climax || o.climaxAllowed)).map((x) => x.w)
@@ -98,9 +98,17 @@ export function rememberBankWords(previous: string[] | undefined, text: string):
 }
 
 export const DENSE_MIN_WORDS = 12
-export const DENSE_LENGTH = { min: 800, max: 1200 }
+export const DENSE_LENGTH = { min: 1000, max: 1500 }
+/** 提示里写的字数。模型实际会多写两三成，写 900–1300 时实际落在 1000–1500 左右。 */
+export const DENSE_PROMPT_LENGTH = { min: 900, max: 1300 }
 
-/** 赶路保持短。碰到身体之后才用青楼那档 800–1200。 */
+/** 提示里报给模型的字数：碰到身体的步骤报低一档，其他步骤照实际。 */
+export function densePromptLength(stepIndex: number): { min: number; max: number } {
+  const real = denseLength(stepIndex)
+  return real.max === DENSE_LENGTH.max ? DENSE_PROMPT_LENGTH : real
+}
+
+/** 赶路保持短。碰到身体之后才用1000–1500。 */
 export function denseLength(stepIndex: number): { min: number; max: number } {
   if (stepIndex <= 0) return { min: 250, max: 500 }
   if (stepIndex === 1) return { min: 400, max: 800 }
@@ -134,7 +142,27 @@ export function denseBankOpts(input: string, character: { pleasure?: number; enc
     climaxAllowed: (character.pleasure ?? 0) >= 80,
     seed,
     avoid,
+    input,
   }
+}
+
+/** 原创节奏示例。每回合轮换一段，跳过和本回合命令同一种玩法的那段，免得被照抄。 */
+export const DENSE_EXEMPLARS: { play: RegExp; text: string }[] = [
+  { play: /乳|奶|胸/, text: `藤蔓钻进她的衣领，把胸口的软肉托起来往外拨。「谁准你……拿开——唔！」她嘴上骂着，胸口却往前挺了一下，呼吸也乱了。` },
+  { play: /腿|臀|屁股|打|拍/, text: `皮带落在臀上，啪的一声，留下一道红印。「才、才不痛……哈啊……」她把脸埋进臂弯，膝盖却在石板上并紧了。` },
+  { play: /舔|嘴|吻|口|舌/, text: `他扣住她的下巴吻下去，咂的一声才放开。「唔嗯……喘不过气了……」她松开攥着衣襟的手，嘴唇又自己凑了回去。` },
+  { play: /腿间|阴|穴|屄|蒂|下面|手指/, text: `指尖隔着布料按住那一点，慢慢打转。「不、不要按那里……嗯啊……」她一边推他的手，一边把腰往他手上送。` },
+]
+
+export function pickExemplar(seed: number, input: string): string {
+  const pool = DENSE_EXEMPLARS.filter((e) => !e.play.test(input))
+  const list = pool.length ? pool : DENSE_EXEMPLARS
+  return list[Math.abs(seed) % list.length].text
+}
+
+/** 短篇幅的步骤段落少一些。 */
+function densParas(max: number): string {
+  return max <= 500 ? '3 到 5' : max <= 800 ? '5 到 8' : '8 到 12'
 }
 
 export function denseStyleBlock(o: BankOpts): string {
@@ -143,29 +171,34 @@ export function denseStyleBlock(o: BankOpts): string {
   const recent = (o.avoid ?? []).slice(-10)
   if (recent.length) rows.push(`- 前几段已经用过（这段换别的说法）：${recent.join('、')}`)
   const step = STEP_LABELS[Math.max(0, Math.min(STEP_LABELS.length - 1, o.stepIndex))]
-  const length = denseLength(o.stepIndex)
+  const length = densePromptLength(o.stepIndex)
+  const paras = densParas(length.max)
   const gate = o.climaxAllowed
     ? '本回合有人到了高潮档：高潮类的词（白浊 / 潮水…）可以用，写在已经高潮的那个人身上'
-    : `本回合没有人到高潮：不写射精、白浊、喷发、潮吹、绝顶——浓度加在「${step}」这一步此刻的动作上，不往后推进剧情`
-  return `【★重油文风（最后的文风指令：只压过前面「简洁/克制」的文风倾向；不压过这一步的强度上限、高潮闸门和字数上限）★】
-重油 = 同样的剧情进度，写得更浓更密；不是写得更长，也不是推进得更快。
+    : `本回合没有人到高潮：不写射精、白浊、喷发、潮吹、绝顶——浓度加在「${step}」这一步此刻的动作上`
+  return `【★重油文风（最后的文风指令，前面重油段里的数量要求以这里为准；不压过这一步的强度上限、高潮闸门）★】
+重油 = 镜头贴着身体走，一拍一拍写满，人物一直在出声。不是做填词题。
 - ${gate}
-- 「${step}」这一步没给的部位与动作不要提前写（触碰不插入，赶路和对峙不碰性器）
-密度要求（每一段都要达到，不是只在开头点一下）：
-1. 每一句至少调动两类感官（触感 / 温度 / 气味 / 声音任选两类），整段至少两处气味描写
-2. 每个出场的身体部位前叠 3–4 个修饰，用「修饰前缀 + 触感词 + 温度/状态」组合，如「肥软雪腻、沉甸甸发烫的奶球」「湿濡滚烫的穴口」
-3. 每段至少一个拟声词，台词里也要夹拟声与喘息
-4. 本回合至少用上下面【本回合词库】里 ${DENSE_MIN_WORDS} 个不同的词，同一个词全段只用一次；词库已按当前步骤和档位筛过——这一步没给的词就不要用
-5. 动作用具体的动词写到身体上（谁的哪里、被怎样、发出什么声音、留下什么痕迹），少用抽象的「快感」「舒服」
-6. 每 100 字至少 4 个感官 / 部位 / 拟声词；寒暄、解释、重复的来回对白压到一两句，把篇幅让给感官
-7. 正文 ${length.min}–${length.max} 字，最多 ${length.max} 字（超了就删铺垫和重复对白，不删感官词）；堆叠要新鲜具体，仍然遵守【文风禁令】黑名单
-【本回合词库（每回合换一批，化用进句子里）】
+- 「${step}」这一步没给的部位与动作不要提前写，但这一步之内要写透：从头到尾围着城主这道命令打转，一个动作拆成几拍慢慢写。
+【写法】
+1. 分段：叙述段和台词行交替，叙述段 ${paras} 个，一段一拍：动作、部位近景、她的反应。台词可以单独一行，夹在叙述段之间。不写总结段，不写「她感到无比……」。
+2. 对白约占正文四分之一（不少于两成），至少 5 句台词，分散在全段，不要挤在开头。她的台词要像她本人：原作口癖、自称、性格都保留（高傲的嘴硬，温柔的撒娇，冷淡的就冷淡地说出羞耻的话）。台词里夹喘息和拟声，用「……」「——」「～」断开，例如「唔……别、别碰那里……嗯啾……」。
+3. 一拍的写法：动作落到具体部位 → 部位近景（形状、颜色、湿度、温度、气味里挑两三样）→ 声音或她的一句话。部位前的修饰可以连成长串（四到八个字的叠加），在主部位上用，次要部位一笔带过。
+4. 拟声要具体，写清是什么发出的：咕啾的水声、乳肉拍打的啪嗒声、吸吮的滋溜声。激烈处可以写一句「几种声音混在一起」的合奏。
+5. 节奏逐段加码：先看、再碰、再加力，身体反应一段比一段失控（夹紧、发抖、腰往前送、话说不完整）。结尾停在她的一句台词或一个正在进行的动作上，不收束、不总结。
+6. 气味和体液要落地：落在哪、沾到哪、留下什么痕迹。
+7. 正文 ${length.min}–${length.max} 字，硬上限 ${length.max} 字：写到上限就停在她的一句台词上，宁可少写一拍，也不要超。下面词库是调色板，挑贴切的用，大约用上一半就够，不要为凑词硬塞。仍然遵守【文风禁令】黑名单。
+【本回合词库（调色板，每回合换一批）】
 ${rows.join('\n')}
-【重油笔触示例（只示范浓度，不要照抄字句）】
-「那团肥软雪腻、沉甸甸坠着的奶球一压上来，汗湿的乳肉便糯糯地摊开，滚烫的奶香裹着雌香直往鼻腔里钻；啾——她的软舌嘬住他的耳垂，湿濡的银丝牵了老长，颤巍巍地断在锁骨窝里。」`
-}
+【结构示例（原创，只示范「动作 → 台词 → 反应」的节拍，不是范文）】
+${pickExemplar(o.seed, o.input ?? '')}
+不要复用示例里的任何句子、台词或比喻，人名、部位、动作和台词都按本回合重新写。`}
 
 export function denseTurnNote(stepIndex: number): string {
-  const length = denseLength(stepIndex)
-  return `\n（重油：正文 ${length.min}–${length.max} 字、不超过 ${length.max}；每句两类以上感官词、部位前叠 3–4 个修饰、每段一个拟声，用足【本回合词库】里至少 ${DENSE_MIN_WORDS} 个不同的词。浓度加在这一步此刻的动作上，不提前推进、不越过高潮闸门。）`
+  const length = densePromptLength(stepIndex)
+  return `\n\n【本回合硬性要求】
+1. 正文 ${length.min}–${length.max} 字，超过 ${length.max} 字不合格。写够就停，停在她的一句台词上。
+2. 叙述段和台词行交替，叙述段 ${densParas(length.max)} 个。
+3. 台词约占正文四分之一：每个叙述段后面跟一行她的台词，至少 8 行，每行 20–50 字，带喘息和拟声，保留她的口癖。叙述段写短一点，把字数让给台词。
+4. 围着这道命令写，不提前推进，不越过高潮闸门。不要复用示例句子。`
 }

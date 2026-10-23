@@ -32,11 +32,11 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
   const placedMonsters = keep.monsters.filter((monster) => monster.placed).length
   const full = keep.roster.length >= keep.progress.intruderSlots
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4">
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold gold-text tracking-widest">地下城城主</h1>
+            <h1 className="text-3xl font-bold gold-text tracking-widest">地下城城主</h1>
             <p className="text-sm text-muted-foreground mt-2 max-w-xl leading-relaxed">
               闯入者自己走进来。调教她们会留下淫髓，用来把狱挖深、把栏位和格子加开。
             </p>
@@ -62,7 +62,7 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
           </div>
         </div>
 
-        <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <section className="grid gap-2 sm:grid-cols-2">
           {UPGRADES.map((item) => {
             const value = keep.progress[item.key]
             const cost = upgradeCost(keep.progress, item.key)
@@ -85,7 +85,7 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
         </section>
 
         {keep.roster.map((entry) => (
-          <section key={entry.id} className="dungeon-border rounded-xl bg-card p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <section key={entry.id} className="dungeon-border rounded-xl bg-card p-4 flex flex-col gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-12 h-12 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
                 {entry.character.avatarUrl
@@ -128,7 +128,7 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
           </p>
         </button>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 xl:grid-cols-4">
           <button type="button" onClick={onOpenTraps} className="dungeon-border rounded-xl bg-card p-4 text-left">
             <p className="text-xs text-muted-foreground">陷阱工房</p>
             <p className="text-lg font-bold mt-1">已布置 {placedTraps}/{keep.progress.trapSlots}</p>

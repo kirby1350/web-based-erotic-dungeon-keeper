@@ -1,5 +1,7 @@
 'use client'
 
+export const CHAT_TIMEOUT_MS = 180_000
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings, Character, GameSession } from '@/lib/types'
 import { getKeep, getSession, saveGame, saveKeep } from '@/lib/storage'
@@ -9,6 +11,8 @@ import { essenceFromPleasure, grantEssence, keeperPromptContext } from '@/lib/ke
 import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
 import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
+import { floorSynergies, synergyBonus } from '@/lib/synergy'
+import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords } from '@/lib/prose-bank'
 import { completeTurn, pendingMessages, PROMPT_VERSION, type PendingTurn } from '@/lib/turn-engine'
 
 interface SessionOptions {
@@ -51,6 +55,8 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     runningRef.current = true
     const controller = new AbortController()
     abortRef.current = controller
+    let turnTimedOut = false
+    const turnTimer = setTimeout(() => { turnTimedOut = true; controller.abort() }, CHAT_TIMEOUT_MS)
     setLoading(true)
     setStatsError('')
     let content = pending.phase === 'generating' ? '' : pending.draft
@@ -111,12 +117,16 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       // A validated response can be saved again after storage recovery without another model call.
       checkpoint('ready', content, repaired)
       const completed = completeTurn(sessionRef.current, pending, content, repaired)
-      const savedSession = completed.session
+      const savedSession = settings.proseStyle === 'dense'
+        ? { ...completed.session, recentBank: rememberBankWords(sessionRef.current.recentBank, content) }
+        : completed.session
       // This single write commits story, character, audit record and removal of pending work.
       saveGame(completed.character, savedSession)
       try {
-        const gain = essenceFromPleasure(pending.before.pleasure ?? 0, completed.character.pleasure ?? 0)
-        if (gain > 0) saveKeep(grantEssence(getKeep(), gain))
+        const live = getKeep()
+        const raw = essenceFromPleasure(pending.before.pleasure ?? 0, completed.character.pleasure ?? 0)
+        const gain = Math.round(raw * (1 + synergyBonus(floorSynergies(live, completed.character.floor ?? 1))))
+        if (gain > 0) saveKeep(grantEssence(live, gain))
       } catch { /* 淫髓没记上时，这一回合的正文和身体仍然算数 */ }
       committed = true
       characterRef.current = completed.character
@@ -132,26 +142,29 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       if (!committed) {
         try { checkpoint(currentPending.phase, currentPending.phase === 'generating' ? content : currentPending.draft) } catch { /* the original pending request remains durable */ }
         if (mountedRef.current) setStatsError(controller.signal.aborted
-          ? '生成已停止，本回合尚未结算。可以继续或放弃。'
+          ? turnTimedOut ? '生成超过 180 秒已中断，本回合尚未结算。可以继续或放弃。' : '生成已停止，本回合尚未结算。可以继续或放弃。'
           : `本回合未结算：${error instanceof Error ? error.message : '请求或存档失败'}。可重试或放弃。`)
       }
     } finally {
+      clearTimeout(turnTimer)
       runningRef.current = false
       if (mountedRef.current) setLoading(false)
     }
-  }, [settings.grokApiKey, onTurnCommit, onRequestImage, publish])
+  }, [settings.grokApiKey, settings.proseStyle, onTurnCommit, onRequestImage, publish])
 
   const beginTurn = useCallback((input: string, result: ProgramTurnResult | null = null) => {
     if (runningRef.current || summaryRunningRef.current || sessionRef.current.pendingTurn) return
     const before = structuredClone(characterRef.current)
     const current = resolveTurnCharacter(before, result)
     const saved = sessionRef.current
+    const dense = settings.proseStyle === 'dense'
+    const bank = dense ? denseBankOpts(input, current, Date.now() % 100000, saved.recentBank ?? []) : null
     const pending: PendingTurn = { id: crypto.randomUUID(), input, startedAt: Date.now(), before,
       result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '',
       requestMessages: [
-        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep())) },
+        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep())) + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
         ...saved.messages.map((message) => ({ role: message.role, content: message.content })),
-        { role: 'user', content: input },
+        { role: 'user', content: bank ? `${input}${denseTurnNote(bank.stepIndex)}` : input },
       ],
     }
     try {

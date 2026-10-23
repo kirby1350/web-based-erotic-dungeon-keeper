@@ -222,9 +222,9 @@ function cm(min: number, max: number, random: () => number): string {
 function measurements(race: Race, random: () => number) {
   const large = race === 'tauren' || race === 'dragon' || race === 'succubus'
   return {
-    bust: cm(large ? 92 : 78, large ? 114 : 98, random),
-    waist: cm(54, 70, random),
-    hip: cm(large ? 90 : 80, large ? 112 : 100, random),
+    bust: cm(large ? 96 : 88, large ? 116 : 102, random),
+    waist: cm(54, 66, random),
+    hip: cm(large ? 94 : 88, large ? 114 : 104, random),
   }
 }
 

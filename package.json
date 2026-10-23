@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --incremental false",
-    "test:adventure": "node scripts/check-adventure-context.cjs && node scripts/check-turns.cjs && node scripts/check-stream.cjs",
+    "test:adventure": "node scripts/check-adventure-context.cjs && node scripts/check-turns.cjs && node scripts/check-stream.cjs && node scripts/check-keeper.cjs",
     "test:e2e": "playwright test",
     "eval:prompts": "node scripts/evaluate-prompts.cjs"
   },

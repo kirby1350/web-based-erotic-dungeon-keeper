@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react'
 import { Character, type AppSettings, type GameSession } from '@/lib/types'
 import { getCharacter, getKeep, getSession, getSettings, saveGame, saveKeep } from '@/lib/storage'
 import { dzmmReady } from '@/lib/dzmm'
-import { adoptMonster, adoptTrap, buildCaptiveRecall, cageKind, FATE_ESSENCE, FATE_LABEL, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, trainingSessionSummary, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
+import { adoptMonster, adoptTrap, emptyKeep, buildCaptiveRecall, collapsed, cageKind, FATE_ESSENCE, FATE_LABEL, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, trainingSessionSummary, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
 import { buildAftermathPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
 import { GameScreen } from '@/components/game-screen'
 import { KeepHall } from '@/components/keep-hall'
+import { HallCheat } from '@/components/cheat-panel'
+import { CampaignCard, EndingOverlay } from '@/components/campaign-card'
+import { emptyCampaign, isRaidMember, raidRemaining, recordFate, scaleIntruder, threatTier } from '@/lib/campaign'
 import { IntruderGate, type BeginIntrusion } from '@/components/intruder-gate'
 import { KeeperWorkshop } from '@/components/keeper-workshop'
 import { KeeperCollection } from '@/components/keeper-collection'
@@ -132,6 +135,7 @@ export default function HomePage() {
       ledger: line.trim(),
     }
     const removingActive = next.activeId === id
+    next = { ...next, campaign: recordFate(next.campaign ?? emptyCampaign(), current.name, fate) }
     next = grantEssence({
       ...next,
       roster: next.roster.filter((item) => item.id !== id),
@@ -147,16 +151,19 @@ export default function HomePage() {
     setScreen('hall')
   }
 
-  const askSettle = (id: string, fate: IntruderFate) => {
+  const askSettle = (id: string, fate: IntruderFate, force = false) => {
     const live = getKeep()
     const entry = live.roster.find((item) => item.id === id)
     if (!entry) return
     const current = live.activeId === id ? (getCharacter() ?? entry.character) : entry.character
-    if (!fateGate(current, fate).ok) return
+    if (!force && !fateGate(current, fate).ok) return
+    const down = collapsed(current)
     const brief = fate === 'kept'
       ? '她被留在收藏室。这场调教到此结束，她记得城主和自己的身体。'
       : fate === 'broken'
-        ? '她被玩坏。记不清计划和说过的话，只剩身体。'
+        ? down
+          ? '她的生命值到了 0，身体撑不住。按玩坏结算。记不清计划和说过的话，只剩身体。'
+          : '她被玩坏。记不清计划和说过的话，只剩身体。'
         : '她被放走。她记得往外的路，也记得自己栽在哪一层。'
     aftermath.ask({
       title: `${FATE_LABEL[fate]} · ${current.name}`,
@@ -168,13 +175,16 @@ export default function HomePage() {
         desire: current.desire ?? 0,
         recall: entry.session?.summary,
       }),
+      locked: fate === 'broken' && down && !force,
       onConfirm: (text) => settle(id, fate, text),
     })
   }
 
   const begin = (payloads: BeginIntrusion[]) => {
     let next = parkActive(getKeep())
+    const tier = threatTier((next.campaign ?? emptyCampaign()).infamy)
     const arrivals = payloads.slice(0, Math.max(0, next.progress.intruderSlots - next.roster.length))
+      .map((payload) => ({ ...payload, character: scaleIntruder(payload.character, isRaidMember(payload.character.name) ? 5 : tier) }))
     if (!arrivals.length) return
     const entries = arrivals.map(entryFrom)
     for (const payload of arrivals) {
@@ -253,6 +263,13 @@ export default function HomePage() {
   return (
     <>
       {aftermath.popup && <AftermathPopup popup={aftermath.popup} onConfirm={aftermath.confirm} onDismiss={aftermath.dismiss} />}
+      {screen === 'hall' && keep.campaign && <EndingOverlay campaign={keep.campaign} onRestart={() => commitKeep(emptyKeep())} onContinue={(campaign) => commitKeep({ ...keep, campaign })} />}
+      {screen === 'hall' && (
+        <div className="max-w-3xl mx-auto px-4 pt-4 space-y-2">
+          {settings.cheatMode && <HallCheat keep={keep} onKeep={commitKeep} />}
+          <CampaignCard campaign={keep.campaign} />
+        </div>
+      )}
       {screen === 'hall' && (
         <KeepHall
           keep={keep}
@@ -268,7 +285,7 @@ export default function HomePage() {
           onOpenSettings={() => setShowSettings(true)}
         />
       )}
-      {screen === 'gate' && <IntruderGate keep={keep} onBegin={begin} onBack={() => setScreen('hall')} />}
+      {screen === 'gate' && <IntruderGate keep={keep} raidNext={keep.campaign?.raid ? raidRemaining(keep.campaign)[0] : undefined} cheat={settings.cheatMode === true} onBegin={begin} onBack={() => setScreen('hall')} />}
       {screen === 'traps' && <KeeperWorkshop mode="trap" keep={keep} settings={settings} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'monsters' && <KeeperWorkshop mode="monster" keep={keep} settings={settings} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'collection' && (
@@ -285,7 +302,8 @@ export default function HomePage() {
             setCharacter(getCharacter())
             setScreen('hall')
           }}
-          onSettle={(_current, fate) => { if (keep.activeId) askSettle(keep.activeId, fate) }}
+          onSettle={(_current, fate, force) => { if (keep.activeId) askSettle(keep.activeId, fate, force) }}
+          cheat={settings.cheatMode === true}
         />
       )}
       {showSettings && (

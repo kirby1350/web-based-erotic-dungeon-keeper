@@ -56,6 +56,7 @@ export function getSettings(): AppSettings {
     if (!VALID_IMAGE_TAG_PRESETS.includes(merged.imageTagPreset)) merged.imageTagPreset = 'none'
     if (!VALID_PROSE_STYLES.includes(merged.proseStyle)) merged.proseStyle = 'standard'
     if (!VALID_TENSORART_MODELS.includes(merged.tensorartModel)) merged.tensorartModel = 'wai_nsfw_v16'
+    merged.cheatMode = merged.cheatMode === true
     merged.chatApiKey = ''
     if (merged.chatModel === 'x-apex-neo-16k' || merged.chatModel === 'Apex-Neo-0213-16k') merged.chatModel = 'x-apex-surge-0505-16k'
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged)) } catch { /* storage may be full */ }
@@ -78,6 +79,7 @@ export function getDefaultSettings(): AppSettings {
     imageStyleCustom: '',
     imageTagPreset: 'none',
     proseStyle: 'standard',
+    cheatMode: false,
     imageProvider: 'pixai',
     tensorartModel: 'wai_nsfw_v16',
     chatApiKey: '',

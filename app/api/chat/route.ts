@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { CHAT_MODELS } from '@/lib/types'
 
 export const runtime = 'edge'
+export const maxDuration = 180
 
 const CHAT_TEMPERATURE = 0.9
 // Generous cap: a rich scene plus the trailing [STATS]/[DESC] JSON must both fit,

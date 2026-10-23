@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PRESET_TRAPS, RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
+import { CHARACTER_PRESETS, PRESET_TRAPS, RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
 import { statusForTrap } from '@/lib/adventure-context'
 import { rollIntruder } from '@/lib/intruder-roll'
 import { IntruderDossier } from '@/components/intruder-dossier'
@@ -32,6 +32,12 @@ interface Arrival {
   source: 'roll' | 'library'
 }
 
+/** 原作角色是高权重：六成从角色库抽。 */
+export const LIBRARY_WEIGHT = 0.6
+function firstSource(random: () => number = Math.random): Arrival['source'] {
+  return random() < LIBRARY_WEIGHT ? 'library' : 'roll'
+}
+
 function draw(source: Arrival['source'], avoid: string[]): Arrival {
   return { source, preset: source === 'library' ? pickIntruder(avoid) : rollIntruder(avoid) }
 }
@@ -40,18 +46,21 @@ interface IntruderGateProps {
   keep: KeeperSave
   onBegin: (payloads: BeginIntrusion[]) => void
   onBack: () => void
+  cheat?: boolean
+  /** 讨伐队来袭时，门口只会是下一名讨伐队成员 */
+  raidNext?: CharacterPreset
 }
 
-export function IntruderGate({ keep, onBegin, onBack }: IntruderGateProps) {
+export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }: IntruderGateProps) {
   const room = keep.progress.intruderSlots - keep.roster.length
   const [avoided, setAvoided] = useState<string[]>(keep.recentNames)
-  const [primary, setPrimary] = useState<Arrival>(() => draw('roll', keep.recentNames))
+  const [primary, setPrimary] = useState<Arrival>(() => raidNext ? { source: 'library', preset: raidNext } : draw(firstSource(), keep.recentNames))
   const [second, setSecond] = useState<Arrival | null>(null)
   const [together, setTogether] = useState(false)
   useEffect(() => {
-    if (room < 2) return
+    if (room < 2 || raidNext) return
     setSecond((current) => current ?? draw('roll', [...keep.recentNames, primary.preset.name]))
-  }, [room, keep.recentNames, primary.preset.name])
+  }, [room, raidNext, keep.recentNames, primary.preset.name])
   const [step, setStep] = useState<'choose' | 'trap' | 'monster'>('choose')
   const preset = primary.preset
   const race = RACE_INFO[preset.race]
@@ -94,7 +103,7 @@ export function IntruderGate({ keep, onBegin, onBack }: IntruderGateProps) {
   const catalogMonsters = PRESET_MONSTERS.filter((item) => !keep.monsters.some((monster) => monster.id === item.id))
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4">
       <div className="max-w-3xl mx-auto space-y-4">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
         <div>
@@ -103,9 +112,9 @@ export function IntruderGate({ keep, onBegin, onBack }: IntruderGateProps) {
           <p className="text-sm text-muted-foreground mt-1">{race?.label} · {primary.source === 'library' ? '角色库' : '随机生成'} · 胸 {preset.measurements.bust} / 腰 {preset.measurements.waist} / 臀 {preset.measurements.hip}</p>
         </div>
 
-        <article className="dungeon-border rounded-xl bg-card p-4 md:p-6 space-y-4">
+        <article className="dungeon-border rounded-xl bg-card p-4 space-y-4">
           <div className="flex gap-4">
-            <div className="w-24 h-32 md:w-32 md:h-40 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
+            <div className="w-24 h-32 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
               {preset.avatarUrl
                 ? <img src={preset.avatarUrl} alt={preset.name} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-primary">{preset.name[0]}</div>}
@@ -115,16 +124,29 @@ export function IntruderGate({ keep, onBegin, onBack }: IntruderGateProps) {
           <IntruderDossier person={preset} />
         </article>
 
+        {step === 'choose' && cheat && (
+          <label className="flex items-center gap-2 rounded-xl border border-fuchsia-500/40 bg-fuchsia-950/30 p-3 text-xs text-fuchsia-100" data-testid="cheat-gate">
+            <span>作弊：指定闯入者</span>
+            <select aria-label="指定闯入者" className="flex-1 rounded bg-secondary px-2 py-1" value=""
+              onChange={(event) => { const found = CHARACTER_PRESETS.find((item) => item.name === event.target.value); if (found) setPrimary({ source: 'library', preset: found }) }}>
+              <option value="">选一个…</option>
+              {CHARACTER_PRESETS.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+            </select>
+          </label>
+        )}
+
         {step === 'choose' && (
           <div className="grid grid-cols-2 gap-2">
             <Action label="亲自上手" detail="她自己走进来，然后遇上你。" onClick={() => begin('personal')} />
             <Action label="投入陷阱" detail="她自己走进来，很快踩进你挑的那一件。" onClick={() => setStep('trap')} />
             <Action label="放出魔物" detail="她自己走进来，迎面撞上你放出的那一只。" onClick={() => setStep('monster')} />
             <Action label="推进廊道" detail="她自己走进来。你在后面看，已布置的东西才可能绊住她。" onClick={() => begin('corridor')} />
+{!raidNext && (<>
             <button type="button" onClick={() => reroll('primary')} className="py-2 text-sm text-muted-foreground">换一个</button>
             <button type="button" onClick={() => setPrimary(draw(primary.source === 'roll' ? 'library' : 'roll', avoided))} className="py-2 text-sm text-muted-foreground">
               {primary.source === 'roll' ? '从角色库抽一个' : '改成随机生成'}
             </button>
+            </>)}
           </div>
         )}
 

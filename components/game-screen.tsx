@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Character, AppSettings } from '@/lib/types'
@@ -11,15 +11,17 @@ import { ChatPanel } from '@/components/chat-panel'
 import { ImagePanel } from '@/components/image-panel'
 import { SettingsPanel } from '@/components/settings-panel'
 import { FateActions } from '@/components/fate-actions'
+import { SceneCheat } from '@/components/cheat-panel'
 
 export type ExploreActions = { explore: () => void; advanceFloor: () => void }
 interface GameScreenProps {
   character: Character
   onBack: () => void
-  onSettle: (character: Character, fate: IntruderFate) => void
+  onSettle: (character: Character, fate: IntruderFate, force?: boolean) => void
+  cheat?: boolean
 }
 
-export function GameScreen({ character: initialCharacter, onBack, onSettle }: GameScreenProps) {
+export function GameScreen({ character: initialCharacter, onBack, onSettle, cheat = false }: GameScreenProps) {
   const [character, setCharacter] = useState<Character>(initialCharacter)
   const [settings, setSettings] = useState<AppSettings>(() => getSettings())
   const [showSettings, setShowSettings] = useState(false)
@@ -27,6 +29,14 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle }: Ga
   const [activeTab, setActiveTab] = useState<'chat' | 'image'>('chat')
   const [busy, setBusy] = useState(false)
   const actions = useRef<ExploreActions>({ explore: () => {}, advanceFloor: () => {} })
+  const collapseAsked = useRef(false)
+  const settleRef = useRef(onSettle)
+  settleRef.current = onSettle
+  useEffect(() => {
+    if ((character.hp ?? 1) > 0 || collapseAsked.current) return
+    collapseAsked.current = true
+    settleRef.current(character, 'broken')
+  }, [character])
   const handleRequestImage = useCallback((scene: string) => { setPendingScene(scene) }, [])
   const handleSceneHandled = useCallback(() => setPendingScene(undefined), [])
   const handleCharacterUpdate = useCallback((updates: Partial<Character>) => {
@@ -53,7 +63,8 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle }: Ga
           </button>
         </div>
       </header>
-      <div className="flex md:hidden border-b border-border">
+      {(cheat || settings.cheatMode) && <SceneCheat character={character} onUpdate={handleCharacterUpdate} onForceFate={(fate) => onSettle(character, fate, true)} />}
+      <div className="flex border-b border-border">
         {(['chat', 'image'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2.5 text-xs ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}>
             {tab === 'chat' ? chrome.tab : `场景插图${pendingScene ? ' •' : ''}`}
@@ -61,15 +72,15 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle }: Ga
         ))}
       </div>
       <main className="flex flex-1 min-h-0 overflow-hidden">
-        <section className={`${activeTab === 'chat' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-[55%] md:border-r border-border min-h-0`}>
-          <CharacterCard character={character} busy={busy} onReset={() => { if (!busy) onBack() }}
+        <section className={`${activeTab === 'chat' ? 'flex' : 'hidden'} flex-col w-full border-border min-h-0`}>
+          <CharacterCard character={character} busy={busy || (character.hp ?? 1) <= 0} onReset={() => { if (!busy && (character.hp ?? 1) > 0) onBack() }}
             onExplore={() => { if (!busy) actions.current.explore() }} onAdvanceFloor={() => { if (!busy) actions.current.advanceFloor() }} />
           <div className="flex-1 min-h-0 overflow-hidden">
             <ChatPanel character={character} settings={settings} onRequestImage={handleRequestImage}
               onCharacterUpdate={handleCharacterUpdate} onTurnCommit={setCharacter} onBusyChange={setBusy} exploreActionsRef={actions} />
           </div>
         </section>
-        <section className={`${activeTab === 'image' ? 'block' : 'hidden'} md:block w-full md:w-[45%] min-h-0 overflow-hidden`}>
+        <section className={`${activeTab === 'image' ? 'block' : 'hidden'} w-full min-h-0 overflow-hidden`}>
           <ImagePanel settings={settings} character={character} pendingScene={pendingScene} onSceneHandled={handleSceneHandled} />
         </section>
       </main>

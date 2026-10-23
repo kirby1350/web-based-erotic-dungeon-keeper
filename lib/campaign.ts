@@ -64,6 +64,7 @@ export function threatPromptLine(campaign: Campaign, raidMember: boolean): strin
 export const RAID_PARTY: CharacterPreset[] = [
   {
     name: '勇者艾莉西亚', race: 'human',
+    avatarUrl: '/avatars/hero-alicia.png',
     measurements: { bust: '96', waist: '58', hip: '94' },
     danbooruTags: 'original, 1girl, long hair, blonde hair, blue eyes, large breasts, hero, armor, cape, holy sword, tiara',
     backstory: '被神选中的勇者。王国把讨伐这座地下城的任务交给了她和同伴，她第一个踏了进来。',
@@ -77,6 +78,7 @@ export const RAID_PARTY: CharacterPreset[] = [
   },
   {
     name: '圣女塞莉娜', race: 'elf',
+    avatarUrl: '/avatars/saint-selena.png',
     measurements: { bust: '100', waist: '59', hip: '96' },
     danbooruTags: 'original, 1girl, long hair, silver hair, green eyes, pointy ears, elf, huge breasts, nun, white robe, holy symbol, staff',
     backstory: '教会的圣女，讨伐队的治愈者。她跟在勇者身后，用祷词驱散这座狱的淫气。',
@@ -90,6 +92,7 @@ export const RAID_PARTY: CharacterPreset[] = [
   },
   {
     name: '女骑士薇奥拉', race: 'tauren',
+    avatarUrl: '/avatars/knight-viola.png',
     measurements: { bust: '108', waist: '62', hip: '104' },
     danbooruTags: 'original, 1girl, long hair, red hair, amber eyes, horns, cow girl, gigantic breasts, knight, heavy armor, shield, muscular female',
     backstory: '讨伐队的盾。她是王国最强的重装骑士，发誓要用身体挡住一切攻向勇者的东西。',

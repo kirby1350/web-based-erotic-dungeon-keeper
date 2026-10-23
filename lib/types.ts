@@ -123,6 +123,8 @@ export interface AppSettings {
   imageStyleCustom: string
   imageTagPreset: ImageTagPreset
   proseStyle: ProseStyle
+  /** 测试用作弊模式，默认关闭 */
+  cheatMode?: boolean
   imageProvider: ImageProvider
   tensorartModel: TensorArtModel
   chatApiKey: string

@@ -258,6 +258,15 @@ export function SettingsPanel({ settings, onSettingsChange, onClose, canImport =
                   {PROSE_STYLE_LABELS[local.proseStyle ?? 'standard'].hint}
                 </p>
               </div>
+
+              {/* Cheat mode */}
+              <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-secondary px-3 py-2 text-xs">
+                <span>
+                  <span className="font-semibold">作弊模式</span>
+                  <span className="block text-muted-foreground/70">测试用：加淫髓、升级全满、指定闯入者、直接处置、改数值</span>
+                </span>
+                <input type="checkbox" aria-label="作弊模式" checked={local.cheatMode === true} onChange={(e) => update({ cheatMode: e.target.checked })} className="h-4 w-4 accent-fuchsia-400" />
+              </label>
             </>
           ) : (
             <>

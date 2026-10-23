@@ -11,15 +11,17 @@ import { ChatPanel } from '@/components/chat-panel'
 import { ImagePanel } from '@/components/image-panel'
 import { SettingsPanel } from '@/components/settings-panel'
 import { FateActions } from '@/components/fate-actions'
+import { SceneCheat } from '@/components/cheat-panel'
 
 export type ExploreActions = { explore: () => void; advanceFloor: () => void }
 interface GameScreenProps {
   character: Character
   onBack: () => void
-  onSettle: (character: Character, fate: IntruderFate) => void
+  onSettle: (character: Character, fate: IntruderFate, force?: boolean) => void
+  cheat?: boolean
 }
 
-export function GameScreen({ character: initialCharacter, onBack, onSettle }: GameScreenProps) {
+export function GameScreen({ character: initialCharacter, onBack, onSettle, cheat = false }: GameScreenProps) {
   const [character, setCharacter] = useState<Character>(initialCharacter)
   const [settings, setSettings] = useState<AppSettings>(() => getSettings())
   const [showSettings, setShowSettings] = useState(false)
@@ -61,6 +63,7 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle }: Ga
           </button>
         </div>
       </header>
+      {(cheat || settings.cheatMode) && <SceneCheat character={character} onUpdate={handleCharacterUpdate} onForceFate={(fate) => onSettle(character, fate, true)} />}
       <div className="flex md:hidden border-b border-border">
         {(['chat', 'image'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2.5 text-xs ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}>

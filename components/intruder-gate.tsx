@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PRESET_TRAPS, RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
+import { CHARACTER_PRESETS, PRESET_TRAPS, RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
 import { statusForTrap } from '@/lib/adventure-context'
 import { rollIntruder } from '@/lib/intruder-roll'
 import { IntruderDossier } from '@/components/intruder-dossier'
@@ -40,9 +40,10 @@ interface IntruderGateProps {
   keep: KeeperSave
   onBegin: (payloads: BeginIntrusion[]) => void
   onBack: () => void
+  cheat?: boolean
 }
 
-export function IntruderGate({ keep, onBegin, onBack }: IntruderGateProps) {
+export function IntruderGate({ keep, onBegin, onBack, cheat = false }: IntruderGateProps) {
   const room = keep.progress.intruderSlots - keep.roster.length
   const [avoided, setAvoided] = useState<string[]>(keep.recentNames)
   const [primary, setPrimary] = useState<Arrival>(() => draw('roll', keep.recentNames))
@@ -114,6 +115,17 @@ export function IntruderGate({ keep, onBegin, onBack }: IntruderGateProps) {
           </div>
           <IntruderDossier person={preset} />
         </article>
+
+        {step === 'choose' && cheat && (
+          <label className="flex items-center gap-2 rounded-xl border border-fuchsia-500/40 bg-fuchsia-950/30 p-3 text-xs text-fuchsia-100" data-testid="cheat-gate">
+            <span>作弊：指定闯入者</span>
+            <select aria-label="指定闯入者" className="flex-1 rounded bg-secondary px-2 py-1" value=""
+              onChange={(event) => { const found = CHARACTER_PRESETS.find((item) => item.name === event.target.value); if (found) setPrimary({ source: 'library', preset: found }) }}>
+              <option value="">选一个…</option>
+              {CHARACTER_PRESETS.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+            </select>
+          </label>
+        )}
 
         {step === 'choose' && (
           <div className="grid grid-cols-2 gap-2">

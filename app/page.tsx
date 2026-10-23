@@ -10,6 +10,7 @@ import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
 import { GameScreen } from '@/components/game-screen'
 import { KeepHall } from '@/components/keep-hall'
+import { HallCheat } from '@/components/cheat-panel'
 import { IntruderGate, type BeginIntrusion } from '@/components/intruder-gate'
 import { KeeperWorkshop } from '@/components/keeper-workshop'
 import { KeeperCollection } from '@/components/keeper-collection'
@@ -147,12 +148,12 @@ export default function HomePage() {
     setScreen('hall')
   }
 
-  const askSettle = (id: string, fate: IntruderFate) => {
+  const askSettle = (id: string, fate: IntruderFate, force = false) => {
     const live = getKeep()
     const entry = live.roster.find((item) => item.id === id)
     if (!entry) return
     const current = live.activeId === id ? (getCharacter() ?? entry.character) : entry.character
-    if (!fateGate(current, fate).ok) return
+    if (!force && !fateGate(current, fate).ok) return
     const down = collapsed(current)
     const brief = fate === 'kept'
       ? '她被留在收藏室。这场调教到此结束，她记得城主和自己的身体。'
@@ -171,7 +172,7 @@ export default function HomePage() {
         desire: current.desire ?? 0,
         recall: entry.session?.summary,
       }),
-      locked: fate === 'broken' && down,
+      locked: fate === 'broken' && down && !force,
       onConfirm: (text) => settle(id, fate, text),
     })
   }
@@ -257,6 +258,7 @@ export default function HomePage() {
   return (
     <>
       {aftermath.popup && <AftermathPopup popup={aftermath.popup} onConfirm={aftermath.confirm} onDismiss={aftermath.dismiss} />}
+      {screen === 'hall' && settings.cheatMode && <div className="max-w-3xl mx-auto px-4 pt-4"><HallCheat keep={keep} onKeep={commitKeep} /></div>}
       {screen === 'hall' && (
         <KeepHall
           keep={keep}
@@ -272,7 +274,7 @@ export default function HomePage() {
           onOpenSettings={() => setShowSettings(true)}
         />
       )}
-      {screen === 'gate' && <IntruderGate keep={keep} onBegin={begin} onBack={() => setScreen('hall')} />}
+      {screen === 'gate' && <IntruderGate keep={keep} cheat={settings.cheatMode === true} onBegin={begin} onBack={() => setScreen('hall')} />}
       {screen === 'traps' && <KeeperWorkshop mode="trap" keep={keep} settings={settings} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'monsters' && <KeeperWorkshop mode="monster" keep={keep} settings={settings} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'collection' && (
@@ -289,7 +291,8 @@ export default function HomePage() {
             setCharacter(getCharacter())
             setScreen('hall')
           }}
-          onSettle={(_current, fate) => { if (keep.activeId) askSettle(keep.activeId, fate) }}
+          onSettle={(_current, fate, force) => { if (keep.activeId) askSettle(keep.activeId, fate, force) }}
+          cheat={settings.cheatMode === true}
         />
       )}
       {showSettings && (

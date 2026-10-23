@@ -18,7 +18,7 @@ export function AftermathPopup({ popup, onConfirm, onDismiss }: AftermathPopupPr
           {popup.text || (popup.pending ? '正在写这一下发生了什么…' : '')}
         </p>
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onDismiss} className="px-3 py-1.5 text-xs text-muted-foreground">先不处置</button>
+          {!popup.locked && <button type="button" onClick={onDismiss} className="px-3 py-1.5 text-xs text-muted-foreground">先不处置</button>}
           <button type="button" onClick={onConfirm} disabled={popup.pending} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold disabled:opacity-40">
             {popup.confirmLabel}
           </button>

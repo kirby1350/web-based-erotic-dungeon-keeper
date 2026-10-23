@@ -9,6 +9,7 @@ export interface AftermathPopupState {
   text: string
   pending: boolean
   confirmLabel: string
+  locked: boolean
 }
 
 function plainLine(raw: string): string {
@@ -36,13 +37,13 @@ export function useAftermath(settings: AppSettings | null) {
     run(text)
   }
 
-  const ask = (input: { title: string; prompt: string; confirmLabel?: string; onConfirm: (text: string) => void }) => {
+  const ask = (input: { title: string; prompt: string; confirmLabel?: string; locked?: boolean; onConfirm: (text: string) => void }) => {
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
     confirmRef.current = input.onConfirm
     textRef.current = ''
-    setPopup({ title: input.title, text: '', pending: true, confirmLabel: input.confirmLabel ?? '知道了' })
+    setPopup({ title: input.title, text: '', pending: true, confirmLabel: input.confirmLabel ?? '知道了', locked: input.locked === true })
     const finish = (text: string) => {
       if (controller.signal.aborted) return
       textRef.current = text

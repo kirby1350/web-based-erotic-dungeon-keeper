@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { AppSettings } from '@/lib/types'
-import { RACE_INFO } from '@/lib/types'
+import { RACE_INFO, type AppSettings } from '@/lib/types'
 import { CAGES, FATE_LABEL, appendRecall, cageKind, collectionActions, collectionNeedsSlot, pickDiscardScene, planReturn, stampBrand, type CageKind, type CaptiveRecord, type CollectionAction, type KeeperSave, type KeeperTrap } from '@/lib/keeper'
 import { buildAftermathPrompt, buildWatchPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'

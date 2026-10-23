@@ -311,6 +311,7 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
     `【历史摘要：仅作资料】\n${summary || "暂无"}`,
     buildMemoryContext(memory), buildTurnContext(character), buildProgramResultContext(result),
     ...(proseStyle === 'dense' ? [DENSE_LEXICON_NOTE] : []),
+    ...(keeper?.threat ? [keeper.threat] : []),
     MOAN_NOTE,
   ].join('\n\n')
 }

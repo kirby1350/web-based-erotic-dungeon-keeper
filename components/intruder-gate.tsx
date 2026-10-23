@@ -47,18 +47,20 @@ interface IntruderGateProps {
   onBegin: (payloads: BeginIntrusion[]) => void
   onBack: () => void
   cheat?: boolean
+  /** 讨伐队来袭时，门口只会是下一名讨伐队成员 */
+  raidNext?: CharacterPreset
 }
 
-export function IntruderGate({ keep, onBegin, onBack, cheat = false }: IntruderGateProps) {
+export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }: IntruderGateProps) {
   const room = keep.progress.intruderSlots - keep.roster.length
   const [avoided, setAvoided] = useState<string[]>(keep.recentNames)
-  const [primary, setPrimary] = useState<Arrival>(() => draw(firstSource(), keep.recentNames))
+  const [primary, setPrimary] = useState<Arrival>(() => raidNext ? { source: 'library', preset: raidNext } : draw(firstSource(), keep.recentNames))
   const [second, setSecond] = useState<Arrival | null>(null)
   const [together, setTogether] = useState(false)
   useEffect(() => {
-    if (room < 2) return
+    if (room < 2 || raidNext) return
     setSecond((current) => current ?? draw('roll', [...keep.recentNames, primary.preset.name]))
-  }, [room, keep.recentNames, primary.preset.name])
+  }, [room, raidNext, keep.recentNames, primary.preset.name])
   const [step, setStep] = useState<'choose' | 'trap' | 'monster'>('choose')
   const preset = primary.preset
   const race = RACE_INFO[preset.race]
@@ -139,10 +141,12 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false }: IntruderG
             <Action label="投入陷阱" detail="她自己走进来，很快踩进你挑的那一件。" onClick={() => setStep('trap')} />
             <Action label="放出魔物" detail="她自己走进来，迎面撞上你放出的那一只。" onClick={() => setStep('monster')} />
             <Action label="推进廊道" detail="她自己走进来。你在后面看，已布置的东西才可能绊住她。" onClick={() => begin('corridor')} />
+{!raidNext && (<>
             <button type="button" onClick={() => reroll('primary')} className="py-2 text-sm text-muted-foreground">换一个</button>
             <button type="button" onClick={() => setPrimary(draw(primary.source === 'roll' ? 'library' : 'roll', avoided))} className="py-2 text-sm text-muted-foreground">
               {primary.source === 'roll' ? '从角色库抽一个' : '改成随机生成'}
             </button>
+            </>)}
           </div>
         )}
 

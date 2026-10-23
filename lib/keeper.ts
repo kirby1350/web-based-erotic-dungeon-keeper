@@ -10,6 +10,7 @@ import {
 } from '@/lib/types'
 import { emptyMemory, readMemory, type AdventureMemory } from '@/lib/adventure-memory'
 import { cleanContent } from '@/lib/chat-protocol'
+import { emptyCampaign, isRaidMember, readCampaign, threatPromptLine, type Campaign } from '@/lib/campaign'
 
 export type OpeningKind = 'personal' | 'trap' | 'monster' | 'corridor'
 export type IntruderFate = 'kept' | 'broken' | 'defeated'
@@ -140,6 +141,7 @@ export interface KeeperSave {
   progress: DungeonProgress
   roster: RosterEntry[]
   activeId: string | null
+  campaign?: Campaign
 }
 
 export interface KeeperFloorView {
@@ -159,6 +161,7 @@ export interface KeeperPromptContext {
   dungeonName: string
   dungeonDescription: string
   floors: KeeperFloorView[]
+  threat?: string
 }
 
 const RACES = new Set<Race>(['human', 'elf', 'tauren', 'fox', 'cat', 'machine', 'dragon', 'succubus'])
@@ -213,7 +216,7 @@ export function emptyKeep(): KeeperSave {
   return {
     dungeonName: '无名淫狱', dungeonDescription: '', floors: defaultFloors(3),
     traps: [], monsters: [], collection: [], recentNames: [], brief: null,
-    progress: emptyProgress(), roster: [], activeId: null,
+    progress: emptyProgress(), roster: [], activeId: null, campaign: emptyCampaign(),
   }
 }
 
@@ -413,6 +416,7 @@ export function normalizeKeep(value: unknown): KeeperSave {
     progress,
     roster,
     activeId,
+    campaign: readCampaign(raw.campaign),
   }
 }
 
@@ -472,6 +476,7 @@ export function keeperPromptContext(save: KeeperSave): KeeperPromptContext {
     dungeonName: save.dungeonName || '无名淫狱',
     dungeonDescription: save.dungeonDescription || '',
     floors: floorViews(save),
+    threat: threatPromptLine(save.campaign ?? emptyCampaign(), isRaidMember(save.roster?.find((entry) => entry.id === save.activeId)?.character.name ?? '')),
   }
 }
 

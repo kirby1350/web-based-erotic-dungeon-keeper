@@ -24,3 +24,25 @@ assert.deepEqual(cheat.cheatStats({ maxHp: 80 }, { hp: 999, pleasure: -5, desire
 
 if (require.main === module) console.log('Keeper checks passed: dense bank, cheat.')
 module.exports = { load, keeper }
+
+// 长线：恶名、讨伐队、失败线与胜利线
+const campaign = load('@/lib/campaign')
+let c = campaign.emptyCampaign()
+assert.equal(campaign.threatTier(0), 0)
+assert.equal(campaign.threatTier(45), 2)
+for (let i = 0; i < 12; i += 1) c = campaign.recordFate(c, `路人${i}`, 'broken')
+assert.equal(c.raid, true)
+const [hero, saint, knight] = campaign.RAID_PARTY.map((m) => m.name)
+const lost = campaign.recordFate(c, hero, 'defeated')
+assert.equal(lost.status, 'defeat')
+let won = campaign.recordFate(c, hero, 'kept')
+won = campaign.recordFate(won, saint, 'broken')
+assert.equal(won.status, 'ongoing')
+won = campaign.recordFate(won, knight, 'kept')
+assert.equal(won.status, 'victory')
+const endless = campaign.continueEndless(won)
+assert.equal(campaign.recordFate(endless, '路人', 'kept').raid, false)
+const scaled = campaign.scaleIntruder({ maxHp: 100, hp: 100, pleasure: 10, desire: 10 }, 2)
+assert.equal(scaled.maxHp, 130)
+assert.equal(keeper.normalizeKeep({ campaign: { infamy: 42, raid: true } }).campaign.infamy, 42)
+console.log('Keeper checks passed: campaign.')

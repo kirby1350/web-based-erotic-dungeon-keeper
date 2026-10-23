@@ -12,7 +12,7 @@ import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
 import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
 import { floorSynergies, synergyBonus } from '@/lib/synergy'
-import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords } from '@/lib/prose-bank'
+import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
 import { applyTermCommands, dkTerms, dkTermsLine, tickTerms } from '@/lib/terms-dk'
 import { termsChange } from '@/lib/terms'
 import { toast } from 'sonner'
@@ -173,7 +173,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       requestMessages: [
         { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep())) + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
         ...saved.messages.map((message) => ({ role: message.role, content: message.content })),
-        { role: 'user', content: (bank ? `${input}${denseTurnNote(bank.stepIndex)}` : input) + termsNote },
+        { role: 'user', content: (bank ? `${input}${denseTurnNote(bank.stepIndex)}${repeatNote(saved.messages.filter((m) => m.role === 'assistant').at(-1)?.content)}` : input) + termsNote },
       ],
     }
     try {

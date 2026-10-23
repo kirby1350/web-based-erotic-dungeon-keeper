@@ -68,7 +68,7 @@ console.log('Keeper checks passed: synergy and custom caps.')
 // 重油示例与结构规则
 {
   const block = bank.denseStyleBlock(bank.denseBankOpts('揉她的乳', { pleasure: 40, encounter: null }, 3, []))
-  assert.ok(block.includes('结构示例') && block.includes('四分之一') && block.includes('8 到 12'))
+  assert.ok(block.includes('结构示例') && block.includes('五分之一') && block.includes('8 到 12'))
   assert.ok(!block.includes('寒暄、解释、重复的来回对白压到一两句'))
   assert.ok(bank.denseStyleBlock(bank.denseBankOpts('往里赶', { pleasure: 0, encounter: null }, 3, [])).includes('3 到 5'))
 }

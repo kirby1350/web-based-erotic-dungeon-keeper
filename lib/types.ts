@@ -313,11 +313,11 @@ export const FLOOR_THEMES: FloorTheme[] = [
   { name: '淫兽竞技场', ambience: '环形石造竞技场，猎物被推入场中，四周虚影观众的欢呼中被魔兽当众凌辱', scene: 'arena, colosseum, stone, crowd silhouette, public, torchlight' },
 ]
 
-// 第 10 层固定的最终层
+// 第 10 层固定为城主王座（城主本人所在的最深层）
 export const BOSS_FLOOR_THEME: FloorTheme = {
-  name: '魔王核心·淫狱王座',
-  ambience: '地下城最深处的淫狱核心，魔王盘踞于血肉王座之上，这里是冒险的终点与最终对决',
-  scene: 'demon, throne, dark fantasy, ominous, magic, boss, grand hall',
+  name: '城主王座·淫狱核心',
+  ambience: '地下城最深处的血肉王座，城主本人坐镇于此，被押到这里的闯入者再无退路',
+  scene: 'throne, dark fantasy, ominous, magic, grand hall, flesh walls',
 }
 
 // 开局为 1~TARGET_FLOOR 层各抽一个风貌名；第 TARGET_FLOOR 层固定为魔王核心

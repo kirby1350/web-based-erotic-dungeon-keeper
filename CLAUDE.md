@@ -20,11 +20,11 @@ Guidance below describes the copied engine. The project is an adult, AI-driven t
 
 ## Architecture
 
-- `app/page.tsx` — top level: `CharacterCreator` → `GameScreen`. Character lives in localStorage.
+- `app/page.tsx` — top level keeper loop: `KeepHall` → `IntruderGate` → `GameScreen`, plus workshop / collection / archive / dungeon editor screens. Keep save and live intruder live in localStorage.
 - `app/api/chat/route.ts` — edge proxy to the chat LLM. Picks provider from the model id: **Grok** (xAI) if the model is in `CHAT_MODELS` with `provider:'grok'`, else the **DZMM/gpt4novel** `ext/v1` endpoint. Streams SSE straight through. API keys come from the request body (client) or env fallback.
 - `app/api/models/route.ts` — proxies DZMM `ext/v2/models` so the settings panel shows the **live** chat-model list.
 - `app/api/image/*` — PixAI (`/generate` + `/task/[taskId]`) and TensorArt (`/tensorart` + `/tensorart/[jobId]`) generate-then-poll flows.
-- `components/` — `game-screen` (layout), `chat-panel` (the core loop), `image-panel`, `settings-panel`, `character-creator`, `character-card`, `trap-generator`, `status-picker`.
+- `components/` — `game-screen` (layout), `chat-panel` (the core loop), `image-panel`, `settings-panel`, `keep-hall`, `intruder-gate`, `keeper-*`, `cheat-panel`, `character-card`, `trap-generator`, `status-picker`.
 - `lib/types.ts` — all shared types **and** data constants (`CHAT_MODELS`, `IMAGE_STYLES`, `IMAGE_TAG_PRESETS`, `IMAGE_MODELS`, `TENSORART_MODELS`, `CHARACTER_PRESETS`, `PRESET_TRAPS`, `PRESET_STATUS_EFFECTS`).
 - `lib/prompts.ts` — **all** prompt text (system DM prompt, summary, trap generator, image tag helpers). Edit prompts here, not inline.
 - `lib/storage.ts` — localStorage I/O + export/import. Keys: `dungeon_settings`, `dungeon_character`, `dungeon_session`. `getSettings()` sanitizes stale enum values against the current constants.

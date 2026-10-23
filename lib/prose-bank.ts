@@ -99,6 +99,14 @@ export function rememberBankWords(previous: string[] | undefined, text: string):
 
 export const DENSE_MIN_WORDS = 12
 export const DENSE_LENGTH = { min: 1000, max: 1500 }
+/** 提示里写的字数。模型实际会多写两三成，写 900–1300 时实际落在 1000–1500 左右。 */
+export const DENSE_PROMPT_LENGTH = { min: 900, max: 1300 }
+
+/** 提示里报给模型的字数：碰到身体的步骤报低一档，其他步骤照实际。 */
+export function densePromptLength(stepIndex: number): { min: number; max: number } {
+  const real = denseLength(stepIndex)
+  return real.max === DENSE_LENGTH.max ? DENSE_PROMPT_LENGTH : real
+}
 
 /** 赶路保持短。碰到身体之后才用1000–1500。 */
 export function denseLength(stepIndex: number): { min: number; max: number } {
@@ -154,7 +162,7 @@ export function pickExemplar(seed: number, input: string): string {
 
 /** 短篇幅的步骤段落少一些。 */
 function densParas(max: number): string {
-  return max <= 500 ? '3 到 5' : max <= 800 ? '5 到 8' : '10 到 13'
+  return max <= 500 ? '3 到 5' : max <= 800 ? '5 到 8' : '8 到 12'
 }
 
 export function denseStyleBlock(o: BankOpts): string {
@@ -163,7 +171,7 @@ export function denseStyleBlock(o: BankOpts): string {
   const recent = (o.avoid ?? []).slice(-10)
   if (recent.length) rows.push(`- 前几段已经用过（这段换别的说法）：${recent.join('、')}`)
   const step = STEP_LABELS[Math.max(0, Math.min(STEP_LABELS.length - 1, o.stepIndex))]
-  const length = denseLength(o.stepIndex)
+  const length = densePromptLength(o.stepIndex)
   const paras = densParas(length.max)
   const gate = o.climaxAllowed
     ? '本回合有人到了高潮档：高潮类的词（白浊 / 潮水…）可以用，写在已经高潮的那个人身上'
@@ -173,7 +181,7 @@ export function denseStyleBlock(o: BankOpts): string {
 - ${gate}
 - 「${step}」这一步没给的部位与动作不要提前写，但这一步之内要写透：从头到尾围着城主这道命令打转，一个动作拆成几拍慢慢写。
 【写法】
-1. 分段：${paras} 段，一段一拍：动作、部位近景、她的反应。台词和她的身体反应写在同一段里（先台词后反应，或先反应后台词），不要让一句台词单独成段。大约每两段里就有一段带她的台词。不写总结段，不写「她感到无比……」。
+1. 分段：叙述段和台词行交替，叙述段 ${paras} 个，一段一拍：动作、部位近景、她的反应。台词可以单独一行，夹在叙述段之间。不写总结段，不写「她感到无比……」。
 2. 对白约占正文四分之一（不少于两成），至少 5 句台词，分散在全段，不要挤在开头。她的台词要像她本人：原作口癖、自称、性格都保留（高傲的嘴硬，温柔的撒娇，冷淡的就冷淡地说出羞耻的话）。台词里夹喘息和拟声，用「……」「——」「～」断开，例如「唔……别、别碰那里……嗯啾……」。
 3. 一拍的写法：动作落到具体部位 → 部位近景（形状、颜色、湿度、温度、气味里挑两三样）→ 声音或她的一句话。部位前的修饰可以连成长串（四到八个字的叠加），在主部位上用，次要部位一笔带过。
 4. 拟声要具体，写清是什么发出的：咕啾的水声、乳肉拍打的啪嗒声、吸吮的滋溜声。激烈处可以写一句「几种声音混在一起」的合奏。
@@ -182,15 +190,15 @@ export function denseStyleBlock(o: BankOpts): string {
 7. 正文 ${length.min}–${length.max} 字，硬上限 ${length.max} 字：写到上限就停在她的一句台词上，宁可少写一拍，也不要超。下面词库是调色板，挑贴切的用，大约用上一半就够，不要为凑词硬塞。仍然遵守【文风禁令】黑名单。
 【本回合词库（调色板，每回合换一批）】
 ${rows.join('\n')}
-【结构示例（原创，只示范「动作 → 台词 → 反应」在同一段里的结构，不是范文）】
+【结构示例（原创，只示范「动作 → 台词 → 反应」的节拍，不是范文）】
 ${pickExemplar(o.seed, o.input ?? '')}
 不要复用示例里的任何句子、台词或比喻，人名、部位、动作和台词都按本回合重新写。`}
 
 export function denseTurnNote(stepIndex: number): string {
-  const length = denseLength(stepIndex)
+  const length = densePromptLength(stepIndex)
   return `\n\n【本回合硬性要求】
 1. 正文 ${length.min}–${length.max} 字，超过 ${length.max} 字不合格。写够就停，停在她的一句台词上。
-2. ${densParas(length.max)} 段。台词不单独成段，必须和她的动作或身体反应写在同一段。
-3. 台词约占正文四分之一：至少 6 句她的台词，分散在各段，带喘息和拟声，保留她的口癖。
+2. 叙述段和台词行交替，叙述段 ${densParas(length.max)} 个。
+3. 台词约占正文四分之一：每个叙述段后面跟一行她的台词，至少 8 行，每行 20–50 字，带喘息和拟声，保留她的口癖。叙述段写短一点，把字数让给台词。
 4. 围着这道命令写，不提前推进，不越过高潮闸门。不要复用示例句子。`
 }

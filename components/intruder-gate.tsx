@@ -32,6 +32,12 @@ interface Arrival {
   source: 'roll' | 'library'
 }
 
+/** 原作角色是高权重：六成从角色库抽。 */
+export const LIBRARY_WEIGHT = 0.6
+function firstSource(random: () => number = Math.random): Arrival['source'] {
+  return random() < LIBRARY_WEIGHT ? 'library' : 'roll'
+}
+
 function draw(source: Arrival['source'], avoid: string[]): Arrival {
   return { source, preset: source === 'library' ? pickIntruder(avoid) : rollIntruder(avoid) }
 }
@@ -46,7 +52,7 @@ interface IntruderGateProps {
 export function IntruderGate({ keep, onBegin, onBack, cheat = false }: IntruderGateProps) {
   const room = keep.progress.intruderSlots - keep.roster.length
   const [avoided, setAvoided] = useState<string[]>(keep.recentNames)
-  const [primary, setPrimary] = useState<Arrival>(() => draw('roll', keep.recentNames))
+  const [primary, setPrimary] = useState<Arrival>(() => draw(firstSource(), keep.recentNames))
   const [second, setSecond] = useState<Arrival | null>(null)
   const [together, setTogether] = useState(false)
   useEffect(() => {

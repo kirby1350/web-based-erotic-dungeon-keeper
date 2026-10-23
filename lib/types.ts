@@ -1,3 +1,4 @@
+import { CANON_INTRUDERS } from '@/lib/canon-intruders'
 export type Race = 'human' | 'elf' | 'tauren' | 'fox' | 'cat' | 'machine' | 'dragon' | 'succubus'
 
 export interface CharacterMeasurements {
@@ -679,4 +680,5 @@ export const CHARACTER_PRESETS: CharacterPreset[] = [
     otherDescription: '抵抗时她在猎：用尾尖和幻术撩，不认输。',
     collapseLine: '「怎么会……本该是我在吃你的……」「再喂下去，姐姐会坏掉的。」',
   },
+  ...CANON_INTRUDERS,
 ]

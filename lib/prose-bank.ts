@@ -47,7 +47,7 @@ function rng(seed: number) {
   return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296 }
 }
 
-export interface BankOpts { stepIndex: number; climaxAllowed: boolean; seed: number; avoid?: string[] }
+export interface BankOpts { stepIndex: number; climaxAllowed: boolean; seed: number; avoid?: string[]; input?: string }
 
 export function availableWords(cat: string, o: Pick<BankOpts, 'stepIndex' | 'climaxAllowed'>): string[] {
   return PROSE_BANK[cat].words.filter((x) => (x.step ?? 0) <= o.stepIndex && (!x.climax || o.climaxAllowed)).map((x) => x.w)
@@ -98,9 +98,9 @@ export function rememberBankWords(previous: string[] | undefined, text: string):
 }
 
 export const DENSE_MIN_WORDS = 12
-export const DENSE_LENGTH = { min: 800, max: 1200 }
+export const DENSE_LENGTH = { min: 1000, max: 1500 }
 
-/** 赶路保持短。碰到身体之后才用青楼那档 800–1200。 */
+/** 赶路保持短。碰到身体之后才用1000–1500。 */
 export function denseLength(stepIndex: number): { min: number; max: number } {
   if (stepIndex <= 0) return { min: 250, max: 500 }
   if (stepIndex === 1) return { min: 400, max: 800 }
@@ -134,12 +134,27 @@ export function denseBankOpts(input: string, character: { pleasure?: number; enc
     climaxAllowed: (character.pleasure ?? 0) >= 80,
     seed,
     avoid,
+    input,
   }
+}
+
+/** 原创节奏示例。每回合轮换一段，跳过和本回合命令同一种玩法的那段，免得被照抄。 */
+export const DENSE_EXEMPLARS: { play: RegExp; text: string }[] = [
+  { play: /乳|奶|胸/, text: `藤蔓从她领口钻进去，贴着胸骨往两边分开，把那件汗湿的亚麻衫撑得吱吱作响。两团沉坠坠的软肉被托着往上一颠，乳肉从布料边缘溢出来，热烘烘的，带着一点晒过太阳的麦香。「谁、谁准你往那里钻的……把它弄出去——呜！」话音还没落，叶片背面细细的绒毛已经蹭过乳尖，她肩膀一缩，胸口反而往前挺了半寸。` },
+  { play: /腿|臀|屁股|打|拍/, text: `皮带落下去，啪地一声脆响，臀肉被抽得往旁边一荡，又颤颤地弹回来，一道红印慢慢浮上雪白的皮肤。她把脸埋进臂弯里，耳尖红得要滴血。「才、才不痛……这点程度……哈啊……」第二下落在同一处，她整个腰一软，大腿内侧绷出细细的筋，膝盖在石板上蹭出两道湿痕。` },
+  { play: /舔|嘴|吻|口|舌/, text: `他捏住她的下巴往上一抬，拇指撬开唇缝，带着酒气的吻就压了下来。舌头被卷住、吮住，咂的一声又放开，银丝从两人嘴角牵出去老长。「唔嗯……你、别……啾……喘不上气了……」她攥着他衣襟的手指一点点松开，舌尖却不知不觉追了上去，喉咙里滚出一声黏糊糊的轻哼。` },
+  { play: /腿间|阴|穴|屄|蒂|下面|手指/, text: `指尖隔着湿透的布料按下去，正好压在那粒鼓起的小肉上，慢慢画了个圈。布料下面立刻洇开一小块深色，黏黏地贴住了指腹。「不……不要按那里……嗯、嗯啊……会、会弄脏的……」她嘴上推拒，腰却一下一下往他手上送，脚趾在靴子里蜷得死紧，腿根的软肉一抽一抽地发抖。` },
+]
+
+export function pickExemplar(seed: number, input: string): string {
+  const pool = DENSE_EXEMPLARS.filter((e) => !e.play.test(input))
+  const list = pool.length ? pool : DENSE_EXEMPLARS
+  return list[Math.abs(seed) % list.length].text
 }
 
 /** 短篇幅的步骤段落少一些。 */
 function densParas(max: number): string {
-  return max <= 500 ? '3 到 5' : max <= 800 ? '5 到 8' : '9 到 13'
+  return max <= 500 ? '3 到 5' : max <= 800 ? '5 到 8' : '10 到 13'
 }
 
 export function denseStyleBlock(o: BankOpts): string {
@@ -158,30 +173,20 @@ export function denseStyleBlock(o: BankOpts): string {
 - ${gate}
 - 「${step}」这一步没给的部位与动作不要提前写，但这一步之内要写透：从头到尾围着城主这道命令打转，一个动作拆成几拍慢慢写。
 【写法】
-1. 分段：${paras} 个短段，叙述段 80–160 字，写满一拍（动作、部位近景、气味或声音都在这一段里），不要拆成一两句的碎段；台词段可以短，但台词后面最好跟半句她的身体反应。不写总结段，不写「她感到无比……」。
+1. 分段：${paras} 段，每段 80–130 字，写满一拍（动作、部位近景、气味或声音都在这一段里），不要拆成一两句的碎段；台词和她的身体反应写在同一段里（先台词后反应，或先反应后台词），不要让一句台词单独成段。大约每两段里就有一段带她的台词。不写总结段，不写「她感到无比……」。
 2. 对白约占正文四分之一（不少于两成），至少 5 句台词，分散在全段，不要挤在开头。她的台词要像她本人：原作口癖、自称、性格都保留（高傲的嘴硬，温柔的撒娇，冷淡的就冷淡地说出羞耻的话）。台词里夹喘息和拟声，用「……」「——」「～」断开，例如「唔……别、别碰那里……嗯啾……」。
 3. 一拍的写法：动作落到具体部位 → 部位近景（形状、颜色、湿度、温度、气味里挑两三样）→ 声音或她的一句话。部位前的修饰可以连成长串（四到八个字的叠加），在主部位上用，次要部位一笔带过。
 4. 拟声要具体，写清是什么发出的：咕啾的水声、乳肉拍打的啪嗒声、吸吮的滋溜声。激烈处可以写一句「几种声音混在一起」的合奏。
 5. 节奏逐段加码：先看、再碰、再加力，身体反应一段比一段失控（夹紧、发抖、腰往前送、话说不完整）。结尾停在她的一句台词或一个正在进行的动作上，不收束、不总结。
 6. 气味和体液要落地：落在哪、沾到哪、留下什么痕迹。
-7. 正文 ${length.min}–${length.max} 字，碰到身体的这一步尽量写到上限附近。下面词库是调色板，挑贴切的用，大约用上一半就够，不要为凑词硬塞。仍然遵守【文风禁令】黑名单。
+7. 正文 ${length.min}–${length.max} 字，硬上限 ${length.max} 字：写到上限就停在她的一句台词上，宁可少写一拍，也不要超。下面词库是调色板，挑贴切的用，大约用上一半就够，不要为凑词硬塞。仍然遵守【文风禁令】黑名单。
 【本回合词库（调色板，每回合换一批）】
 ${rows.join('\n')}
-【节奏示例（原创，只示范分段、对白比例和一拍的写法，人名、部位和情节按本回合重写，不要照抄字句）】
-触手先缠住她的手腕，往上一提，把那件早被汗浸透的衬衣绷得发亮。两团沉甸甸的软肉从扣子缝里挤出半边，汗珠顺着乳沟滑进去，带着一股热烘烘的奶香。
-
-「放、放开……你以为这种东西能让我——呜！」
-
-细一些的触手贴着乳根绕了一圈，慢慢收紧。肥腻的乳肉被勒得往前鼓，顶端那粒深红的奶头一下子硬挺起来，隔着湿透的布料顶出一个小尖。
-
-「哈啊……不、不准勒……嗯……」她咬着嘴唇把脸偏开，腿却悄悄并紧了，膝盖互相磨着。
-
-吸盘贴上去的那一刻，咕啾一声，奶头连着乳晕被整个嘬进去。她的腰猛地一弓，脚尖蹬在石地上直打滑。
-
-「咿——！吸、吸住了……里面在动……呜嗯……别再吸了……」`
-}
+【节奏示例（原创，只示范分段、对白比例和一拍的写法）】
+${pickExemplar(o.seed, o.input ?? '')}
+不要复用示例里的任何句子、台词或比喻，人名、部位、动作和台词都按本回合重新写。`}
 
 export function denseTurnNote(stepIndex: number): string {
   const length = denseLength(stepIndex)
-  return `\n（重油：正文 ${length.min}–${length.max} 字，${densParas(length.max)} 个短段，叙述段 80–160 字写满一拍；她的台词约占四分之一、至少 5 句，台词里带喘息和拟声，保留她的口癖；围着这道命令写透，结尾停在她的一句话或正在进行的动作上。不提前推进、不越过高潮闸门。）`
+  return `\n（重油：正文 ${length.min}–${length.max} 字，${densParas(length.max)} 段，每段 80–130 字，台词和她的反应写在同一段，约每两段一句台词；她的台词约占四分之一、至少 5 句，台词里带喘息和拟声，保留她的口癖；围着这道命令写透，结尾停在她的一句话或正在进行的动作上。不提前推进、不越过高潮闸门。）`
 }

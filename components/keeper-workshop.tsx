@@ -105,8 +105,8 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
   const slotCap = isTrap ? keep.progress.trapSlots : keep.progress.monsterSlots
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-3xl mx-auto space-y-5">
+    <div className="min-h-screen p-4 lg:p-8">
+      <div className="max-w-3xl lg:max-w-6xl mx-auto space-y-5">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
         <div>
           <h1 className="text-3xl font-bold gold-text">{isTrap ? '陷阱工房' : '魔物工房'}</h1>
@@ -116,6 +116,7 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
           </p>
         </div>
 
+        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[1fr_2fr] lg:gap-6 lg:items-start">
         <section className="space-y-2">
           <h2 className="text-sm font-bold">已经入库</h2>
           {isTrap && keep.traps.length === 0 && <p className="text-xs text-muted-foreground">还没有陷阱。</p>}
@@ -144,8 +145,8 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
           ))}
         </section>
 
-        <section className="space-y-2">
-          <h2 className="text-sm font-bold">预设</h2>
+        <section className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-2 lg:content-start">
+          <h2 className="text-sm font-bold lg:col-span-2 lg:mb-1">预设</h2>
           {isTrap && catalogTraps.map((trap) => (
             <button key={trap.id} type="button" onClick={() => onKeep({ ...keep, traps: [...keep.traps, trapFromPreset(trap)] })} className="w-full rounded-lg border border-dashed border-border p-3 text-left text-sm">
               <span className="font-bold">{trap.name}</span>
@@ -161,6 +162,7 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
           {isTrap && catalogTraps.length === 0 && <p className="text-xs text-muted-foreground">预设陷阱都已入库。</p>}
           {!isTrap && catalogMonsters.length === 0 && <p className="text-xs text-muted-foreground">预设魔物都已入库。</p>}
         </section>
+        </div>
 
         <section className="dungeon-border rounded-xl bg-card p-4 space-y-3">
           <h2 className="text-sm font-bold">自己写，或让模型起稿</h2>

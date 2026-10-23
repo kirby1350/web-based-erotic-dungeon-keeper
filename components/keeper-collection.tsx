@@ -95,9 +95,9 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
     onBringBack(record, '', planned)
   }
   return (
-    <div className="min-h-screen p-4">
+    <div className="min-h-screen p-4 lg:p-8">
       {aftermath.popup && <AftermathPopup popup={aftermath.popup} onConfirm={aftermath.confirm} onDismiss={aftermath.dismiss} />}
-      <div className="max-w-3xl mx-auto space-y-4">
+      <div className="max-w-3xl lg:max-w-6xl mx-auto space-y-4">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
         <div>
           <h1 className="text-3xl font-bold gold-text">收藏室</h1>
@@ -105,7 +105,7 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
           {blocked && <p className="text-sm text-amber-200 mt-2">在狱的格子满了。先把一个人留下、玩坏或放走，再进去调教或把人带回迷宫。</p>}
         </div>
         {keep.collection.length === 0 && <p className="text-sm text-muted-foreground">收藏室还是空的。</p>}
-        <div className="space-y-3">
+        <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
           {keep.collection.map((record) => (
             <article key={record.id} className="dungeon-border rounded-xl bg-card p-4 flex gap-3">
               <div className="w-14 h-14 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">

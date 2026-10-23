@@ -114,7 +114,7 @@ export function SettingsPanel({ settings, onSettingsChange, onClose, canImport =
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative w-full max-w-sm h-full bg-card dungeon-border flex flex-col">
+      <div className="relative w-full max-w-sm h-full md:h-auto md:max-h-[85vh] md:max-w-lg md:rounded-xl bg-card dungeon-border flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">

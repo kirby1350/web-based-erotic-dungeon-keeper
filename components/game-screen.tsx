@@ -64,23 +64,26 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
         </div>
       </header>
       {(cheat || settings.cheatMode) && <SceneCheat character={character} onUpdate={handleCharacterUpdate} onForceFate={(fate) => onSettle(character, fate, true)} />}
-      <div className="flex border-b border-border">
+      <div className="flex lg:hidden border-b border-border">
         {(['chat', 'image'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2.5 text-xs ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}>
             {tab === 'chat' ? chrome.tab : `场景插图${pendingScene ? ' •' : ''}`}
           </button>
         ))}
       </div>
-      <main className="flex flex-1 min-h-0 overflow-hidden">
-        <section className={`${activeTab === 'chat' ? 'flex' : 'hidden'} flex-col w-full border-border min-h-0`}>
+      {/* 手机：标签切换；桌面 ≥1024：左边对话，右边状态 + 场景插图 */}
+      <main className="flex flex-col flex-1 min-h-0 overflow-hidden lg:grid lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+        <div className={`${activeTab === 'chat' ? 'block' : 'hidden'} lg:block lg:col-start-2 lg:row-start-1 lg:border-b border-border`}>
           <CharacterCard character={character} busy={busy || (character.hp ?? 1) <= 0} onReset={() => { if (!busy && (character.hp ?? 1) > 0) onBack() }}
             onExplore={() => { if (!busy) actions.current.explore() }} onAdvanceFloor={() => { if (!busy) actions.current.advanceFloor() }} />
+        </div>
+        <section className={`${activeTab === 'chat' ? 'flex' : 'hidden'} lg:flex flex-col flex-1 w-full min-h-0 lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:border-r border-border`}>
           <div className="flex-1 min-h-0 overflow-hidden">
             <ChatPanel character={character} settings={settings} onRequestImage={handleRequestImage}
               onCharacterUpdate={handleCharacterUpdate} onTurnCommit={setCharacter} onBusyChange={setBusy} exploreActionsRef={actions} />
           </div>
         </section>
-        <section className={`${activeTab === 'image' ? 'block' : 'hidden'} w-full min-h-0 overflow-hidden`}>
+        <section className={`${activeTab === 'image' ? 'block' : 'hidden'} lg:block flex-1 w-full min-h-0 overflow-hidden lg:col-start-2 lg:row-start-2`}>
           <ImagePanel settings={settings} character={character} pendingScene={pendingScene} onSceneHandled={handleSceneHandled} />
         </section>
       </main>

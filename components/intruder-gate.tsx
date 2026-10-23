@@ -5,6 +5,7 @@ import { CHARACTER_PRESETS, PRESET_TRAPS, RACE_INFO, type Character, type Charac
 import { statusForTrap } from '@/lib/adventure-context'
 import { rollIntruder } from '@/lib/intruder-roll'
 import { IntruderDossier } from '@/components/intruder-dossier'
+import { CharacterProfile } from '@/components/character-profile'
 import {
   PRESET_MONSTERS,
   applyOpening,
@@ -57,6 +58,7 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
   const [primary, setPrimary] = useState<Arrival>(() => raidNext ? { source: 'library', preset: raidNext } : draw(firstSource(), keep.recentNames))
   const [second, setSecond] = useState<Arrival | null>(null)
   const [together, setTogether] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   useEffect(() => {
     if (room < 2 || raidNext) return
     setSecond((current) => current ?? draw('roll', [...keep.recentNames, primary.preset.name]))
@@ -104,6 +106,7 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
 
   return (
     <div className="min-h-screen p-4 lg:p-8">
+      {showProfile && <CharacterProfile person={preset} status={primary.source === 'library' ? '角色库 · 刚闯进来' : '随机生成 · 刚闯进来'} hideCollapse onClose={() => setShowProfile(false)} />}
       <div className="max-w-3xl lg:max-w-5xl mx-auto space-y-4">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
         <div>
@@ -121,6 +124,7 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">{race?.description}</p>
           </div>
+          <button type="button" onClick={() => setShowProfile(true)} className="text-xs text-primary" data-testid="open-profile">翻开完整档案 →</button>
           <IntruderDossier person={preset} />
         </article>
 

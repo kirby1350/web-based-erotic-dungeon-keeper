@@ -75,6 +75,10 @@ export interface Character {
   explorationProgress?: number
   // marks left when a broken captive is thrown back to the city
   brands?: string[]
+  // 称呼：命令 / 锁定 / 淫纹 / 堕落积累（见 lib/terms.ts）
+  terms?: import('@/lib/terms').TermsState
+  // 已结算回合数，淫纹按它计时
+  turnCount?: number
 }
 
 // exploration progress gained per action toward unlocking the next floor
@@ -356,6 +360,7 @@ export interface CharacterPreset {
   collapseLine?: string
   danbooruTags?: string
   avatarUrl?: string
+  source?: string
 }
 
 // Persisted adventure session (chat history + rolling summary)

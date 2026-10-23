@@ -289,9 +289,9 @@ export default function HomePage() {
       {screen === 'traps' && <KeeperWorkshop mode="trap" keep={keep} settings={settings} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'monsters' && <KeeperWorkshop mode="monster" keep={keep} settings={settings} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'collection' && (
-        <KeeperCollection keep={keep} settings={settings} blocked={keep.roster.length >= keep.progress.intruderSlots} onBringBack={bringBack} onUpdate={updateCaptive} onBack={() => setScreen('hall')} />
+        <KeeperCollection keep={keep} settings={settings} cheat={settings.cheatMode === true} blocked={keep.roster.length >= keep.progress.intruderSlots} onBringBack={bringBack} onUpdate={updateCaptive} onBack={() => setScreen('hall')} />
       )}
-      {screen === 'archive' && <KeeperArchive keep={keep} onBack={() => setScreen('hall')} />}
+      {screen === 'archive' && <KeeperArchive keep={keep} cheat={settings.cheatMode === true} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'dungeon' && <DungeonEditor keep={keep} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'scene' && character && (
         <GameScreen

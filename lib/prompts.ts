@@ -1,3 +1,4 @@
+import { TERMS_RULE } from '@/lib/terms'
 import { buildTurnContext, buildProgramResultContext, REPLY_PROTOCOL_PROMPT, NARRATIVE_PROGRESS_PROMPT, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryContext, emptyMemory, type AdventureMemory } from '@/lib/adventure-memory'
 import type { KeeperPromptContext } from '@/lib/keeper'
@@ -330,6 +331,7 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
     ...(keeper?.combos ? [keeper.combos] : []),
     MOAN_NOTE,
     moanTierLine(character.pleasure ?? 0),
+    TERMS_RULE.replace('对你的称呼', '对城主的称呼'),
   ].join('\n\n')
 }
 
@@ -415,7 +417,7 @@ export function startScreenCopy(keeper: KeeperPromptContext | null): { title: st
 }
 
 /** 站在牢笼外看她被这只牢笼折磨。这段会替换收藏室里的记录。 */
-export function buildWatchPrompt(input: { name: string; cageLabel: string; holds: string; watch: string; fate: string; pleasure: number; desire: number; brands?: string; ledger?: string }): string {
+export function buildWatchPrompt(input: { name: string; cageLabel: string; holds: string; watch: string; fate: string; pleasure: number; desire: number; brands?: string; ledger?: string; terms?: string }): string {
   const previous = input.ledger?.trim()
   return [
     `城主没有走进「${input.cageLabel}」，只站在外面看${input.name}。`,
@@ -424,18 +426,20 @@ export function buildWatchPrompt(input: { name: string; cageLabel: string; holds
     `她此刻的处置是「${input.fate}」，快感 ${input.pleasure}，欲望 ${input.desire}。`,
     input.brands?.trim() ? `身上已有的烙印还在：${input.brands.trim()}。接着写，不要洗掉。` : '',
     previous ? `上一份牢笼记录只作参考，不要照抄，按现在这只牢笼重写：${previous.slice(0, 180)}` : '还没有牢笼记录。不要把她上一次闯城的结尾再演一遍。',
+    input.terms ?? '',
     '写 320 到 520 字。第三人称。写这只牢笼现在如何折磨她，城主只在外面看，不伸手，不发令。不要写选项，不要写标记，不要写 JSON。',
   ].filter(Boolean).join('\n')
 }
 
 /** 处置之后的短场面。只要正文，不要标记。 */
-export function buildAftermathPrompt(input: { name: string; action: string; brief: string; pleasure: number; desire: number; recall?: string; longer?: boolean }): string {
+export function buildAftermathPrompt(input: { name: string; action: string; brief: string; pleasure: number; desire: number; recall?: string; longer?: boolean; terms?: string }): string {
   const remembered = input.recall?.trim()
   return [
     `城主刚刚对${input.name}选择了「${input.action}」。`,
     input.brief,
     `她此刻快感 ${input.pleasure}，欲望 ${input.desire}。`,
     remembered ? `她记得的事，只能当作已经发生的事实：${remembered.slice(0, 180)}` : '',
+    input.terms ?? '',
     input.longer
       ? '写 120 到 200 字。第三人称。她被传送回城市，按上面的场景写这一段落在她身上的事。不要写选项，不要写标记，不要写 JSON。'
       : '写 80 到 160 字。第三人称，写这个选择落在她身上之后立刻发生的事。不要写选项，不要写标记，不要写 JSON。',

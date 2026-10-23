@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { PRESET_TRAPS, RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
 import { statusForTrap } from '@/lib/adventure-context'
 import { rollIntruder } from '@/lib/intruder-roll'
+import { IntruderDossier } from '@/components/intruder-dossier'
 import {
   PRESET_MONSTERS,
   applyOpening,
@@ -111,9 +112,7 @@ export function IntruderGate({ keep, onBegin, onBack }: IntruderGateProps) {
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">{race?.description}</p>
           </div>
-          <Dossier title="她为什么进来" text={preset.backstory} />
-          <Dossier title="现在这身" text={preset.costumeDescription} />
-          <Dossier title="死穴和崩溃之后才会说的话" text={preset.otherDescription} />
+          <IntruderDossier person={preset} />
         </article>
 
         {step === 'choose' && (
@@ -164,15 +163,6 @@ export function IntruderGate({ keep, onBegin, onBack }: IntruderGateProps) {
         )}
       </div>
     </div>
-  )
-}
-
-function Dossier({ title, text }: { title: string; text: string }) {
-  return (
-    <section>
-      <h2 className="text-[11px] tracking-widest text-muted-foreground mb-1">{title}</h2>
-      <p className="text-sm leading-relaxed">{text}</p>
-    </section>
   )
 }
 

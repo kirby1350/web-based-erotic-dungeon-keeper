@@ -111,17 +111,18 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       // A validated response can be saved again after storage recovery without another model call.
       checkpoint('ready', content, repaired)
       const completed = completeTurn(sessionRef.current, pending, content, repaired)
+      const savedSession = completed.session
       // This single write commits story, character, audit record and removal of pending work.
-      saveGame(completed.character, completed.session)
+      saveGame(completed.character, savedSession)
       try {
         const gain = essenceFromPleasure(pending.before.pleasure ?? 0, completed.character.pleasure ?? 0)
         if (gain > 0) saveKeep(grantEssence(getKeep(), gain))
       } catch { /* 淫髓没记上时，这一回合的正文和身体仍然算数 */ }
       committed = true
       characterRef.current = completed.character
-      sessionRef.current = completed.session
+      sessionRef.current = savedSession
       if (mountedRef.current) {
-        setSession(completed.session)
+        setSession(savedSession)
         setDraft('')
         setStatsError(completed.warnings.join('；'))
         onTurnCommit(completed.character)

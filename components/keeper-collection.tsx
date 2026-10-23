@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import type { AppSettings } from '@/lib/types'
 import { RACE_INFO } from '@/lib/types'
-import { FATE_LABEL, appendRecall, collectionActions, collectionNeedsSlot, pickDiscardScene, planReturn, stampBrand, type CaptiveRecord, type CollectionAction, type KeeperSave, type KeeperTrap } from '@/lib/keeper'
-import { buildAftermathPrompt } from '@/lib/prompts'
+import { CAGES, FATE_LABEL, appendRecall, cageKind, collectionActions, collectionNeedsSlot, pickDiscardScene, planReturn, stampBrand, type CageKind, type CaptiveRecord, type CollectionAction, type KeeperSave, type KeeperTrap } from '@/lib/keeper'
+import { buildAftermathPrompt, buildWatchPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
 
@@ -13,7 +13,7 @@ interface KeeperCollectionProps {
   settings: AppSettings
   blocked: boolean
   onBringBack: (record: CaptiveRecord, line: string, planned: NonNullable<ReturnType<typeof planReturn>>) => void
-  onUpdate: (record: CaptiveRecord, patch: Pick<CaptiveRecord, 'fate' | 'character' | 'recall'>) => void
+  onUpdate: (record: CaptiveRecord, patch: Partial<Pick<CaptiveRecord, 'fate' | 'character' | 'recall' | 'cage' | 'ledger'>>) => void
   onBack: () => void
 }
 
@@ -51,6 +51,7 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
           onUpdate(record, { fate: 'defeated', character, recall: appendRecall(record.recall, `${scene.label}。${text}`) })
           return
         }
+        if (action.effect === 'watch' || action.effect === 'train') return
         const planned = planReturn(keep, record, action.effect, trap?.id)
         if (!planned) return
         onBringBack(record, text, planned)
@@ -64,6 +65,36 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
     }
     launch(record, action)
   }
+  const setCage = (record: CaptiveRecord, cage: CageKind) => {
+    onUpdate(record, { cage })
+  }
+  const watch = (record: CaptiveRecord) => {
+    const cage = cageKind(record.cage, record.fate) ?? 'cell'
+    const info = CAGES[cage]
+    const brands = (record.character.brands ?? []).filter((item) => item.trim()).join('；')
+    aftermath.ask({
+      title: `外面观赏 · ${info.label} · ${record.name}`,
+      confirmLabel: '记下这段',
+      prompt: buildWatchPrompt({
+        name: record.name,
+        cageLabel: info.label,
+        holds: info.holds,
+        watch: info.watch,
+        fate: FATE_LABEL[record.fate],
+        pleasure: record.pleasure,
+        desire: record.desire,
+        brands,
+        ledger: record.ledger,
+      }),
+      onConfirm: (text) => onUpdate(record, { cage, ledger: text }),
+    })
+  }
+  const enter = (record: CaptiveRecord) => {
+    const cage = cageKind(record.cage, record.fate) ?? 'cell'
+    const planned = planReturn(keep, { ...record, cage }, 'train', undefined, cage)
+    if (!planned) return
+    onBringBack(record, '', planned)
+  }
   return (
     <div className="min-h-screen p-4 md:p-8">
       {aftermath.popup && <AftermathPopup popup={aftermath.popup} onConfirm={aftermath.confirm} onDismiss={aftermath.dismiss} />}
@@ -71,8 +102,8 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
         <div>
           <h1 className="text-3xl font-bold gold-text">收藏室</h1>
-          <p className="text-sm text-muted-foreground mt-2">留下的人可以调教、真放走，或假装放走。玩坏的人可以调教，或扔掉。扔掉会先写她被传送回城市的一段，烙印记在身上，状态改成放走。放走的人可以召回迷宫，有布置好的陷阱就能直接扔进去，也可以让她自己回来再探索。带回迷宫、调教室或路上会占一个在狱格子。选完会先写一小段。</p>
-          {blocked && <p className="text-sm text-amber-200 mt-2">在狱的格子满了。先把一个人留下、玩坏或放走，再把这里的人带回迷宫或调教室。</p>}
+          <p className="text-sm text-muted-foreground mt-2">留下和玩坏的人关在一只牢笼里。可以站在外面观赏，这段会重写她的收藏记录；也可以进去，那是新的一轮，不接上一场的结尾。放走的人可以召回迷宫，有布置好的陷阱就能直接扔进去，也可以让她自己回来再探索。进去调教、带回迷宫或路上会占一个在狱格子。观赏不占格子。</p>
+          {blocked && <p className="text-sm text-amber-200 mt-2">在狱的格子满了。先把一个人留下、玩坏或放走，再进去调教或把人带回迷宫。</p>}
         </div>
         {keep.collection.length === 0 && <p className="text-sm text-muted-foreground">收藏室还是空的。</p>}
         <div className="space-y-3">
@@ -86,9 +117,27 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
                   <h2 className="font-bold truncate">{record.name}</h2>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">{FATE_LABEL[record.fate]}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">{RACE_INFO[record.race]?.label ?? record.race} · 快感 {record.pleasure} · 欲望 {record.desire}</p>
+                <p className="text-xs text-muted-foreground mt-1">{RACE_INFO[record.race]?.label ?? record.race} · 快感 {record.pleasure} · 欲望 {record.desire}{record.cage ? ` · ${CAGES[record.cage].label}` : ''}</p>
                 {record.character.brands?.length ? <p className="text-xs text-pink-200/80 mt-1">烙印 {record.character.brands.map((brand) => brand.split('：')[0]).join('、')}</p> : null}
-                {record.recall && <p className="text-xs mt-2 leading-relaxed line-clamp-3">{record.recall}</p>}
+                {record.ledger
+                  ? <p className="text-sm mt-2 leading-relaxed whitespace-pre-line">{record.ledger}</p>
+                  : record.fate !== 'defeated'
+                    ? <p className="text-xs text-muted-foreground mt-2 leading-relaxed">还没有这只牢笼里的新记录。上一场的收尾不再当作收藏记录。先选牢笼，再点外面观赏，会按现在这只牢笼重写。</p>
+                    : null}
+                {record.fate !== 'defeated' && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(Object.keys(CAGES) as CageKind[]).map((kind) => (
+                      <button
+                        key={kind}
+                        type="button"
+                        onClick={() => setCage(record, kind)}
+                        className={`text-[11px] px-2 py-1 rounded-full border ${record.cage === kind ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}
+                      >
+                        {CAGES[kind].label}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="mt-2 flex flex-wrap gap-2">
                   {collectionActions(record.fate).map((action) => {
                     const needsSlot = collectionNeedsSlot(action.effect)
@@ -98,7 +147,11 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
                         type="button"
                         disabled={needsSlot && blocked}
                         title={needsSlot && blocked ? '在狱的格子满了' : action.brief}
-                        onClick={() => choose(record, action)}
+                        onClick={() => {
+                          if (action.effect === 'watch') watch(record)
+                          else if (action.effect === 'train') enter(record)
+                          else choose(record, action)
+                        }}
                         className="text-sm text-primary disabled:opacity-40"
                       >
                         {action.label}

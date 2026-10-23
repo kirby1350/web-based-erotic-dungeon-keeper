@@ -14,12 +14,54 @@ import { cleanContent } from '@/lib/chat-protocol'
 export type OpeningKind = 'personal' | 'trap' | 'monster' | 'corridor'
 export type IntruderFate = 'kept' | 'broken' | 'defeated'
 export type CollectionReturn = 'train' | 'recall' | 'reexplore' | 'pretend'
+export type CageKind = 'cell' | 'machine' | 'ranch' | 'tentacle' | 'breeding'
+
+export const CAGES: Record<CageKind, { label: string; holds: string; watch: string; enter: string }> = {
+  cell: {
+    label: '普通地牢',
+    holds: '石墙、铁栏和一铺干草，没有额外的机关。',
+    watch: '城主站在栏外看。栏里只有她和铁链，没有人动手，关着本身就在耗她。城主不伸手。',
+    enter: '城主推门进去，这一轮由自己动手。',
+  },
+  machine: {
+    label: '机械牢笼',
+    holds: '金属架、活塞、夹具和会自己收紧的束带。',
+    watch: '城主站在栅栏外看机器按固定节奏运转。夹具、活塞和束带自己折磨她。城主不伸手。',
+    enter: '城主走进机械牢笼，亲手改这一轮的节奏。',
+  },
+  ranch: {
+    label: '人类牧场',
+    holds: '栏位、挤奶架、食槽和挂在颈上的牌子。她被当成栏里的家畜。',
+    watch: '城主站在牧场栏外看。她被固定在挤奶架或食槽上，场里的规矩自己运转。城主不伸手。',
+    enter: '城主走进栏位，这一轮亲手调教。',
+  },
+  tentacle: {
+    label: '触手牢笼',
+    holds: '活着的触手从墙和地板里伸出来，把人缠在笼心。',
+    watch: '城主站在笼外看触手自己缠她、钻她、喂她。城主不伸手。',
+    enter: '城主走进触手牢笼，命令这一轮怎么缠。',
+  },
+  breeding: {
+    label: '兽人配种场',
+    holds: '配种架、发情的兽人和把她固定住的轭。',
+    watch: '城主站在场外看兽人按配种场的规矩使用她。城主不伸手。',
+    enter: '城主走进配种场，这一轮由自己下令。',
+  },
+}
+
+const CAGE_KINDS = new Set<CageKind>(['cell', 'machine', 'ranch', 'tentacle', 'breeding'])
+
+export function cageKind(value: unknown, fate?: IntruderFate): CageKind | undefined {
+  if (fate === 'defeated') return undefined
+  return typeof value === 'string' && CAGE_KINDS.has(value as CageKind) ? value as CageKind : 'cell'
+}
 
 export interface KeeperBrief {
   opening: OpeningKind
   defenseName?: string
   defenseSummary?: string
   return?: CollectionReturn
+  cage?: CageKind
 }
 
 export interface KeeperTrap {
@@ -53,6 +95,8 @@ export interface CaptiveRecord {
   savedAt: number
   recall: string
   memory: AdventureMemory
+  cage?: CageKind
+  ledger?: string
 }
 
 export interface DungeonFloor {
@@ -235,6 +279,7 @@ function readBrief(value: unknown): KeeperBrief | null {
     defenseName: text(raw.defenseName, 40) || undefined,
     defenseSummary: text(raw.defenseSummary, 300) || undefined,
     return: raw.return && returns.has(raw.return) ? raw.return : undefined,
+    cage: raw.cage && CAGE_KINDS.has(raw.cage) ? raw.cage : undefined,
   }
 }
 
@@ -333,6 +378,8 @@ export function normalizeKeep(value: unknown): KeeperSave {
       savedAt: typeof row.savedAt === 'number' ? row.savedAt : 0,
       recall: text(row.recall, 1200),
       memory: readMemory(row.memory),
+      cage: cageKind(row.cage, row.fate),
+      ledger: text(row.ledger, 800),
     }]
   }) : []).slice(0, 40)
   const roster = (Array.isArray(raw.roster) ? raw.roster.flatMap((item) => {
@@ -428,8 +475,52 @@ export function keeperPromptContext(save: KeeperSave): KeeperPromptContext {
   }
 }
 
+export type SceneMode = 'train' | 'explore'
+
+/** Shared labels for the scene screen. Training stays in the cage. Everything else is exploration. */
+export function sceneChrome(
+  brief: Pick<KeeperPromptContext, 'return' | 'defenseName'> | null | undefined,
+  floor = 1,
+): {
+  mode: SceneMode
+  tab: string
+  start: string
+  placeholder: string
+  backTitle: string
+  optionLabels: [string, string, string, string]
+  placeLabel: string
+  placeDetail: string
+  toolLabel: string
+} {
+  if (brief?.return === 'train') {
+    const cage = brief.defenseName || CAGES.cell.label
+    return {
+      mode: 'train',
+      tab: '调教',
+      start: '开始这一轮',
+      placeholder: '写下这一轮的拷问...',
+      backTitle: '回到城主厅，这一轮会留着',
+      optionLabels: ['加码', '换部位', '停手看', '换一种'],
+      placeLabel: cage,
+      placeDetail: '这一轮 · 她出不去',
+      toolLabel: '随机拷问',
+    }
+  }
+  return {
+    mode: 'explore',
+    tab: '探索',
+    start: brief?.return === 'recall' ? '看她出现' : '看她进来',
+    placeholder: '看她，或把她往前赶...',
+    backTitle: '回到城主厅，这场探索会留着',
+    optionLabels: ['驱赶', '观察', '布置', '收手'],
+    placeLabel: `第 ${floor} 层`,
+    placeDetail: '往里赶才会撞上布置',
+    toolLabel: '随机拷问',
+  }
+}
+
 export function stationFor(brief: KeeperBrief): string {
-  if (brief.return === 'train') return '在调教室'
+  if (brief.return === 'train') return `在${brief.defenseName || CAGES[brief.cage ?? 'cell'].label}`
   if (brief.return === 'pretend') return '在往外的路上'
   if (brief.return === 'reexplore') return '在再次探索'
   if (brief.return === 'recall' && brief.opening !== 'trap') return '在迷宫里'
@@ -515,7 +606,16 @@ export function pinchMonster(save: KeeperSave, floorIndex: number, draft: { name
   return stuffed.monsters.some((monster) => monster.id === id && monster.placed) ? stuffed : null
 }
 
+function activeSituation(memory: AdventureMemory): string {
+  return memory.entries
+    .filter((entry) => entry.category === 'situation' && entry.status === 'active')
+    .map((entry) => entry.text.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('；')
+}
+
 export function buildCaptiveRecall(session: GameSession | null, fate: IntruderFate): { recall: string; memory: AdventureMemory } {
+  const memory = readMemory(session?.memory)
   const summary = session?.summary?.trim() ?? ''
   const snippets = (session?.messages ?? [])
     .filter((message) => message.role === 'assistant' && typeof message.content === 'string')
@@ -527,7 +627,7 @@ export function buildCaptiveRecall(session: GameSession | null, fate: IntruderFa
     return { recall: `她已经玩坏，记不清计划和说过的话。身体还记得：${body}`.slice(0, 400), memory: emptyMemory() }
   }
   let recall = ''
-  for (const part of [summary, ...snippets]) {
+  for (const part of [activeSituation(memory), summary, ...snippets]) {
     if (!part || (recall && recall.includes(part.slice(0, 24)))) continue
     recall = recall ? `${recall}\n${part}` : part
   }
@@ -536,7 +636,7 @@ export function buildCaptiveRecall(session: GameSession | null, fate: IntruderFa
       ? '她被留在这座地下城里，记得城主的手和自己当时的身体。'
       : '她被放走过，记得往外的路，也记得自己是在哪一层栽的。'
   }
-  return { recall: recall.slice(0, 1200), memory: readMemory(session?.memory) }
+  return { recall: recall.slice(0, 1200), memory }
 }
 
 export function rememberIntruder(save: KeeperSave, name: string): string[] {
@@ -575,6 +675,11 @@ export function characterFromPreset(preset: CharacterPreset): Character {
     backstory: preset.backstory,
     costumeDescription: preset.costumeDescription,
     otherDescription: preset.otherDescription,
+    appearance: preset.appearance,
+    personality: preset.personality,
+    speech: preset.speech,
+    sexual: preset.sexual,
+    collapseLine: preset.collapseLine,
     danbooruTags: preset.danbooruTags,
     avatarUrl: preset.avatarUrl ?? null,
     hp: 100,
@@ -620,13 +725,31 @@ export function trapFloor(save: KeeperSave, trapId: string): number {
   return index >= 0 ? index + 1 : 1
 }
 
-/** 从收藏室再带回一场。陷阱只接受已经布置的那一件。 */
-export function planReturn(save: KeeperSave, record: CaptiveRecord, effect: CollectionReturn, trapId?: string): { brief: KeeperBrief; character: Character } | null {
+export function trainingSessionSummary(record: CaptiveRecord, cage: CageKind): string {
+  const info = CAGES[cage]
+  const brands = Array.isArray(record.character.brands) ? record.character.brands.filter((item) => item.trim()) : []
+  const mark = brands.length ? `身上的烙印还在：${brands.join('；')}。` : ''
+  const mind = record.fate === 'broken'
+    ? '她已经玩坏，记不清计划和说过的话，只剩身体。'
+    : '她认得城主和自己的身体。'
+  return `这是新的一轮。她在${info.label}。${info.holds}${mind}${mark}不要把上一场的结尾再演一遍。`.slice(0, 500)
+}
+
+/** 从收藏室再带回一场。陷阱只接受已经布置的那一件。调教按牢笼种类另开一轮，不把上一场结尾带进去。 */
+export function planReturn(save: KeeperSave, record: CaptiveRecord, effect: CollectionReturn, trapId?: string, cage?: CageKind): { brief: KeeperBrief; character: Character } | null {
   const brands = Array.isArray(record.character.brands) ? record.character.brands.filter((item) => item.trim()) : []
   const summary = remembered(record.fate, record.recall, brands)
   if (effect === 'train') {
+    const kind = cage ?? record.cage ?? 'cell'
+    const info = CAGES[kind]
     return {
-      brief: { opening: 'personal', return: 'train', defenseName: '调教室', defenseSummary: summary },
+      brief: {
+        opening: 'personal',
+        return: 'train',
+        defenseName: info.label,
+        defenseSummary: `${info.holds}${info.enter}这是新的一轮，不要接着上一场的结尾。`,
+        cage: kind,
+      },
       character: { ...record.character, encounter: null },
     }
   }
@@ -712,7 +835,7 @@ export function fateGate(character: Pick<Character, 'pleasure' | 'desire' | 'bod
   return { ok, reason: ok ? '' : '她已经站不起来。这是玩坏，不是放走。' }
 }
 
-export type CollectionEffect = CollectionReturn | 'release' | 'discard'
+export type CollectionEffect = CollectionReturn | 'release' | 'discard' | 'watch'
 
 export interface CollectionAction {
   id: string
@@ -723,13 +846,15 @@ export interface CollectionAction {
 
 const COLLECTION_ACTIONS: Record<IntruderFate, CollectionAction[]> = {
   kept: [
-    { id: 'train', label: '调教', effect: 'train', brief: '城主把她带进调教室。这不是她第一次被调节。按她记得的身体写，不要写成第一次闯入。' },
+    { id: 'train', label: '进去调教', effect: 'train', brief: '城主走进她现在的牢笼，开始新的一轮。不接上一场的结尾。' },
+    { id: 'watch', label: '外面观赏', effect: 'watch', brief: '城主不进去。站在牢笼外看她被这只牢笼折磨，并重写收藏记录。' },
     { id: 'release', label: '放走', effect: 'release', brief: '城主真的放走她。人离开地下城，回到外面。不要把她写回迷宫，也不要让陷阱再抓住她。' },
     { id: 'pretend', label: '假装放走', effect: 'pretend', brief: '城主让她以为自己被放走了。她自己往出口走。已经布置的陷阱和魔物还在路上。这一小段只写她动身，不要提前写她已经掉进去。' },
   ],
   broken: [
-    { id: 'train', label: '调教', effect: 'train', brief: '城主把玩坏的身体带进调教室。她记不清计划和说过的话，只剩身体反应。' },
-    { id: 'discard', label: '扔掉', effect: 'discard', brief: '城主把她扔掉。她被传送回城市，不再留在调教室。' },
+    { id: 'train', label: '进去调教', effect: 'train', brief: '城主走进她现在的牢笼。她记不清计划和说过的话，只剩身体。这一轮不接上一场的结尾。' },
+    { id: 'watch', label: '外面观赏', effect: 'watch', brief: '城主不进去。站在牢笼外看这具身体被牢笼折磨，并重写收藏记录。' },
+    { id: 'discard', label: '扔掉', effect: 'discard', brief: '城主把她扔掉。她被传送回城市，不再留在牢笼里。' },
   ],
   defeated: [
     { id: 'recall', label: '召回迷宫', effect: 'recall', brief: '城主把她直接传送进迷宫。她没有自己走路进来。没有指定陷阱时，不要让她已经掉进装置。' },

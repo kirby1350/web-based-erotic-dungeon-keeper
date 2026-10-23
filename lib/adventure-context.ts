@@ -107,25 +107,25 @@ ${JSON.stringify(result)}`
 
 /** Marker order only. Every number and sentence in it is an illegal placeholder. */
 export const REPLY_FORMAT_EXAMPLE = `【格式示例，只展示标记顺序。示例数值全部非法，禁止照抄事件、楼层、人物和数字。】
-石室潮热，角色被残留的触手缠在腰上，尚未决定是挣开还是顺着粘液往侧室爬。
+石室又热又湿。触手还缠在她腰上，城主的手按住小腹，这一下还没往腿间去。她咬着牙，腿已经在抖。
 [OPTIONS]
-1. 扳开腰间触手，换取片刻行动自由
-2. 顺着粘液爬向侧室，寻找能切断触手的器物
-3. 停在原地换气，观察触手是否还在收紧
-4. 主动把重心送回去，换取它松开手腕
+1. 按住她的小腹，命令腰上的触手再收紧一档
+2. 用手拨开腿根，只摸到湿处就停
+3. 让触手松开，看她还能不能自己站住
+4. 先不碰她，只盯着她喘，等下一道命令
 [/OPTIONS]
-[SCENE: dungeon, stone_chamber, tentacles, waist_grab, slime, dim_lighting, adult]
+[SCENE: waist grab, pinned to wall, trembling, flushed face, slime, drool, close-up, stone wall, torchlight]
 [STATS:{"hp":-1,"pleasure":-1,"desire":-1,"floor":-1,"encounter":null,"measurements":{"bust":"","waist":"","hip":""},"bodyDevelopment":{"breast":0,"clitoris":0,"urethra":0,"vagina":0,"anus":0,"exp":{"breast":0,"clitoris":0,"urethra":0,"vagina":0,"anus":0}},"statusEffects":[]}]
 [DESC:{"breast":"示例句，禁止照抄。","clitoris":"示例句，禁止照抄。","urethra":"示例句，禁止照抄。","vagina":"示例句，禁止照抄。","anus":"示例句，禁止照抄。"}]`
 
 export const REPLY_PROTOCOL_PROMPT = `【输出协议与合法示例】
 固定顺序：正文 → [OPTIONS]四个选项[/OPTIONS] → [SCENE: 英文标签] → [STATS: 单行JSON对象] → [DESC: 单行JSON对象]。
 正文通常 250 至 500 字。简单行动可以更短。先写完已选行动的结果，不为凑字数重复高潮或拟声。标记必须留在输出末尾，不要被正文挤掉。
-选项区只放四条编号行动，不写分类说明。四条必须在目标、代价或风险上彼此不同，不能是同一动作的四种形容词。
-[SCENE] 只写纯英文 Danbooru 标签，英文逗号分隔，禁止中文、禁止整句、禁止 Markdown。标签必须包含：角色外观锚点、当前层场景、本回合关键动作或拘束、adult。不要写 masterpiece 或 best quality。
+选项区只放四条编号命令，不写分类说明。四条都是城主此刻能下达的不同命令，在目标、代价或风险上彼此不同，不能是同一动作的四种形容词，也不要写成闯入者的自救。
+[SCENE] 只写纯英文 Danbooru 标签，英文逗号分隔，12 到 20 个。禁止中文、整句、Markdown、masterpiece、best quality。不要写发色、瞳色、种族、服装、角色名，也不要写 adult；外观和 adult 由出图程序另拼。只写本回合的动作、表情、体液、镜头，再加上当前画面里真的看得见的 2 到 4 个环境标签。
 JSON 使用实际数值、字符串、数组和 null。不输出「数字」、取值范围或省略号。不用代码围栏，不讲解协议。
 hp 范围是 0 至当前快照的 maxHp。pleasure 与 desire 为 0 至 100 的整数。仍被困住时 restraint 为 1 至 3，降到 0 表示这场遭遇已经解除，encounter 必须是 null。开发等级与 exp 由程序结算：STATS 里照抄当前快照，不要自行增减，也不要因为示例里的 0 把已有经验清掉。程序只给本回合正文里被触碰或进入的部位加经验，轻微 +10，出现高潮或快感比回合开始至少高 20 时 +40；满 100 升 1 级并保留余数，上限 Lv5。没写到的部位不加。写部位时用明确说法，如乳头、阴蒂、尿道、阴道、肛门。exp 缺失表示未记录，不编造历史。
-STATS 必须完整包含 hp、pleasure、desire、floor、encounter、measurements、bodyDevelopment、statusEffects。
+STATS 只含 hp、pleasure、desire、floor、encounter、measurements、bodyDevelopment、statusEffects。不要写 maxHp、explorationProgress，也不要多写其他键。这两个数只在当前状态快照里，由程序维护。有程序判定时，floor 和 encounter 原样照抄快照。
 encounter 为 null，或包含 id、name、kind、summary、restraint 的对象。kind 只能是 trap 或 monster。持续遭遇沿用原 id 和 name。新 id 只用英文小写、数字和下划线。
 statusEffects 每次输出完整数组。未解除的沿用原 id，成因消失或明确解除后移除。条目包含 id、title、description，id 不得重复。
 measurements 是不带单位的数字字符串，未记录用空字符串。DESC 只含 breast、clitoris、urethra、vagina、anus 五个键。没有变化就沿用当前描述，不编造变化。
@@ -133,7 +133,10 @@ measurements 是不带单位的数字字符串，未记录用空字符串。DESC
 ${REPLY_FORMAT_EXAMPLE}`
 
 export const NARRATIVE_PROGRESS_PROMPT = `【每回合推进与城主的命令】
-首先回应城主已经下达的命令，写闯入者身上可观察到的结果。每回合至少产生一项实质变化：身体、拘束、位置、信息或她的态度。命令落空也要写出原因。
+首先回应城主已经下达的这一道命令，写闯入者身上可观察到的结果。命令落空也要写出原因。
+按这道命令定密度。后面的篇幅和文风数字不能把赶路写成一场性行为：
+- 往里赶、观察、停手、换层、只看她走路或查看环境：只写环境、位置变化和身上已经有的余波。不新写性行为，不写高潮，不用淫语。正文 250 至 500 字，简单时可以更短。
+- 命令本身是触碰、进入、脱衣，或使用已经启用的陷阱、魔物接触身体，或当前异常状态明确要求身体反应：才写被碰到的部位。没碰到的部位不写。重油文风下这一步正文 600 至 1000 字，最多 1000 字。
 变化必须符合当前场景和已确认判定。不要为了制造变化凭空增加城主没启用的装置，不要改楼层，不要推翻已结算的结果。
 保持地点、衣物和这场遭遇的连续。新的身体反应要和这一道命令有关。
 只结算这一道命令。不要替城主执行下一条，不要替城主决定留下、玩坏或放走。在下一个决策点停下。

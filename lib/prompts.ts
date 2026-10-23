@@ -1,21 +1,20 @@
 import { buildTurnContext, buildProgramResultContext, REPLY_PROTOCOL_PROMPT, NARRATIVE_PROGRESS_PROMPT, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryContext, emptyMemory, type AdventureMemory } from '@/lib/adventure-memory'
 import type { KeeperPromptContext } from '@/lib/keeper'
-import { Character, Race, RACE_INFO, getFloorTheme, ProseStyle, type ImagePromptFamily } from '@/lib/types'
+import { Character, INTERROGATION_METHODS, Race, RACE_INFO, getFloorTheme, ProseStyle, type ImagePromptFamily } from '@/lib/types'
 
-// 可切换文风片段（与常驻【文风禁令】叠加；standard 为空，只走去油）
+// 第一版重油：固定词库贴在部位前面。不抽词，不走三股和巡礼。
 const PROSE_STYLE_PROMPTS: Record<ProseStyle, string> = {
   standard: '',
   dense: `【文风：重油堆叠】
-本段覆盖文风禁令里「禁止套用现成比喻」和「不得重复同一个喻体」。转场套话和言情滥腔仍然禁止。禁止照抄范文里的人名、年数、洞府、山名、符箓、女仙，也不要写 {{user}}。不要给闯入者另编一套范文里的身世。
-进门的第一段仍用「似是专为」：一条至少四十字的定语，至少四个质地原词连在部位名词前，部位名词放在句尾。从第一次身体接触开始，改用下面的循环，不要再每句新写一条「似是专为」。
-循环：城主这一下命令的那个动作，拆成三股。每一股两段。先一段第三人称，只写这一拍的物理变化。再一段她的对白，把这一拍重说一遍，并求下一拍。三股走完再写拔出：分离的声音，和牵出的丝。
-液体账：每一股都写温度、浓稠、落到哪、和什么混在一起。清理时沿着原路舔回去，落到皮肤上的也收回嘴里。
-巡礼：拔出之后按这个顺序各写一站：马眼、冠沟、包皮缝、柱身、系带、两颗卵蛋、会阴、小腹，最后回到她自己刚被用过的那个孔。每到一处，她先说接下来是这里，再舔，再咽。本段覆盖视角里「不描写城主的性器官，不让城主高潮」：写的是她正在舔、含、被射进去的那根，射精只写成液体进入她身体或落到她身上。城主不求饶，也不被她反过来侵犯。没有这根在场时，巡礼改走她刚被用过的孔、溅到的乳、小腹和衣料，不要凭空长出一根。
-固定长名词：点到乳，把「厚脂满溢、雌腻爆硕、糯软肥奶」原样贴在名词前。点到穴，把「肥嫩多汁、仿若馒头、厚实宣软」原样贴在名词前。后文再点到就再贴这一串，不要改词。这一串里已经包含至少四个质地原词。
-对白：引号里的叫声占满整句，是一长串元音。这覆盖淫语里拟声要稀疏、以及口腔拟声仅在口交时使用。她用自己的口重述刚刚的物理事实。口气跟档案。这一场里称呼只升一档，从她本来的叫法升到更直白的淫称，不要开场就用最高那一档。段尾她给自己安一个新身份，并问这一下满不满意。
-篇幅用来写完三股和巡礼，不要用来把一句话拉长。若本请求另写了更短的篇幅，只写一股：一拍动作、她重说一遍、液体的四笔账。
-这一风的喻体是固定家当，同一段里可以反复使用：乳和奶头用吊钟、奶山、肉山、蜜瓜、山峦、圆饼、椰枣、筛子、决堤；阴道用馒头、蜜桃，馒头只写阴道；阴蒂用红果子，红果子只写阴蒂；肛门用肉菊，肉菊只写肛门。不要把磨盘、螺纹、章鱼嘴当成固定公式。颜色、道具、服装前后要对得上。
+本段覆盖文风禁令里「禁止套用现成比喻」和「不得重复同一个喻体」。转场套话和言情滥腔仍然禁止。禁止照抄范文里的人名、年数、符箓、女仙和地名。
+1. 本回合正文里被触碰、被看或被说出的词库部位，必须使用该词库的质地原词，至少四个，连在部位名词前面。可以调整顺序，不要换成更干净的同义词。没被写到的部位一句带过。
+2. 可以用性用途或性史作定语。乳房和奶头上，「胀、漏、敏感、一挤就出」可以再出现；阴蒂上，「肥、大、硬、一捏就出」可以再出现；阴道和肛门上，「肥、嫩、紧、一拨就湿」可以再出现；尿道上，「肥、嫩、紧、一插就进」可以再出现。同一句不要把同一个说法写两遍。
+3. 每个主画面至少调动质感、温度、气味、声音中的三样，并绑定到具体部位，不要空泛写「雌臭弥漫」。
+4. 喻体必须本回合新写，禁止复用上一回合已用过的喻体。乳房和奶头允许使用蜜瓜、山峦、圆饼、椰枣、筛子、决堤。阴道允许使用馒头、蜜桃。「馒头」只许写阴道，不许拿去写别的部位。阴蒂允许使用红果子。「红果子」只许写阴蒂。肛门允许使用肉菊。「肉菊」只许写肛门。禁止把「吊钟、奶山、肉山、磨盘、螺纹、章鱼嘴」当作固定公式。
+5. 乳房、奶头、阴蒂、阴道、尿道和肛门每段可以用两到三个能拆开读懂的复合词。其他部位每段最多一个自造四字词。
+6. 细节要闭环：颜色、道具、服装前后呼应。挤出或渗出的液体要落到衣襟、肚兜、衣裤或皮肤上，留下痕迹。
+句法：对白先点出分量或敏感，下一句立刻用动作验证。尺寸落到眼前的身体上，例如有脑袋大、能埋住脸、半截指节。收束时可以邀请对方亲手掂一掂或验一验。
 【乳与奶头词库】
 乳肉：脂附油肥、厚脂满溢、雌腻爆硕、糯软肥奶、沉甸甸、圆肥挺翘、鼓胀饱满、痴肥溢汁、乳香肉奶、厚腻骚焖、肉厚焖肥、爆乳、糜腴肉浪、颤巍巍、弹嫩雪滑、厚重肥乳、下流肥奶、宽厚浑圆、尺寸豪硕、深乳沟、油亮雌汗。
 奶头：肥肿酡红、厚肉奶头、肥长奶头、直挺挺、外头软里头硬、圆饼乳晕。
@@ -41,11 +40,15 @@ const PROSE_STYLE_PROMPTS: Record<ProseStyle, string> = {
 动作：舌头舔开、指尖插进去、磨蹭、轻轻一插。
 不要把屁眼、肉褶、肠液、肉菊写到尿道上。
 渗出可以在尿道被舔到、被插入或说出来时使用。喷出老远、决堤、咕嘟咕嘟往外喷，只在本回合写高潮时使用。没有高潮时不要写尿道喷水。
-用词库里的原词来写，不要把词库的标题和顿号列表原样抄进正文。`,
+同一段里同一个喻体最多两次。用词库里的原词来写，不要把词库的标题和顿号列表原样抄进正文。`,
 }
 
+const DENSE_LEXICON_NOTE = `【重油用词】碰到身体的这一步，正文 600 至 1000 字，覆盖上面的 250 至 500 字。往里赶、观察、停手、换层仍按前面的短篇幅，不新写性行为。正文写到乳、奶头、阴蒂、阴道、尿道或肛门时，必须从【文风：重油堆叠】对应词库里取至少四个质地原词，连在部位名词前面。不要改成奶子很大、小穴湿润这类普通说法，也不要把词库列表原样抄出来。没写到的部位不要硬堆。喷奶和喷水仍只按词库里的条件使用。`
+
+const MOAN_NOTE = `【淫叫，以这里为准】上面「不为凑字数重复拟声」只禁止同一声空转着凑字数，不取消淫叫次数。「软约束，不占篇幅」也不压过下面这句。快感 < 60 时少叫。快感 ≥ 60 且这一道命令碰到身体时，每个激烈段落写 1～2 次淫叫，不规定最短音节数。快感 ≥ 80 时可以更密，正常词句仍占多数。前面几回合叫得少，是旧规则留下的，不要照着那个密度继续少叫。往里赶、观察、停手、换层仍然不用淫语。`
+
 // ============================================================================
-// 集中管理：本项目所有 AI 提示词（聊天 DM / 故事摘要 / 随机陷阱 / 图片标签）
+// 集中管理：本项目所有 AI 提示词（聊天 DM / 故事摘要 / 场内拷问 / 图片标签）
 // 统一在此维护，保证语气一致、便于调整。
 // ============================================================================
 
@@ -167,7 +170,7 @@ export function buildImagePrompt(options: {
 }
 
 // ---------------------------------------------------------------------------
-// 共用的语气 / 淫语规则（DM 主提示词与随机陷阱生成器共用，保证语气一致）
+// 共用的语气 / 淫语规则（DM 主提示词与场内拷问生成共用，保证语气一致）
 // ---------------------------------------------------------------------------
 
 function lewdVoiceRules(): string {
@@ -191,7 +194,7 @@ const OPENING_LABEL: Record<NonNullable<KeeperPromptContext['opening']>, string>
 }
 
 function openingLine(keeper: KeeperPromptContext | null): string {
-  if (keeper?.return === 'train') return '她已经在调教室，城主开始调节'
+  if (keeper?.return === 'train') return `她已经在「${keeper.defenseName || '普通地牢'}」里。这是新的一轮，不接上一场的结尾`
   if (keeper?.return === 'recall' && keeper.opening === 'trap') return '她被直接传送，扔进陷阱'
   if (keeper?.return === 'recall') return '她被直接传送进迷宫'
   if (keeper?.return === 'reexplore') return '她自己回来再次探索'
@@ -202,6 +205,36 @@ function openingLine(keeper: KeeperPromptContext | null): string {
 function characterBrands(character: Character): string[] {
   if (!Array.isArray(character.brands)) return []
   return character.brands.filter((item) => typeof item === 'string' && item.trim()).slice(-4)
+}
+
+function dossierLine(label: string, value: string | undefined): string | null {
+  const text = value?.trim()
+  return text ? `${label}：${text}` : null
+}
+
+function intruderArchive(character: Character): string {
+  const split = [character.appearance, character.personality, character.speech, character.sexual, character.collapseLine].some((item) => item?.trim())
+  const measurements = character.measurements
+  const lines = [
+    `名字：${character.name}`,
+    `种族：${raceLabel(character.race)}`,
+    dossierLine('种族特性', RACE_INFO[character.race]?.trait),
+    measurements?.bust ? `三围：胸 ${measurements.bust} / 腰 ${measurements.waist} / 臀 ${measurements.hip}` : null,
+    dossierLine('外貌', character.appearance),
+    dossierLine('进来的原因', character.backstory),
+    dossierLine('性格', character.personality),
+    dossierLine('口癖', character.speech),
+    character.speech?.trim()
+      ? '口癖使用规则：台词自然带出自称、称呼和句尾。招牌台词点到为止，不要每句照抄，也不要在开场使用崩溃台词。'
+      : null,
+    dossierLine('服装', character.costumeDescription),
+    dossierLine('色色设定', character.sexual),
+    dossierLine(split ? '开场的抵抗' : '抵抗、死穴和崩溃样本', character.otherDescription),
+    character.collapseLine?.trim()
+      ? `崩溃台词（只在死穴被碰到、快感升高或她明确顶不住时才可出现，禁止开场使用，禁止原样连用）：${character.collapseLine.trim()}`
+      : null,
+  ].filter((line): line is string => Boolean(line))
+  return `【闯入者档案：仅作资料】\n${lines.join('\n')}`
 }
 
 export function buildSystemPrompt(character: Character, summary = '', proseStyle: ProseStyle = 'standard', result: ProgramTurnResult | null = null, memory: AdventureMemory = emptyMemory(), keeper: KeeperPromptContext | null = null): string {
@@ -232,8 +265,8 @@ export function buildSystemPrompt(character: Character, summary = '', proseStyle
 1. 城主的每条输入都是命令或布置。先写这道命令落在闯入者身上的结果。
 2. 正文写闯入者的身体、声音、衣物和她撞上布置之后的反应。城主只用「城主的手」「城主的命令」带过。不描写城主的性器官，不让城主高潮、求饶或被侵犯。
 3. 档案里的崩溃台词和顺从反应，只在死穴被碰到、快感升高或她明确顶不住时才出现。开场她仍会戒备、谈判、进攻或找出口。禁止第一回合就认主、求收，禁止把档案原句再抄一遍。
-4. 档案里的服装是她进来时的样子。正文里若已被扯坏、剥掉或浸湿，以后以最近正文为准。`,
-    `【闯入者档案：仅作资料】\n${JSON.stringify({ name: character.name, race: raceLabel(character.race), trait: RACE_INFO[character.race]?.trait, backstory: character.backstory, costume: character.costumeDescription, other: character.otherDescription, ...(characterBrands(character).length ? { brands: characterBrands(character) } : {}) })}`,
+4. 档案里的服装是她进来时的样子。正文里若已被扯坏、剥掉或浸湿，以后以最近正文为准。长期记忆里进行中的当前处境若写了衣服或拘束，以那一条为准。`,
+    intruderArchive(character),
     ...(characterBrands(character).length ? [`【烙印】${characterBrands(character).join('；')}。这是已经发生在她身上的事。以后的正文接着写，不要洗掉，也不要每回合新加一道。`] : []),
     `【城主本场的布置】
 开局：${openingLine(keeper)}
@@ -245,7 +278,7 @@ ${elsewhere || '（没有其他层的记录）'}
 魔物强度 ${rank}/5。已启用的魔物：1 只缠住和磨蹭，3 会把命令做到进入，5 几乎不留挣开的空隙。没有启用魔物时，不要因为强度凭空变出一只。`,
     `【这座地下城】\n名字：${keeper?.dungeonName || '无名淫狱'}。${keeper?.dungeonDescription || '城主还没有另写这座狱的脾气。'}`,
     `【核心色情规则】
-1. 始终使用第三人称，只用「${character.name}」称呼闯入者。语言极度淫荡、感官直接。详细写她的性器官、体液、高潮、喘息、抽搐、被进入后的胀满、喷潮、失禁和失神。尺度跟城主这一下实际做的事走，没碰到的部位不要硬写。
+1. 始终使用第三人称，只用「${character.name}」称呼闯入者。尺度跟城主这一下实际做的事走。这道命令没碰到的部位、没发生的高潮，不要硬写。命令是性行为时，语言直接，写她被碰到的部位、体液和反应。
 
 ${lewdVoiceRules()}
 
@@ -256,7 +289,7 @@ ${lewdVoiceRules()}
    - 空心强度词：前所未有的、灭顶的（快感）、理智的弦断裂、理智彻底失守、如潮水般袭来
    - 言情滥腔：邪魅一笑、勾起一抹（邪魅/危险）的弧度、磁性的嗓音、低沉沙哑、深邃的眸子、眼底闪过一丝、骨节分明
 2. 高潮、绝顶、瘫软、坏掉等关键画面，**禁止套用现成比喻**；必须用**具体的身体细节**（某个部位的具体动作/收缩/痉挛/体液）或**该角色的专属意象**（结合其设定/服装/道具，如随颤抖作响的吊坠、被汗水浸透的发丝等）来写。
-3. 每个比喻必须新鲜、贴合当前情境，**不得重复使用同一个喻体**。
+3. 每个比喻必须新鲜、贴合当前情境，**不得重复使用同一个喻体**。选了重油时，词库和允许的喻体写在重油段里。
 4. 允许保留重口「行话/梗」（肉便器、坏掉、ahegao、脑子融化、子宫凸起、母猪/肉壶等）——这是题材惯例；但靠具体细节而非反复堆砌同一个标签来制造冲击。
 ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : ''}
 【色情状态影响规则】
@@ -267,14 +300,17 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
 5. 异常状态改变她的身体和城主可利用的反应，但不能覆盖程序判定。发情可以表现为扭腰、漏出求欢、难以把话说完。四条命令里仍要有一条是观察、停手或换目标。
 
 `,
-    `【地下城环境】\n这座地下城目前只挖通到第 ${depth} 层，再往下还没挖通。当前房间「${roomName}」：${roomAmbience}。场景标签参考：${theme.scene}。floor 是城主把她放到的深度，不得超过 ${depth}。explorationProgress 是城主把她往本层更里面赶的进度。她不是来通关的，也不存在要由她打倒的主人。已有遭遇未结束时延续其 id 和 name。没有程序判定的新遭遇时，不要让她自己掉进一件新的具名陷阱，也不要让她撞上其他层里的装置。`,
-    `【角色外观锚点，每回合原样前置】\n${buildAppearanceAnchor(character)}\n场景标签只补充地点、动作、拘束和光线，不要改写锚点里的发色、瞳色、种族和服装。`,
+    `【地下城环境】\n这座地下城目前只挖通到第 ${depth} 层，再往下还没挖通。当前房间「${roomName}」：${roomAmbience}。floor 是城主把她放到的深度，不得超过 ${depth}。explorationProgress 是城主把她往本层更里面赶的进度，只留在快照里，不要写进 STATS。她不是来通关的，也不存在要由她打倒的主人。已有遭遇未结束时延续其 id 和 name。没有程序判定的新遭遇时，不要让她自己掉进一件新的具名陷阱，也不要让她撞上其他层里的装置。${keeper?.return === 'train' ? `她人在「${keeper.defenseName || '普通地牢'}」，这一轮不出这只牢笼。不要写她赶路、换层，或自己走进新房间。` : ''}写 [SCENE] 时，环境最多从这里取此刻看得见的 2 到 4 个，不要整串照抄：${theme.scene}。`,
+    `【角色外观，只给正文对照】\n${buildAppearanceAnchor(character)}\n这些标签由出图程序拼在画面前面。[SCENE] 不要再写发色、瞳色、种族、服装、角色名，也不要原样抄上面这一串。`,
     REPLY_PROTOCOL_PROMPT,
-    `【城主的选项】\n四个选项是城主此刻能下达的不同命令，在目标、代价或风险上彼此不同。可以是加码、换用上面已启用的另一件布置、停手观察、改碰别的部位。不要写成闯入者的四种自救，也不要四条都是继续插入。她若还在挣扎，可以有一条是看她反抗、再决定怎么接。`,
-    ...(proseStyle === 'dense' ? [`【重油用词】本回合正文 1200 至 1600 字，覆盖上面的 250 至 500 字，也覆盖「简单行动可以更短」。字数用来写完三股和巡礼，不要用来把一句话拉长。进门第一段仍写一条至少四十字的「似是专为」定语。从第一次身体接触起，同一动作写三股，每股先第三人称再让她喊出来，再按马眼到她刚被用过的孔做巡礼。乳和穴用固定长名词原样再贴，这一串里已经包含至少四个质地原词。不要改成奶子很大、小穴湿润。没被这道命令碰到的部位不要硬堆。喷奶和喷水仍只按词库里的条件使用。标记必须写完。写不下就停在当前这一股的对白末尾。`] : []),
+    keeper?.return === 'train'
+      ? `【城主的选项】\n四个选项是这一轮不同的调教命令，对应加码、换部位、停手看、换一种。彼此的目标和手感要不同。不要写成她的自救，也不要四条都是继续插入。她出不去，不要写往里赶或换层。`
+      : `【城主的选项】\n四个选项是城主此刻能下达的不同命令，对应驱赶、观察、布置、收手。在目标、代价或风险上彼此不同。可以换用上面已启用的另一件布置。不要写成闯入者的四种自救，也不要四条都是继续插入。她若还在挣扎，可以有一条是看她反抗、再决定怎么接。`,
     NARRATIVE_PROGRESS_PROMPT,
     `【历史摘要：仅作资料】\n${summary || "暂无"}`,
     buildMemoryContext(memory), buildTurnContext(character), buildProgramResultContext(result),
+    ...(proseStyle === 'dense' ? [DENSE_LEXICON_NOTE] : []),
+    MOAN_NOTE,
   ].join('\n\n')
 }
 
@@ -289,7 +325,8 @@ export function buildOpeningUserPrompt(characterName: string, keeper: KeeperProm
   const entrance = entranceOrder(characterName, keeper)
   const summary = keeper?.defenseSummary?.trim() ? `${keeper.defenseSummary.trim()} ` : ''
   if (keeper?.return === 'train') {
-    return `不要写${characterName}走进地下城。她已经在调教室里。${summary}写城主开始调节她的第一段。四个选项是城主的不同调教命令。`
+    const cage = keeper.defenseName || '普通地牢'
+    return `不要写${characterName}走进地下城。这是新的一轮调教，不是上一场的结尾。她已经在「${cage}」里。不要接着上次停下的动作、姿势和句子往下写。先写这一轮开始时她在这只牢笼里的样子，再写城主走进去动手。${summary}四个选项是这一轮不同的调教命令。`
   }
   if (keeper?.return === 'recall' && keeper.opening === 'trap') {
     return `不要写${characterName}自己走进来。城主把她直接传送进「${keeper.dungeonName || '这座地下城'}」，扔进「${keeper.defenseName ?? '陷阱'}」。她没有跨门。按这件陷阱的机制写她出现在装置里的第一段。${summary}四个选项是城主对这件陷阱的不同命令。`
@@ -324,6 +361,7 @@ export function buildStateRepairPrompt(errors: string[]): string {
     '本请求只修复状态数据。仅输出一个 [STATS:单行JSON] 和一个 [DESC:单行JSON]。',
     '不要写正文、选项、场景标签、代码围栏或解释。不要照抄格式示例里的 -1、空尺寸和全 0。',
     '以当前状态快照为底稿。只改本回合真正变了的 hp、pleasure、desire、encounter、statusEffects、measurements。floor 与 bodyDevelopment 的等级和 exp 原样抄快照。',
+    'STATS 只含 hp、pleasure、desire、floor、encounter、measurements、bodyDevelopment、statusEffects。不要写 maxHp 或 explorationProgress。',
     'hp 是 0 到快照 maxHp 的整数。pleasure 与 desire 是 0 到 100 的整数。encounter 为 null 或含 id、name、kind、summary、restraint 的对象，kind 只能是 trap 或 monster。statusEffects 的 id 只用英文小写、数字和下划线，不能重复。measurements 是不带单位的数字字符串。',
     'DESC 只含 breast、clitoris、urethra、vagina、anus。没有新的身体描写就沿用快照里的描述，每条不超过 300 字。',
     `上次没通过的字段：${errors.join('、') || '结构'}`,
@@ -333,7 +371,8 @@ export function buildStateRepairPrompt(errors: string[]): string {
 /** 开场按钮上方的两句说明。没有收藏室回场时，仍是她自己走进来。 */
 export function startScreenCopy(keeper: KeeperPromptContext | null): { title: string; lines: string[] } {
   if (keeper?.return === 'train') {
-    return { title: '她已经在调教室', lines: ['先写城主开始调节她。四个选项都是调教命令。'] }
+    const cage = keeper.defenseName || '普通地牢'
+    return { title: `新的一轮 · ${cage}`, lines: ['她已经在这只牢笼里。这一轮不接上一场的结尾。四个选项都是调教命令。'] }
   }
   if (keeper?.return === 'recall' && keeper.opening === 'trap') {
     return { title: '她被扔进陷阱', lines: ['不要写她自己走进来。她是被直接传送进去的。四个选项是对这件陷阱的命令。'] }
@@ -356,6 +395,20 @@ export function startScreenCopy(keeper: KeeperPromptContext | null): { title: st
   }
 }
 
+/** 站在牢笼外看她被这只牢笼折磨。这段会替换收藏室里的记录。 */
+export function buildWatchPrompt(input: { name: string; cageLabel: string; holds: string; watch: string; fate: string; pleasure: number; desire: number; brands?: string; ledger?: string }): string {
+  const previous = input.ledger?.trim()
+  return [
+    `城主没有走进「${input.cageLabel}」，只站在外面看${input.name}。`,
+    input.holds,
+    input.watch,
+    `她此刻的处置是「${input.fate}」，快感 ${input.pleasure}，欲望 ${input.desire}。`,
+    input.brands?.trim() ? `身上已有的烙印还在：${input.brands.trim()}。接着写，不要洗掉。` : '',
+    previous ? `上一份牢笼记录只作参考，不要照抄，按现在这只牢笼重写：${previous.slice(0, 180)}` : '还没有牢笼记录。不要把她上一次闯城的结尾再演一遍。',
+    '写 320 到 520 字。第三人称。写这只牢笼现在如何折磨她，城主只在外面看，不伸手，不发令。不要写选项，不要写标记，不要写 JSON。',
+  ].filter(Boolean).join('\n')
+}
+
 /** 处置之后的短场面。只要正文，不要标记。 */
 export function buildAftermathPrompt(input: { name: string; action: string; brief: string; pleasure: number; desire: number; recall?: string; longer?: boolean }): string {
   const remembered = input.recall?.trim()
@@ -374,10 +427,10 @@ export function buildAftermathPrompt(input: { name: string; action: string; brie
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// 3) 随机陷阱生成器提示词
+// 3) 场内拷问生成。这不是陷阱工房，也不会存进廊道。
 // ---------------------------------------------------------------------------
 
-export function buildRandomTrapPrompt(
+export function buildInterrogationPrompt(
   character: Character,
   hints?: string[],
   currentLocation = '未知区域',
@@ -391,27 +444,20 @@ export function buildRandomTrapPrompt(
   const status = se.map((item) => item.title).join('、') || '无'
   const proseBlock = PROSE_STYLE_PROMPTS[proseStyle] ?? ''
   const list = (hints ?? []).filter(Boolean)
+  const catalog = INTERROGATION_METHODS.map((item) => `   - ${item.name}：${item.hint}`).join('\n')
   const typeRule = list.length >= 2
-    ? `1. 本次必须将以下多种陷阱类型**融合成一个连贯的复合陷阱**——让它们的机制同时作用、彼此交织衔接，而不是简单罗列拼接（根据这名闯入者当前的身体自由发挥细节）：
-${list.map((h) => `   - ${h}`).join('\n')}`
+    ? `1. 本次必须把下面几种拷问方式融合成城主现在亲手做的一手。机制同时作用，不要罗列成几段无关的玩法：
+${list.map((hint) => `   - ${hint}`).join('\n')}`
     : list.length === 1
-    ? `1. 本次必须生成以下指定类型的陷阱（根据这名闯入者当前的身体自由发挥细节）：
+    ? `1. 本次必须用下面这种拷问方式，按她现在的身体写城主这一手：
    ${list[0]}`
-    : `1. 随机选择一种陷阱类型（不可重复使用最近用过的），类型包括但不限于：
-   - 触手系（普通/异形/寄生）
-   - 粘液/史莱姆系
-   - 催情植物/花粉/香气
-   - 魔法拘束/淫纹/幻觉
-   - 怪物巢穴（触手怪、史莱姆群、触手犬、半兽人等）
-   - 机械/古代遗迹拘束装置
-   - 催眠/幻觉镜子/魅魔领域
-   - 寄生虫/卵注入系
-   - 其他你能想到的重口色情陷阱`
+    : `1. 自选一种新的拷问方式。不要写成她走路会踩中的陷阱。可以从这些里挑，也可以另写一种城主现在能上手的方式：
+${catalog}`
   const focus = (focusParts ?? []).filter(Boolean)
   const focusRule = focus.length
-    ? `\n\n【部位特化】本次陷阱的机制、触发描写与当前效果都必须**重点针对以下部位**，把它们作为主要的侵犯与描写焦点（其余部位可作陪衬，但主戏在此）：${focus.join('、')}`
+    ? `\n\n【部位特化】这一手怎么做，以及她立刻的反应，都必须重点针对以下部位：${focus.join('、')}`
     : ''
-  return `你现在是城主的陷阱生成器。生成一个能接上当前房间、用来对付这名闯入者的新陷阱。语气与主叙述一致。本请求只输出陷阱资料，不输出选项和状态 JSON。不要把城主写成被陷阱抓住的人。
+  return `你现在是城主的拷问生成器。生成一种城主此刻亲手用在这名闯入者身上的新拷问方式。这不是廊道里等她踩的陷阱，也不会存进陷阱工房。语气与主叙述一致。本请求只输出拷问资料，不输出选项和状态 JSON。不要把城主写成被拷问的人。不要写她自己走进装置。
 
 当前闯入者：${character.name}（${raceLabel(character.race)}）
 当前层主题：${theme.name}。${theme.ambience}
@@ -429,19 +475,19 @@ ${proseBlock}
 【生成要求】
 ${typeRule}${focusRule}
 
-篇幅：触发描写 150 至 220 字。若启用重油文风，可到 700 字，被点名的主部位必须写成一条「似是专为」长定语，质地原词至少四个。当前效果 80 字以内。
+篇幅：这一手怎么做 150 至 220 字。她立刻的反应 80 字以内。若启用重油文风，这一手可到 500 字，被点名的主部位必须使用词库里至少四个质地原词，连在部位名词前面。
 内容必须同时满足：
-1. 机制符合本层主题，不要每层都写成通用触手坑。服装、种族特征要进入触发过程。
-2. 陷阱名称带场景辨识度，不只有色情词。
-3. 触发描写用第三人称，写到接触发生和身体第一反应即收。
-4. 当前效果只写陷入后立刻发生的强制效果，不写后续逃脱结果。逃脱与束缚等级由程序结算，这里不要宣布成功或失败。
+1. 写城主现在对她做的这一手，收到身体第一反应即收。服装和种族特征要进入这一手。
+2. 拷问名称要能看出手法，不只有色情词，也不要写成陷阱名。
+3. 第三人称。人在哪里就在哪里做。不要新造一件她会踩中的机关。
+4. 她立刻的反应只写嘴和身体这一下怎么接。不写后续逃脱，不写玩坏或放走，不写致残。
 
 严格输出：
-【陷阱名称】xxx
-【触发描写】
-（第三人称，150～220 字；重油时最多 700 字，主部位使用词库原词）
+【拷问名称】xxx
+【这一手怎么做】
+（第三人称，150～220 字；重油时最多 500 字，主部位使用词库原词）
 
-【当前效果】
+【她立刻的反应】
 （80 字以内）
 `
 }
@@ -461,7 +507,7 @@ ${focus.length ? `机制要重点照顾这些部位：${focus.join('、')}。` :
 ${WORKSHOP_BAN}
 ${proseBlock}
 
-篇幅：触发描写 150 至 220 字。若启用重油文风，可到 700 字，被点名的主部位必须写成一条「似是专为」长定语，质地原词至少四个。机械摘要 40 字以内，只写束缚方式和主要部位。
+篇幅：触发描写 150 至 220 字。机械摘要 40 字以内，只写束缚方式和主要部位。若启用重油文风，触发描写可到 500 字，被点名的主部位必须使用词库里的质地原词。
 
 严格输出：
 【陷阱名称】
@@ -479,7 +525,7 @@ ${hint ? `城主要的方向：${hint}` : '方向由你定。不要重复成一�
 ${WORKSHOP_BAN}
 ${proseBlock}
 
-篇幅：外观 80 字以内。行为 120 到 220 字，写它按命令接触人时怎么动作。若启用重油文风，行为可到 600 字，被点名的主部位写成一条「似是专为」长定语。机械摘要 40 字以内，只写它听令之后先做什么。
+篇幅：外观 80 字以内。行为 120 到 220 字，写它按命令接触人时怎么动作。机械摘要 40 字以内，只写它听令之后先做什么。若启用重油文风，行为可到 500 字，被点名的主部位必须使用词库里的质地原词。
 
 严格输出：
 【魔物名称】

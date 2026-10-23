@@ -27,6 +27,11 @@ export function CharacterCreator({ onComplete }: CharacterCreatorProps) {
   const [backstory, setBackstory] = useState('')
   const [costumeDescription, setCostumeDescription] = useState('')
   const [otherDescription, setOtherDescription] = useState('')
+  const [appearance, setAppearance] = useState('')
+  const [personality, setPersonality] = useState('')
+  const [speech, setSpeech] = useState('')
+  const [sexual, setSexual] = useState('')
+  const [collapseLine, setCollapseLine] = useState('')
   const [danbooruTags, setDanbooruTags] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -56,6 +61,11 @@ export function CharacterCreator({ onComplete }: CharacterCreatorProps) {
     setBackstory(preset.backstory)
     setCostumeDescription(preset.costumeDescription)
     setOtherDescription(preset.otherDescription)
+    setAppearance(preset.appearance ?? '')
+    setPersonality(preset.personality ?? '')
+    setSpeech(preset.speech ?? '')
+    setSexual(preset.sexual ?? '')
+    setCollapseLine(preset.collapseLine ?? '')
     setDanbooruTags(preset.danbooruTags ?? '')
     setAvatarUrl(preset.avatarUrl ?? null)
   }
@@ -69,6 +79,11 @@ export function CharacterCreator({ onComplete }: CharacterCreatorProps) {
       backstory: backstory.trim(),
       costumeDescription: costumeDescription.trim(),
       otherDescription: otherDescription.trim(),
+      appearance: appearance.trim() || undefined,
+      personality: personality.trim() || undefined,
+      speech: speech.trim() || undefined,
+      sexual: sexual.trim() || undefined,
+      collapseLine: collapseLine.trim() || undefined,
       danbooruTags: danbooruTags.trim() || undefined,
       avatarUrl,
       hp: 100,

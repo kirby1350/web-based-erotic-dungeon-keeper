@@ -2,12 +2,13 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { Loader2, RefreshCw, Check, X, Zap, Shuffle } from 'lucide-react'
-import { Character, PRESET_TRAPS, ProseStyle } from '@/lib/types'
+import { Character, INTERROGATION_METHODS, ProseStyle } from '@/lib/types'
 import { chatStream } from '@/lib/dzmm'
 import { cn } from '@/lib/utils'
-import { buildRandomTrapPrompt } from '@/lib/prompts'
+import { buildInterrogationPrompt } from '@/lib/prompts'
 
-// Optional body-part specialization. If none picked, no特化 — the trap stays general.
+// The in-scene wrench. This drafts one method the keeper uses now.
+// Corridor traps stay in the workshop and are not generated here.
 const FOCUS_PARTS: { id: string; label: string }[] = [
   { id: 'breast', label: '胸部/乳头' },
   { id: 'clitoris', label: '阴蒂' },
@@ -17,22 +18,20 @@ const FOCUS_PARTS: { id: string; label: string }[] = [
   { id: 'mouth', label: '口腔/喉咙' },
 ]
 
-interface TrapGeneratorProps {
+interface InterrogationGeneratorProps {
   character: Character
   settings: { chatModel: string; chatApiKey: string; grokApiKey?: string; proseStyle?: ProseStyle }
+  place: string
   onConfirm: (text: string) => void
   onClose: () => void
 }
 
-export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapGeneratorProps) {
+export function InterrogationGenerator({ character, settings, place, onConfirm, onClose }: InterrogationGeneratorProps) {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string>('')
   const [error, setError] = useState<string>('')
-  // ids of type chips toggled on; 2+ selected → traps are fused into one compound trap
   const [selected, setSelected] = useState<string[]>([])
-  // optional preferred body part(s) to specialize the trap around; empty → no特化
   const [focus, setFocus] = useState<string[]>([])
-  // remember the last hints/focus so 「重新生成」 keeps the chosen trap type(s) and部位
   const lastHintsRef = useRef<string[] | undefined>(undefined)
   const lastFocusRef = useRef<string[] | undefined>(undefined)
 
@@ -43,11 +42,10 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
     setError('')
     setResult('')
 
-    const floorNo = character.floor ?? 1
     const focusLabels = (focusParts ?? [])
-      .map((id) => FOCUS_PARTS.find((p) => p.id === id)?.label)
-      .filter((l): l is string => Boolean(l))
-    const prompt = buildRandomTrapPrompt(character, hints, `地下城第 ${floorNo} 层`, settings.proseStyle, focusLabels)
+      .map((id) => FOCUS_PARTS.find((part) => part.id === id)?.label)
+      .filter((label): label is string => Boolean(label))
+    const prompt = buildInterrogationPrompt(character, hints, place, settings.proseStyle, focusLabels)
 
     try {
       let fullText = ''
@@ -68,9 +66,8 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
     } finally {
       setLoading(false)
     }
-  }, [character, settings])
+  }, [character, place, settings])
 
-  // Extract displayable content (strip [SCENE], [STATS] and [DESC] blocks)
   function cleanForDisplay(text: string): string {
     let out = text.replace(/\[SCENE:[^\]]*\]/gi, '')
     for (const marker of ['[STATS:', '[DESC:']) {
@@ -98,11 +95,10 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="w-full max-w-lg dungeon-border rounded-xl bg-card flex flex-col max-h-[80vh]">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-primary" />
-            <span className="font-bold text-sm tracking-wider gold-text">随机陷阱生成器</span>
+            <span className="font-bold text-sm tracking-wider gold-text">随机拷问</span>
           </div>
           <button
             onClick={onClose}
@@ -111,10 +107,9 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
             <X className="w-4 h-4" />
           </button>
         </div>
+        <p className="px-4 pt-3 text-[11px] text-muted-foreground">这一手现在用在她身上，不存进廊道，也不是等她踩的陷阱。地点：{place}</p>
 
-        {/* Preset type chips */}
-        <div className="px-4 pt-3 flex flex-wrap gap-1.5 flex-shrink-0">
-          {/* Quick actions: fully random / random combo of two types */}
+        <div className="px-4 pt-2 flex flex-wrap gap-1.5 flex-shrink-0">
           <button
             onClick={() => { setSelected([]); generate(undefined, focus) }}
             disabled={loading}
@@ -125,13 +120,13 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
           </button>
           <button
             onClick={() => {
-              const pool = [...PRESET_TRAPS]
-              const pick: typeof PRESET_TRAPS = []
+              const pool = [...INTERROGATION_METHODS]
+              const pick: typeof INTERROGATION_METHODS = []
               while (pick.length < 2 && pool.length) {
                 pick.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0])
               }
-              setSelected(pick.map((p) => p.id))
-              generate(pick.map((p) => p.hint), focus)
+              setSelected(pick.map((item) => item.id))
+              generate(pick.map((item) => item.hint), focus)
             }}
             disabled={loading}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-primary/40 bg-primary/5 text-primary/90 text-xs transition-colors hover:border-primary/60 disabled:opacity-40"
@@ -139,49 +134,48 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
             <Shuffle className="w-3 h-3" />
             随机组合
           </button>
-          {PRESET_TRAPS.map((t) => (
+          {INTERROGATION_METHODS.map((method) => (
             <button
-              key={t.id}
+              key={method.id}
               onClick={() =>
                 setSelected((prev) =>
-                  prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                  prev.includes(method.id) ? prev.filter((id) => id !== method.id) : [...prev, method.id]
                 )
               }
               disabled={loading}
-              title={t.hint}
+              title={method.hint}
               className={cn(
                 'px-2.5 py-1 rounded-full border text-xs transition-colors disabled:opacity-40',
-                selected.includes(t.id)
+                selected.includes(method.id)
                   ? 'border-primary/60 bg-primary/10 text-primary'
                   : 'border-border bg-secondary text-muted-foreground hover:border-primary/40'
               )}
             >
-              {t.name}
+              {method.name}
             </button>
           ))}
         </div>
 
-        {/* Preferred body part(s) — optional specialization; none = no特化 */}
         <div className="px-4 pt-2.5 flex-shrink-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[11px] text-muted-foreground/80 mr-0.5">偏好部位</span>
-            {FOCUS_PARTS.map((p) => (
+            {FOCUS_PARTS.map((part) => (
               <button
-                key={p.id}
+                key={part.id}
                 onClick={() =>
                   setFocus((prev) =>
-                    prev.includes(p.id) ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                    prev.includes(part.id) ? prev.filter((id) => id !== part.id) : [...prev, part.id]
                   )
                 }
                 disabled={loading}
                 className={cn(
                   'px-2 py-0.5 rounded-full border text-[11px] transition-colors disabled:opacity-40',
-                  focus.includes(p.id)
+                  focus.includes(part.id)
                     ? 'border-rose-400/60 bg-rose-500/10 text-rose-300'
                     : 'border-border bg-secondary text-muted-foreground hover:border-rose-400/40'
                 )}
               >
-                {p.label}
+                {part.label}
               </button>
             ))}
             {focus.length > 0 && (
@@ -194,41 +188,39 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
               </button>
             )}
           </div>
-          <p className="mt-1 text-[10px] text-muted-foreground/60">不选则不做部位特化</p>
+          <p className="mt-1 text-[10px] text-muted-foreground/60">不选则不限部位</p>
         </div>
 
-        {/* Generate button for manually selected type(s) */}
         {selected.length > 0 && (
           <div className="px-4 pt-2 flex-shrink-0">
             <button
               onClick={() => generate(
                 selected
-                  .map((id) => PRESET_TRAPS.find((t) => t.id === id)?.hint)
-                  .filter((h): h is string => Boolean(h)),
+                  .map((id) => INTERROGATION_METHODS.find((method) => method.id === id)?.hint)
+                  .filter((hint): hint is string => Boolean(hint)),
                 focus
               )}
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-primary/90 text-primary-foreground text-xs font-bold transition-all hover:bg-primary disabled:opacity-40"
             >
               <Zap className="w-3.5 h-3.5" />
-              {selected.length >= 2 ? `融合生成（${selected.length} 种类型）` : '生成此陷阱'}
+              {selected.length >= 2 ? `融合生成（${selected.length} 种）` : '生成这一手'}
             </button>
           </div>
         )}
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {!loading && !result && !error && (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-muted-foreground">
               <Zap className="w-6 h-6 text-primary/50" />
-              <span className="text-sm">选择上方的陷阱类型，或点击「完全随机」开始生成</span>
+              <span className="text-sm">选一种拷问方式，或点「完全随机」</span>
             </div>
           )}
 
           {loading && result === '' && (
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              <span className="text-sm">正在生成随机陷阱…</span>
+              <span className="text-sm">正在想新的拷问方式…</span>
             </div>
           )}
 
@@ -254,7 +246,6 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
           )}
         </div>
 
-        {/* Actions */}
         {!loading && (result || error) && (
           <div className="px-4 py-3 border-t border-border flex gap-2 flex-shrink-0">
             <button
@@ -267,12 +258,10 @@ export function TrapGenerator({ character, settings, onConfirm, onClose }: TrapG
             {result && (
               <button
                 onClick={() => onConfirm(result)}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold glow-btn transition-all'
-                )}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold glow-btn transition-all"
               >
                 <Check className="w-3.5 h-3.5" />
-                确认使用此陷阱
+                用这一手
               </button>
             )}
           </div>

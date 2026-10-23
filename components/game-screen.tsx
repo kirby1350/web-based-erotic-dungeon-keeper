@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { Settings } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Character, AppSettings } from '@/lib/types'
-import { getSettings, saveCharacter } from '@/lib/storage'
-import type { IntruderFate } from '@/lib/keeper'
+import { getKeep, getSettings, saveCharacter } from '@/lib/storage'
+import { keeperPromptContext, sceneChrome, type IntruderFate } from '@/lib/keeper'
 import { CharacterCard } from '@/components/character-card'
 import { ChatPanel } from '@/components/chat-panel'
 import { ImagePanel } from '@/components/image-panel'
@@ -35,11 +36,16 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle }: Ga
       return next
     })
   }, [])
+  const chrome = sceneChrome(keeperPromptContext(getKeep()), character.floor ?? 1)
+  const training = chrome.mode === 'train'
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <header className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0">
-        <h1 className="text-base font-bold gold-text tracking-widest flex-shrink-0">地下城城主</h1>
+      <header className={cn('flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b backdrop-blur-sm flex-shrink-0', training ? 'border-rose-500/30 bg-rose-950/40' : 'border-border bg-card/80')}>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <h1 className="text-base font-bold gold-text tracking-widest">地下城城主</h1>
+          <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', training ? 'border-rose-400/40 text-rose-200 bg-rose-500/15' : 'border-amber-400/40 text-amber-200 bg-amber-500/10')}>{chrome.tab}</span>
+        </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           <FateActions character={character} disabled={busy} onSettle={(fate) => onSettle(character, fate)} />
           <button onClick={() => setShowSettings(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground">
@@ -50,7 +56,7 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle }: Ga
       <div className="flex md:hidden border-b border-border">
         {(['chat', 'image'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2.5 text-xs ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}>
-            {tab === 'chat' ? '调教' : `场景插图${pendingScene ? ' •' : ''}`}
+            {tab === 'chat' ? chrome.tab : `场景插图${pendingScene ? ' •' : ''}`}
           </button>
         ))}
       </div>

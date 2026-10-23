@@ -22,6 +22,16 @@ const encounterSchema = z.object({
 }).strict()
 const measurement = z.string().regex(/^(?:\d+(?:\.\d+)?|)$/).max(12)
 
+const PROGRAM_OWNED_STATS = ['maxHp', 'explorationProgress'] as const
+
+/** 程序自己维护的进度和上限。模型写进 STATS 时丢掉，避免整段校验失败。 */
+function withoutProgramOwnedStats(value: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!value) return null
+  const stats = { ...value }
+  for (const key of PROGRAM_OWNED_STATS) delete stats[key]
+  return stats
+}
+
 function statsSchema(character: Character) {
   const knownIds = new Set([...(character.statusEffects ?? []).map((effect) => effect.id), character.encounter?.id])
   const validId = (id: string) => knownIds.has(id) || /^[a-z][a-z0-9_-]*$/.test(id)
@@ -116,7 +126,7 @@ export function inspectReply(content: string, character: Character, result: Prog
   if (!narrative) errors.push('正文缺失')
   if (options.length !== 4 || new Set(options).size !== 4) errors.push('需要四个不同的行动选项')
   if (sceneResult.warning) warnings.push(sceneResult.warning)
-  const parsed = statsSchema(character).safeParse(extractMarkerJson(content, 'STATS'))
+  const parsed = statsSchema(character).safeParse(withoutProgramOwnedStats(extractMarkerJson(content, 'STATS')))
   let updates: Partial<Character> | null = null
   if (!parsed.success) {
     metadataErrors.push(...parsed.error.issues.map((issue) => `STATS.${issue.path.join('.') || '结构'}`))

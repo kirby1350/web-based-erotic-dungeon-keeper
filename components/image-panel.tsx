@@ -3,6 +3,8 @@
 import { useState, useCallback } from 'react'
 import { Image as ImageIcon, Loader2, RefreshCw, Wand2, ChevronDown, ChevronUp } from 'lucide-react'
 import { AppSettings, IMAGE_MODELS, IMAGE_STYLES, IMAGE_TAG_PRESETS, TENSORART_MODELS, Character, type ImagePromptFamily } from '@/lib/types'
+import { getKeep } from '@/lib/storage'
+import { keeperPromptContext, sceneChrome } from '@/lib/keeper'
 import { buildImagePrompt, DEFAULT_SCENE_PROMPT, resolveImagePromptFamily } from '@/lib/prompts'
 import { dzmmReady, dzmmDraw } from '@/lib/dzmm'
 
@@ -25,6 +27,7 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
   const [customPrompt, setCustomPrompt] = useState('')
   const [showPromptBox, setShowPromptBox] = useState(false)
   const [activeImage, setActiveImage] = useState<string | null>(null)
+  const training = sceneChrome(keeperPromptContext(getKeep()), character.floor ?? 1).mode === 'train'
 
   // PixAI polling
   const pollPixai = useCallback(async (taskId: string): Promise<string[]> => {
@@ -182,8 +185,8 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-center p-4">
             <ImageIcon className="w-10 h-10 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-sm">场景插图将在这里显示</p>
-            <p className="text-muted-foreground/60 text-xs">AI 将根据冒险剧情自动生成插图</p>
+            <p className="text-muted-foreground text-sm">{training ? '这一轮的画面会留在这里' : '这一层的画面会留在这里'}</p>
+            <p className="text-muted-foreground/60 text-xs">{training ? '按牢笼里这一手来出图' : '按她在廊道里的这一段来出图'}</p>
           </div>
         )}
 

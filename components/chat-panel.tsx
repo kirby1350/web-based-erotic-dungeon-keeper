@@ -5,13 +5,13 @@ import { Send, Loader2, BookOpen, Square, RotateCcw, Wrench, Zap, Sparkles, Shie
 import { Character, AppSettings, StatusEffect, Encounter, EXPLORE_GAIN, ENCOUNTER_CLEAR_GAIN, getFloorTheme } from '@/lib/types'
 import { statusForTrap, type ProgramTurnResult } from '@/lib/adventure-context'
 import { getKeep } from '@/lib/storage'
-import { defensesOnFloor, encounterId, keeperPromptContext } from '@/lib/keeper'
+import { defensesOnFloor, encounterId, keeperPromptContext, sceneChrome } from '@/lib/keeper'
 import { buildOpeningUserPrompt, startScreenCopy } from '@/lib/prompts'
 import { cn } from '@/lib/utils'
 import { cleanContent } from '@/lib/chat-protocol'
 import { MEMORY_CATEGORIES } from '@/lib/adventure-memory'
 import { useAdventureSession } from '@/hooks/use-adventure-session'
-import { TrapGenerator } from '@/components/trap-generator'
+import { InterrogationGenerator } from '@/components/trap-generator'
 import { StatusPicker } from '@/components/status-picker'
 
 function rollPlacedDefense(floor: number): Encounter | null {
@@ -41,7 +41,8 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
     pending, beginTurn, retryPending, discardPending, stop } = useAdventureSession({ character, settings, onRequestImage, onTurnCommit, onBusyChange })
   const [input, setInput] = useState('')
   const [showToolMenu, setShowToolMenu] = useState(false)
-  const [showTrapGenerator, setShowTrapGenerator] = useState(false)
+  const [showInterrogation, setShowInterrogation] = useState(false)
+  const chrome = sceneChrome(keeperPromptContext(getKeep()), character.floor ?? 1)
   const [showStatusPicker, setShowStatusPicker] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -160,9 +161,12 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
         </div>
         <button
           onClick={startAdventure}
-          className="px-8 py-3 rounded-lg bg-primary text-primary-foreground font-bold tracking-widest glow-btn text-sm"
+          className={cn(
+            'px-8 py-3 rounded-lg font-bold tracking-widest text-sm',
+            chrome.mode === 'train' ? 'bg-rose-700 text-white hover:bg-rose-600' : 'bg-primary text-primary-foreground glow-btn',
+          )}
         >
-          开始调教
+          {chrome.start}
         </button>
         {statsError && <p className="text-sm text-yellow-400" role="alert">{statsError}</p>}
       </div>
@@ -171,17 +175,21 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
 
   return (
     <div className="h-full flex flex-col">
-      {/* Trap Generator Modal */}
-      {showTrapGenerator && (
-        <TrapGenerator
+      <div className={cn('px-4 py-1.5 text-[11px] border-b', chrome.mode === 'train' ? 'border-rose-500/25 text-rose-200/85 bg-rose-950/40' : 'border-amber-500/20 text-amber-200/85 bg-amber-950/25')}>
+        {chrome.tab} · {chrome.placeLabel} · {chrome.placeDetail}
+      </div>
+      {/* Interrogation generator. Corridor traps stay in the workshop. */}
+      {showInterrogation && (
+        <InterrogationGenerator
           character={character}
           settings={settings}
+          place={chrome.mode === 'train' ? chrome.placeLabel : `地下城第 ${character.floor ?? 1} 层`}
           onConfirm={(text) => {
-            setShowTrapGenerator(false)
+            setShowInterrogation(false)
             setInput(text)
             textareaRef.current?.focus()
           }}
-          onClose={() => setShowTrapGenerator(false)}
+          onClose={() => setShowInterrogation(false)}
         />
       )}
       {/* Status Effect Picker Modal */}
@@ -366,7 +374,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
               'border-pink-500/40 text-pink-300 hover:bg-pink-500/10',
               'border-red-500/40 text-red-300 hover:bg-red-500/10',
             ]
-            const labels = character.encounter ? ['抵抗·减轻', '抵抗·坚守', '享受·顺从', '堕落·求欢'] : ['行动一', '行动二', '行动三', '行动四']
+            const labels = chrome.optionLabels
             return (
               <button
                 key={i}
@@ -408,12 +416,12 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
                 <button
                   onClick={() => {
                     setShowToolMenu(false)
-                    setShowTrapGenerator(true)
+                    setShowInterrogation(true)
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left hover:bg-secondary transition-colors"
                 >
                   <Zap className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  <span>随机陷阱生成器</span>
+                  <span>{chrome.toolLabel}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -433,7 +441,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="下达对她的命令..."
+            placeholder={chrome.placeholder}
             rows={2}
             disabled={loading || summarising || !!pending}
             className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors resize-none disabled:opacity-50"

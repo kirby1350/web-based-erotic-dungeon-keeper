@@ -14,6 +14,7 @@ interface KeepHallProps {
   onOpenTraps: () => void
   onOpenMonsters: () => void
   onOpenCollection: () => void
+  onOpenArchive: () => void
   onOpenDungeon: () => void
   onOpenSettings: () => void
 }
@@ -26,7 +27,7 @@ const UPGRADES: { key: UpgradeKey; label: string; max: number; hint: string }[] 
   { key: 'intruderSlots', label: '在狱格子', max: 3, hint: '同时留下的闯入者' },
 ]
 
-export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTraps, onOpenMonsters, onOpenCollection, onOpenDungeon, onOpenSettings }: KeepHallProps) {
+export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTraps, onOpenMonsters, onOpenCollection, onOpenArchive, onOpenDungeon, onOpenSettings }: KeepHallProps) {
   const placedTraps = keep.traps.filter((trap) => trap.placed).length
   const placedMonsters = keep.monsters.filter((monster) => monster.placed).length
   const full = keep.roster.length >= keep.progress.intruderSlots
@@ -127,7 +128,7 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
           </p>
         </button>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <button type="button" onClick={onOpenTraps} className="dungeon-border rounded-xl bg-card p-4 text-left">
             <p className="text-xs text-muted-foreground">陷阱工房</p>
             <p className="text-lg font-bold mt-1">已布置 {placedTraps}/{keep.progress.trapSlots}</p>
@@ -141,7 +142,12 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
           <button type="button" onClick={onOpenCollection} className="dungeon-border rounded-xl bg-card p-4 text-left">
             <p className="text-xs text-muted-foreground">收藏室</p>
             <p className="text-lg font-bold mt-1">{keep.collection.length} 人</p>
-            <p className="text-xs text-muted-foreground mt-2">带回迷宫或调教室会占一个在狱格子，并新开一场。</p>
+            <p className="text-xs text-muted-foreground mt-2">牢笼里可以进去调教，或只在外面观赏。</p>
+          </button>
+          <button type="button" onClick={onOpenArchive} className="dungeon-border rounded-xl bg-card p-4 text-left">
+            <p className="text-xs text-muted-foreground">档案册</p>
+            <p className="text-lg font-bold mt-1">翻看资料</p>
+            <p className="text-xs text-muted-foreground mt-2">进过这座狱的人，和还没来的角色库。这里不召人。</p>
           </button>
         </div>
       </div>

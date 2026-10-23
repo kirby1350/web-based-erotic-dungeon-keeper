@@ -13,7 +13,7 @@ export interface AftermathPopupState {
 
 function plainLine(raw: string): string {
   const cut = raw.search(/\[(OPTIONS|SCENE|STATS|DESC)/i)
-  return (cut < 0 ? raw : raw.slice(0, cut)).replace(/\s+/g, ' ').trim().slice(0, 400)
+  return (cut < 0 ? raw : raw.slice(0, cut)).replace(/\s+/g, ' ').trim().slice(0, 800)
 }
 
 /** 处置之后向模型要一小段对白，失败时也留一句，避免按钮卡住。 */

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Character, type AppSettings, type GameSession } from '@/lib/types'
 import { getCharacter, getKeep, getSession, getSettings, saveGame, saveKeep } from '@/lib/storage'
 import { dzmmReady } from '@/lib/dzmm'
-import { adoptMonster, adoptTrap, appendRecall, buildCaptiveRecall, FATE_ESSENCE, FATE_LABEL, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
+import { adoptMonster, adoptTrap, buildCaptiveRecall, cageKind, FATE_ESSENCE, FATE_LABEL, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, trainingSessionSummary, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
 import { buildAftermathPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
@@ -13,10 +13,11 @@ import { KeepHall } from '@/components/keep-hall'
 import { IntruderGate, type BeginIntrusion } from '@/components/intruder-gate'
 import { KeeperWorkshop } from '@/components/keeper-workshop'
 import { KeeperCollection } from '@/components/keeper-collection'
+import { KeeperArchive } from '@/components/keeper-archive'
 import { DungeonEditor } from '@/components/dungeon-editor'
 import { SettingsPanel } from '@/components/settings-panel'
 
-type Screen = 'hall' | 'gate' | 'traps' | 'monsters' | 'collection' | 'dungeon' | 'scene'
+type Screen = 'hall' | 'gate' | 'traps' | 'monsters' | 'collection' | 'archive' | 'dungeon' | 'scene'
 const CONVERSATION_KEY = 'dungeon_conversation_id'
 
 function parkActive(keep: KeeperSave): KeeperSave {
@@ -125,8 +126,10 @@ export default function HomePage() {
       desire: current.desire,
       character: current,
       savedAt: Date.now(),
-      recall: appendRecall(remembered.recall, line),
+      recall: remembered.recall,
       memory: remembered.memory,
+      cage: entry.brief.cage ?? cageKind(undefined, fate),
+      ledger: line.trim(),
     }
     const removingActive = next.activeId === id
     next = grantEssence({
@@ -199,7 +202,13 @@ export default function HomePage() {
     let next = parkActive(getKeep())
     if (next.roster.length >= next.progress.intruderSlots) return
     if (!next.collection.some((item) => item.id === record.id)) return
-    const session: GameSession = { messages: [], summary: [line.trim(), record.recall || ''].filter(Boolean).join('\n').slice(0, 1200), memory: record.memory }
+    const session: GameSession = {
+      messages: [],
+      summary: planned.brief.return === 'train' && planned.brief.cage
+        ? trainingSessionSummary(record, planned.brief.cage)
+        : [line.trim(), record.recall || ''].filter(Boolean).join('\n').slice(0, 1200),
+      memory: record.memory,
+    }
     const entry: RosterEntry = {
       id: crypto.randomUUID(),
       station: stationFor(planned.brief),
@@ -221,7 +230,7 @@ export default function HomePage() {
     openScene(planned.character)
   }
 
-  const updateCaptive = (record: CaptiveRecord, patch: Pick<CaptiveRecord, 'fate' | 'character' | 'recall'>) => {
+  const updateCaptive = (record: CaptiveRecord, patch: Partial<Pick<CaptiveRecord, 'fate' | 'character' | 'recall' | 'cage' | 'ledger'>>) => {
     const next = getKeep()
     if (!next.collection.some((item) => item.id === record.id)) return
     commitKeep({
@@ -254,6 +263,7 @@ export default function HomePage() {
           onOpenTraps={() => setScreen('traps')}
           onOpenMonsters={() => setScreen('monsters')}
           onOpenCollection={() => setScreen('collection')}
+          onOpenArchive={() => setScreen('archive')}
           onOpenDungeon={() => setScreen('dungeon')}
           onOpenSettings={() => setShowSettings(true)}
         />
@@ -264,6 +274,7 @@ export default function HomePage() {
       {screen === 'collection' && (
         <KeeperCollection keep={keep} settings={settings} blocked={keep.roster.length >= keep.progress.intruderSlots} onBringBack={bringBack} onUpdate={updateCaptive} onBack={() => setScreen('hall')} />
       )}
+      {screen === 'archive' && <KeeperArchive keep={keep} onBack={() => setScreen('hall')} />}
       {screen === 'dungeon' && <DungeonEditor keep={keep} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'scene' && character && (
         <GameScreen

@@ -1,5 +1,6 @@
 import { AppSettings, GameSession, Character, IMAGE_STYLES, IMAGE_MODELS, IMAGE_TAG_PRESETS, PROSE_STYLE_LABELS, TENSORART_MODELS } from '@/lib/types'
 import { readMemory } from '@/lib/adventure-memory'
+import { readRecentBank } from '@/lib/prose-bank'
 import { emptyKeep, normalizeKeep, type KeeperSave } from '@/lib/keeper'
 
 const SETTINGS_KEY = 'dungeon_settings'
@@ -14,7 +15,7 @@ function normalizeSession(value: unknown): GameSession | null {
   if (!value || typeof value !== 'object' || !('messages' in value) || !Array.isArray(value.messages)) return null
   const session = value as GameSession
   return { ...session, messages: session.messages.map((message, index) => ({ ...message, turnId: message.turnId ?? `legacy_${Math.floor(index / 2) + 1}` })),
-    summary: typeof session.summary === 'string' ? session.summary : '', memory: readMemory(session.memory), turns: session.turns ?? [], pendingTurn: session.pendingTurn ?? null }
+    summary: typeof session.summary === 'string' ? session.summary : '', memory: readMemory(session.memory), turns: session.turns ?? [], pendingTurn: session.pendingTurn ?? null, recentBank: readRecentBank(session.recentBank) }
 }
 
 function readGame(): StoredGame {

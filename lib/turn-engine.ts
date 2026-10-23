@@ -2,7 +2,7 @@ import type { Character, ChatMessage, GameSession } from '@/lib/types'
 import { resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { inspectReply, serializeReply } from '@/lib/chat-protocol'
 
-export const PROMPT_VERSION = 'keeper-v1'
+export const PROMPT_VERSION = 'keeper-v4'
 export interface PendingTurn {
   id: string
   input: string

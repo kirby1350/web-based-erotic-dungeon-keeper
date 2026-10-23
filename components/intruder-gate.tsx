@@ -103,8 +103,8 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
   const catalogMonsters = PRESET_MONSTERS.filter((item) => !keep.monsters.some((monster) => monster.id === item.id))
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-3xl mx-auto space-y-4">
+    <div className="min-h-screen p-4 lg:p-8">
+      <div className="max-w-3xl lg:max-w-5xl mx-auto space-y-4">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
         <div>
           <p className="text-xs tracking-widest text-primary">有人闯进来了</p>
@@ -112,9 +112,9 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
           <p className="text-sm text-muted-foreground mt-1">{race?.label} · {primary.source === 'library' ? '角色库' : '随机生成'} · 胸 {preset.measurements.bust} / 腰 {preset.measurements.waist} / 臀 {preset.measurements.hip}</p>
         </div>
 
-        <article className="dungeon-border rounded-xl bg-card p-4 space-y-4">
+        <article className="dungeon-border rounded-xl bg-card p-4 lg:p-6 space-y-4">
           <div className="flex gap-4">
-            <div className="w-24 h-32 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
+            <div className="w-24 h-32 lg:w-40 lg:h-52 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
               {preset.avatarUrl
                 ? <img src={preset.avatarUrl} alt={preset.name} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-primary">{preset.name[0]}</div>}
@@ -136,7 +136,7 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
         )}
 
         {step === 'choose' && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <Action label="亲自上手" detail="她自己走进来，然后遇上你。" onClick={() => begin('personal')} />
             <Action label="投入陷阱" detail="她自己走进来，很快踩进你挑的那一件。" onClick={() => setStep('trap')} />
             <Action label="放出魔物" detail="她自己走进来，迎面撞上你放出的那一只。" onClick={() => setStep('monster')} />

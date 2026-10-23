@@ -40,8 +40,8 @@ export function DungeonEditor({ keep, onKeep, onBack }: DungeonEditorProps) {
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-3xl mx-auto space-y-5">
+    <div className="min-h-screen p-4 lg:p-8">
+      <div className="max-w-3xl lg:max-w-5xl mx-auto space-y-5">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
         <div>
           <h1 className="text-3xl font-bold gold-text">布置地城</h1>

@@ -13,6 +13,9 @@ import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROM
 import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
 import { floorSynergies, synergyBonus } from '@/lib/synergy'
 import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords } from '@/lib/prose-bank'
+import { applyTermCommands, dkTerms, dkTermsLine, tickTerms } from '@/lib/terms-dk'
+import { termsChange } from '@/lib/terms'
+import { toast } from 'sonner'
 import { completeTurn, pendingMessages, PROMPT_VERSION, type PendingTurn } from '@/lib/turn-engine'
 
 interface SessionOptions {
@@ -117,6 +120,8 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       // A validated response can be saved again after storage recovery without another model call.
       checkpoint('ready', content, repaired)
       const completed = completeTurn(sessionRef.current, pending, content, repaired)
+      completed.character = tickTerms(completed.character)
+      const changed = termsChange(dkTerms(pending.before), dkTerms(completed.character), completed.character.name)
       const savedSession = settings.proseStyle === 'dense'
         ? { ...completed.session, recentBank: rememberBankWords(sessionRef.current.recentBank, content) }
         : completed.session
@@ -136,6 +141,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
         setDraft('')
         setStatsError(completed.warnings.join('；'))
         onTurnCommit(completed.character)
+        if (changed) toast(`她改口了`, { description: changed })
         try { onRequestImage(withQualityPrefix(inspection.scene)) } catch { setStatsError('回合已保存，插图请求失败') }
       }
     } catch (error) {
@@ -154,7 +160,10 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
 
   const beginTurn = useCallback((input: string, result: ProgramTurnResult | null = null) => {
     if (runningRef.current || summaryRunningRef.current || sessionRef.current.pendingTurn) return
-    const before = structuredClone(characterRef.current)
+    const commanded = applyTermCommands(structuredClone(characterRef.current), input)
+    const before = commanded.character
+    if (commanded.found) toast('她记住了新的叫法', { description: '可以在角色档案的「称呼」卡里撤销' })
+    const termsNote = `\n\n${dkTermsLine(resolveTurnCharacter(before, result))}`
     const current = resolveTurnCharacter(before, result)
     const saved = sessionRef.current
     const dense = settings.proseStyle === 'dense'
@@ -164,7 +173,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       requestMessages: [
         { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep())) + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
         ...saved.messages.map((message) => ({ role: message.role, content: message.content })),
-        { role: 'user', content: bank ? `${input}${denseTurnNote(bank.stepIndex)}` : input },
+        { role: 'user', content: (bank ? `${input}${denseTurnNote(bank.stepIndex)}` : input) + termsNote },
       ],
     }
     try {

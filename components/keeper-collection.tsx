@@ -3,11 +3,14 @@
 import { useState } from 'react'
 import { RACE_INFO, type AppSettings } from '@/lib/types'
 import { CAGES, FATE_LABEL, appendRecall, cageKind, collectionActions, collectionNeedsSlot, pickDiscardScene, planReturn, stampBrand, type CageKind, type CaptiveRecord, type CollectionAction, type KeeperSave, type KeeperTrap } from '@/lib/keeper'
+import { CharacterProfile, captiveHistory } from '@/components/character-profile'
+import { dkTermsLine } from '@/lib/terms-dk'
 import { buildAftermathPrompt, buildWatchPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
 
 interface KeeperCollectionProps {
+  cheat?: boolean
   keep: KeeperSave
   settings: AppSettings
   blocked: boolean
@@ -16,9 +19,11 @@ interface KeeperCollectionProps {
   onBack: () => void
 }
 
-export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdate, onBack }: KeeperCollectionProps) {
+export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdate, onBack, cheat }: KeeperCollectionProps) {
   const aftermath = useAftermath(settings)
   const [aimId, setAimId] = useState<string | null>(null)
+  const [profileId, setProfileId] = useState<string | null>(null)
+  const profileRecord = keep.collection.find((r) => r.id === profileId)
   const placedTraps = keep.traps.filter((trap) => trap.placed)
   const launch = (record: CaptiveRecord, action: CollectionAction, trap?: KeeperTrap) => {
     setAimId(null)
@@ -38,6 +43,7 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
         desire: record.desire,
         recall: record.recall,
         longer: Boolean(scene),
+        terms: dkTermsLine({ ...record.character, pleasure: record.pleasure }),
       }),
       onConfirm: (text) => {
         if (action.effect === 'release') {
@@ -84,6 +90,7 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
         desire: record.desire,
         brands,
         ledger: record.ledger,
+        terms: dkTermsLine({ ...record.character, pleasure: record.pleasure }),
       }),
       onConfirm: (text) => onUpdate(record, { cage, ledger: text }),
     })
@@ -96,6 +103,9 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
   }
   return (
     <div className="min-h-screen p-4 lg:p-8">
+      {profileRecord && <CharacterProfile person={profileRecord.character} cheat={cheat} history={captiveHistory(profileRecord)}
+        status={`${FATE_LABEL[profileRecord.fate]}${profileRecord.cage ? ` · ${CAGES[profileRecord.cage].label}` : ''}`}
+        onChange={(next) => onUpdate(profileRecord, { character: next })} onClose={() => setProfileId(null)} />}
       {aftermath.popup && <AftermathPopup popup={aftermath.popup} onConfirm={aftermath.confirm} onDismiss={aftermath.dismiss} />}
       <div className="max-w-3xl lg:max-w-6xl mx-auto space-y-4">
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground">回到城主厅</button>
@@ -114,6 +124,7 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h2 className="font-bold truncate">{record.name}</h2>
+                  <button type="button" onClick={() => setProfileId(record.id)} className="text-[11px] text-primary" data-testid="open-profile">档案</button>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">{FATE_LABEL[record.fate]}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{RACE_INFO[record.race]?.label ?? record.race} · 快感 {record.pleasure} · 欲望 {record.desire}{record.cage ? ` · ${CAGES[record.cage].label}` : ''}</p>

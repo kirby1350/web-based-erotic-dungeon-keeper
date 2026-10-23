@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { CHARACTER_PRESETS, RACE_INFO, type Character } from '@/lib/types'
+import { CHARACTER_PRESETS, RACE_INFO } from '@/lib/types'
 import { CAGES, FATE_LABEL, type CaptiveRecord, type KeeperSave, type RosterEntry } from '@/lib/keeper'
-import { IntruderDossier } from '@/components/intruder-dossier'
+import { CharacterProfile, captiveHistory, sessionHistory } from '@/components/character-profile'
 
 interface KeeperArchiveProps {
   keep: KeeperSave
   onBack: () => void
+  onKeep?: (next: KeeperSave) => void
+  cheat?: boolean
 }
 
 type OpenCard =
@@ -25,20 +27,7 @@ function Portrait({ name, url, className }: { name: string; url?: string | null;
   )
 }
 
-function bodyLine(character: Character): string {
-  const parts = character.bodyDevelopment
-  if (!parts) return ''
-  const labels = [
-    ['breast', '胸'],
-    ['clitoris', '阴蒂'],
-    ['urethra', '尿道'],
-    ['vagina', '阴道'],
-    ['anus', '肛门'],
-  ] as const
-  return labels.map(([key, label]) => `${label} ${parts[key] ?? 0}`).join(' · ')
-}
-
-export function KeeperArchive({ keep, onBack }: KeeperArchiveProps) {
+export function KeeperArchive({ keep, onBack, onKeep, cheat }: KeeperArchiveProps) {
   const [open, setOpen] = useState<OpenCard | null>(null)
   const seen = new Set([...keep.roster.map((entry) => entry.character.name), ...keep.collection.map((record) => record.name)])
   const waiting = CHARACTER_PRESETS.filter((preset) => !seen.has(preset.name))
@@ -55,47 +44,27 @@ export function KeeperArchive({ keep, onBack }: KeeperArchiveProps) {
         </div>
 
         {open && person && (
-          <article className="dungeon-border rounded-xl bg-card p-4 lg:p-6 space-y-4">
-            <button type="button" onClick={() => setOpen(null)} className="text-xs text-muted-foreground">返回相册</button>
-            <div className="flex gap-4">
-              <Portrait name={person.name} url={'avatarUrl' in person ? person.avatarUrl : undefined} className="w-28 h-40 rounded-lg flex-shrink-0" />
-              <div className="min-w-0">
-                <h2 className="text-2xl font-bold gold-text">{person.name}</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {RACE_INFO[person.race]?.label} · 胸 {person.measurements.bust} / 腰 {person.measurements.waist} / 臀 {person.measurements.hip}
-                </p>
-                {open.kind === 'roster' && <p className="text-xs text-muted-foreground mt-2">{open.entry.station} · 快感 {open.entry.character.pleasure} · 欲望 {open.entry.character.desire}</p>}
-                {open.kind === 'captive' && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {FATE_LABEL[open.record.fate]}{open.record.cage ? ` · ${CAGES[open.record.cage].label}` : ''} · 快感 {open.record.pleasure} · 欲望 {open.record.desire}
-                  </p>
-                )}
-                {open.kind === 'library' && <p className="text-xs text-muted-foreground mt-2">还没进过这座狱</p>}
-                {person && 'hp' in person && <p className="text-xs text-muted-foreground mt-2">{bodyLine(person)}</p>}
-              </div>
-            </div>
-            <IntruderDossier person={person} hideCollapse={open.kind === 'library'} />
-            {open.kind !== 'library' && person && 'brands' in person && person.brands?.length ? (
-              <section>
-                <h2 className="text-[11px] tracking-widest text-muted-foreground mb-1">烙印</h2>
-                <p className="text-sm leading-relaxed">{person.brands.join('；')}</p>
-              </section>
-            ) : null}
-            {open.kind === 'captive' && (
-              <section>
-                <h2 className="text-[11px] tracking-widest text-muted-foreground mb-1">牢笼记录</h2>
-                {open.record.ledger
-                  ? <p className="text-sm leading-relaxed whitespace-pre-line">{open.record.ledger}</p>
-                  : <p className="text-sm text-muted-foreground leading-relaxed">还没按牢笼重写。到收藏室点外面观赏，会生成一段现在的记录。</p>}
-              </section>
-            )}
-            {open.kind === 'roster' && open.entry.session?.summary?.trim() && (
-              <section>
-                <h2 className="text-[11px] tracking-widest text-muted-foreground mb-1">这场进行中</h2>
-                <p className="text-sm leading-relaxed whitespace-pre-line">{open.entry.session.summary}</p>
-              </section>
-            )}
-          </article>
+          <CharacterProfile
+            person={person}
+            hideCollapse={open.kind === 'library'}
+            cheat={cheat}
+            status={open.kind === 'roster' ? `在狱 · ${open.entry.station} · 快感 ${open.entry.character.pleasure} · 欲望 ${open.entry.character.desire}`
+              : open.kind === 'captive' ? `${FATE_LABEL[open.record.fate]}${open.record.cage ? ` · ${CAGES[open.record.cage].label}` : ''} · 快感 ${open.record.pleasure} · 欲望 ${open.record.desire}`
+              : '还没进过这座狱'}
+            history={open.kind === 'roster' ? sessionHistory(open.entry.session) : open.kind === 'captive' ? captiveHistory(open.record) : []}
+            onChange={open.kind === 'library' || !onKeep ? undefined : (next) => {
+              if (open.kind === 'roster') {
+                const entry = { ...open.entry, character: next }
+                onKeep({ ...keep, roster: keep.roster.map((e) => e.id === entry.id ? entry : e) })
+                setOpen({ kind: 'roster', entry })
+              } else if (open.kind === 'captive') {
+                const record = { ...open.record, character: next }
+                onKeep({ ...keep, collection: keep.collection.map((r) => r.id === record.id ? record : r) })
+                setOpen({ kind: 'captive', record })
+              }
+            }}
+            onClose={() => setOpen(null)}
+          />
         )}
 
         <section className="space-y-3">

@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/next'
 import '@fontsource-variable/cinzel'
 import '@fontsource-variable/noto-serif-sc'
 import './globals.css'
+import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
   title: '地下城城主',
@@ -21,6 +22,7 @@ export default function RootLayout({
         <div className="app-column relative mx-auto min-h-screen w-full max-w-[480px] md:max-w-3xl lg:max-w-none overflow-x-hidden border-x lg:border-x-0 lg:shadow-none border-border/60 bg-background shadow-[0_0_60px_rgba(0,0,0,0.8)]">
           {children}
         </div>
+        <Toaster theme="dark" position="top-center" richColors />
         <Analytics />
       </body>
     </html>

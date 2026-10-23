@@ -1,10 +1,11 @@
 ﻿'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings, IdCard } from 'lucide-react'
+import { CharacterProfile, sessionHistory } from '@/components/character-profile'
 import { cn } from '@/lib/utils'
 import { Character, AppSettings } from '@/lib/types'
-import { getKeep, getSettings, saveCharacter } from '@/lib/storage'
+import { getKeep, getSession, getSettings, saveCharacter } from '@/lib/storage'
 import { keeperPromptContext, sceneChrome, type IntruderFate } from '@/lib/keeper'
 import { CharacterCard } from '@/components/character-card'
 import { ChatPanel } from '@/components/chat-panel'
@@ -28,6 +29,7 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
   const [pendingScene, setPendingScene] = useState<string | undefined>()
   const [activeTab, setActiveTab] = useState<'chat' | 'image'>('chat')
   const [busy, setBusy] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const actions = useRef<ExploreActions>({ explore: () => {}, advanceFloor: () => {} })
   const collapseAsked = useRef(false)
   const settleRef = useRef(onSettle)
@@ -58,6 +60,9 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           <FateActions character={character} disabled={busy} onSettle={(fate) => onSettle(character, fate)} />
+          <button onClick={() => setShowProfile(true)} data-testid="open-profile" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground">
+            <IdCard className="w-3.5 h-3.5" />档案
+          </button>
           <button onClick={() => setShowSettings(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-secondary text-xs text-muted-foreground">
             <Settings className="w-3.5 h-3.5" />设置
           </button>
@@ -87,6 +92,8 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
           <ImagePanel settings={settings} character={character} pendingScene={pendingScene} onSceneHandled={handleSceneHandled} />
         </section>
       </main>
+      {showProfile && <CharacterProfile person={character} cheat={cheat || settings.cheatMode} status={`在狱 · 第 ${character.floor ?? 1} 层 · 快感 ${character.pleasure} · 欲望 ${character.desire}`}
+        history={sessionHistory(getSession())} onChange={busy ? undefined : (next) => handleCharacterUpdate({ terms: next.terms, turnCount: next.turnCount })} onClose={() => setShowProfile(false)} />}
       {showSettings && <SettingsPanel settings={settings} onSettingsChange={setSettings} onClose={() => setShowSettings(false)} canImport={!busy} />}
     </div>
   )

@@ -1,5 +1,5 @@
 // 原作角色闯入者（第二批）。设定、自称、称呼、口癖按原作写，不改人设。
-// 都是成年角色。头像文件还没画，avatarUrl 先留空，门口用名字首字。
+// 都是成年角色。头像在 public/avatars/<slug>.png。
 import type { CharacterPreset } from '@/lib/types'
 
 const speech = (self: string, call: string, tone: string, lines: string) =>
@@ -8,6 +8,7 @@ const speech = (self: string, call: string, tone: string, lines: string) =>
 export const CANON_INTRUDERS: CharacterPreset[] = [
   {
     name: '大凤', race: 'human',
+    avatarUrl: '/avatars/taihou.png',
     measurements: { bust: '98', waist: '58', hip: '94' },
     danbooruTags: 'taihou_(azur_lane), azur_lane, 1girl, long hair, black hair, red eyes, huge breasts, red kimono, off shoulder, hair ornament, mole under eye',
     backstory: '重樱的装甲空母。她听说她的指挥官在这座地下城里失踪，独自闯了进来，要把人带回去。',
@@ -21,6 +22,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
   },
   {
     name: '爱宕', race: 'human',
+    avatarUrl: '/avatars/atago.png',
     measurements: { bust: '102', waist: '60', hip: '96' },
     danbooruTags: 'atago_(azur_lane), azur_lane, 1girl, long hair, black hair, brown eyes, animal ears, huge breasts, white uniform, military uniform, gloves, thighhighs, smile',
     backstory: '重樱的重巡洋舰，高雄的妹妹。她说是来「探险」的，其实是来看看哪里有可爱的弟弟。',
@@ -34,6 +36,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
   },
   {
     name: '高雄', race: 'human',
+    avatarUrl: '/avatars/takao.png',
     measurements: { bust: '96', waist: '60', hip: '94' },
     danbooruTags: 'takao_(azur_lane), azur_lane, 1girl, long hair, black hair, ponytail, brown eyes, large breasts, white uniform, military uniform, katana, thighhighs',
     backstory: '重樱的重巡洋舰，爱宕的姐姐。妹妹走进了这座地下城，她提刀追来。',
@@ -47,6 +50,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
   },
   {
     name: '光辉', race: 'human',
+    avatarUrl: '/avatars/illustrious.png',
     measurements: { bust: '100', waist: '58', hip: '95' },
     danbooruTags: 'illustrious_(azur_lane), azur_lane, 1girl, long hair, white hair, blue eyes, huge breasts, white dress, cleavage, tiara, mole under eye, gloves',
     backstory: '皇家的装甲空母。她以为这里是举办茶会的古堡，提着裙摆优雅地走了进来。',
@@ -60,6 +64,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
   },
   {
     name: '贝尔法斯特', race: 'human',
+    avatarUrl: '/avatars/belfast.png',
     measurements: { bust: '97', waist: '59', hip: '94' },
     danbooruTags: 'belfast_(azur_lane), azur_lane, 1girl, long hair, silver hair, blue eyes, large breasts, maid, maid headdress, cleavage, chain, gloves, white thighhighs',
     backstory: '皇家的轻巡洋舰，女仆长。主人的委托把她带到了这座地下城门前，她要完成任务再回去侍奉。',
@@ -73,6 +78,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
   },
   {
     name: '赤城', race: 'fox',
+    avatarUrl: '/avatars/akagi.png',
     measurements: { bust: '99', waist: '60', hip: '96' },
     danbooruTags: 'akagi_(azur_lane), azur_lane, 1girl, long hair, brown hair, red eyes, fox ears, multiple tails, fox tail, huge breasts, red kimono, cleavage, black thighhighs',
     backstory: '重樱的航空母舰。她觉得这座地下城藏着把指挥官从她身边夺走的东西，冷笑着闯了进来。',
@@ -86,6 +92,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
   },
   {
     name: '天城', race: 'fox',
+    avatarUrl: '/avatars/amagi.png',
     measurements: { bust: '96', waist: '60', hip: '95' },
     danbooruTags: 'amagi_(azur_lane), azur_lane, 1girl, long hair, brown hair, purple eyes, fox ears, multiple tails, large breasts, kimono, hair ornament, sleeves past wrists',
     backstory: '重樱的战列巡洋舰，赤城的姐姐，身体病弱的军师。她察觉到这座地下城的异动，带着病体亲自前来查看。',
@@ -99,6 +106,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
   },
   {
     name: '卡塔莉娜', race: 'human',
+    avatarUrl: '/avatars/katalina.png',
     measurements: { bust: '92', waist: '59', hip: '92' },
     danbooruTags: 'katalina_(granblue_fantasy), granblue_fantasy, 1girl, long hair, brown hair, blue eyes, large breasts, armor, breastplate, cape, sword, thighhighs',
     backstory: '前帝国骑士。她追着一只走失的猫闯进了这座地下城，剑还握在手里。',
@@ -112,6 +120,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
   },
   {
     name: '三浦梓', race: 'human',
+    avatarUrl: '/avatars/miura-azusa.png',
     measurements: { bust: '94', waist: '59', hip: '90' },
     danbooruTags: 'miura_azusa, idolmaster, 1girl, short hair, blue hair, red eyes, large breasts, sweater, long skirt, smile',
     backstory: '二十一岁的偶像。她只是想去事务所，转了几个弯就迷路走进了这座地下城，还以为是新的摄影棚。',

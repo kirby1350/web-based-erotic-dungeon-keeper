@@ -1,5 +1,6 @@
 'use client'
 
+import { ReplyMarkdown } from '@/components/reply-markdown'
 import type { AftermathPopupState } from '@/hooks/use-aftermath'
 
 interface AftermathPopupProps {
@@ -16,9 +17,9 @@ export function AftermathPopup({ popup, onConfirm, onDismiss, kicker = '处置�
       <div role="dialog" aria-modal="true" aria-label={popup.title} className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
         <p className="text-xs tracking-widest text-primary">{kicker}</p>
         <h2 className="text-lg font-bold mt-1">{popup.title}</h2>
-        <p className="mt-3 text-sm leading-relaxed min-h-16 whitespace-pre-wrap">
-          {popup.text || (popup.pending ? '正在写这一下发生了什么…' : '')}
-        </p>
+        <div className="mt-3 text-sm leading-relaxed min-h-16" data-testid="popup-text">
+          {popup.text ? <ReplyMarkdown text={popup.text} /> : <p>{popup.pending ? '正在写这一下发生了什么…' : ''}</p>}
+        </div>
         <div className="mt-4 flex justify-end gap-2">
           {!popup.locked && <button type="button" onClick={onDismiss} className="px-3 py-1.5 text-xs text-muted-foreground">{dismissLabel}</button>}
           <button type="button" onClick={onConfirm} disabled={popup.pending} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold disabled:opacity-40">

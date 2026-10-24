@@ -169,7 +169,7 @@ test('party: two intruders start together, split popup, switching focus', async 
     }
     const snap = { ...character, hp: 100, maxHp: 100, pleasure: 20, desire: 10, explorationProgress: 0 }
     const partner = sys.includes('双人场面') ? '\n[PARTNER:{"name":"爱宕","hp":95,"pleasure":33,"desire":12}]' : ''
-    await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse(reply(snap, '她踏进潮湿的石廊，爱宕跟在后面红着脸别开眼。') + partner) })
+    await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse(reply(snap, '她踏进潮湿的石廊。\n\n*爱宕跟在后面红着脸别开眼。*\n\n“大凤，别看我啦……”') + partner) })
   })
   await page.goto('/')
   await page.getByText('迎接入侵者').click()
@@ -186,6 +186,8 @@ test('party: two intruders start together, split popup, switching focus', async 
   const bar = page.getByTestId('party-bar')
   await expect(bar).toContainText('两人同行')
   await expect(bar).toContainText('快感 33')
+  await expect(page.locator('em', { hasText: '爱宕跟在后面红着脸别开眼' }).first()).toBeVisible()
+  await expect(page.getByText('[PARTNER')).toHaveCount(0)
   const k = await keep(page)
   expect(k.roster).toHaveLength(1)
   expect(k.roster[0].character.partner?.name ?? (await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_game_v2')).character.partner.name))).toBe('爱宕')
@@ -205,6 +207,7 @@ test('party: two intruders start together, split popup, switching focus', async 
   await bar.getByTestId('party-split').click()
   const dialog = page.getByRole('dialog', { name: '把大凤和爱宕拆开' })
   await expect(dialog).toContainText('扯向两条岔路')
+  await expect(dialog.getByTestId('popup-text').locator('p').first()).toBeVisible()
   await dialog.getByRole('button', { name: '跟着大凤' }).click()
   await expect(bar).toContainText('已拆开')
   await expect(bar).toContainText('爱宕排在第二')

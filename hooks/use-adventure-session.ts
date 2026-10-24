@@ -13,7 +13,7 @@ import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROM
 import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
 import { checkReply, guardDisabled, pickBetter, retryNote, withRetryNote } from '@/lib/prose-guard'
 import { partyPromptBlock, together } from '@/lib/party'
-import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
+import { denseLength, denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
 import { applyTermCommands, dkTerms, dkTermsLine, tickTerms } from '@/lib/terms-dk'
 import { termsChange } from '@/lib/terms'
 import { toast } from 'sonner'
@@ -192,13 +192,15 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     const before = commanded.character
     if (commanded.found) toast('她记住了新的叫法', { description: '可以在角色档案的「称呼」卡里撤销' })
     const duo = together(before) && before.partner ? before.partner : null
-    const termsNote = `\n\n${dkTermsLine(resolveTurnCharacter(before, result))}` + (duo
-      ? `\n${dkTermsLine(duo)}\n（${duo.name}也在场：她占 1 到 2 段、至少 1 行台词，字数和台词行数按整段回复合计；[DESC] 之后写 [PARTNER:{"name":"${duo.name}","hp":…,"pleasure":…,"desire":…}]。）`
-      : '')
+    const termsNote0 = `\n\n${dkTermsLine(resolveTurnCharacter(before, result))}`
     const current = resolveTurnCharacter(before, result)
     const saved = sessionRef.current
     const dense = settings.proseStyle === 'dense'
     const bank = dense ? denseBankOpts(input, current, Date.now() % 100000, saved.recentBank ?? []) : null
+    const span = bank ? denseLength(bank.stepIndex) : null
+    const termsNote = termsNote0 + (duo
+      ? `\n${dkTermsLine(duo)}\n（${duo.name}也在场：她只占 1 到 2 个叙述段、至少 1 行台词，其余段落都写${current.name}。${span ? `两个人合计 ${span.min} 到 ${span.max} 字，不因为有两个人就写长；` : ''}台词行数也按整段合计。[DESC] 之后写 [PARTNER:{"name":"${duo.name}","hp":…,"pleasure":…,"desire":…}]。）`
+      : '')
     const pending: PendingTurn = { id: crypto.randomUUID(), input, startedAt: Date.now(), before,
       result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '', guard: { dense, stepIndex: bank ? bank.stepIndex : null },
       requestMessages: [

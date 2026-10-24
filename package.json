@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --incremental false",
-    "test:adventure": "node scripts/check-adventure-context.cjs && node scripts/check-turns.cjs && node scripts/check-stream.cjs && node scripts/check-keeper.cjs && node scripts/check-terms.cjs && node scripts/check-portraits.cjs && node scripts/check-dungeon.cjs && node scripts/check-body-development.cjs && node scripts/check-prose-guard.cjs",
+    "test:adventure": "node scripts/check-adventure-context.cjs && node scripts/check-turns.cjs && node scripts/check-stream.cjs && node scripts/check-keeper.cjs && node scripts/check-terms.cjs && node scripts/check-portraits.cjs && node scripts/check-dungeon.cjs && node scripts/check-body-development.cjs && node scripts/check-prose-guard.cjs && node scripts/check-party.cjs",
     "test:e2e": "playwright test",
     "eval:prompts": "node scripts/evaluate-prompts.cjs"
   },

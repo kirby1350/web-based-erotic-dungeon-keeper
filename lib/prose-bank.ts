@@ -217,7 +217,7 @@ const NEGATION_TURN = /不是[^，。！？；\n「」]{1,14}?[，,、—…\s]*
 /** 「不是X，是Y」否定转折句。正文和台词都算。 */
 export function negationTurns(text: string | undefined): string[] {
   if (!text) return []
-  const body = text.replace(/<!--[\s\S]*?-->/g, '').replace(/\[(OPTIONS|SCENE|STATS|DESC)[\s\S]*$/i, '')
+  const body = text.replace(/<!--[\s\S]*?-->/g, '').replace(/\[(OPTIONS|SCENE|STATS|DESC|PARTNER)[\s\S]*$/i, '')
   return [...body.matchAll(NEGATION_TURN)].map((m) => m[0]).filter((m) => !/^不是(?:吗|嘛|么|啊|呢)/.test(m))
 }
 
@@ -225,7 +225,7 @@ export function repeatedClauses(text: string | undefined, limit = 8): string[] {
   if (!text) return []
   const body = text
     .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/\[(OPTIONS|SCENE|STATS|DESC)[\s\S]*$/i, '')
+    .replace(/\[(OPTIONS|SCENE|STATS|DESC|PARTNER)[\s\S]*$/i, '')
     .replace(/[「“"][^」”"]*[」”"]/g, '\n')
     .replace(/[*＊]/g, '')
   const count = new Map<string, number>()

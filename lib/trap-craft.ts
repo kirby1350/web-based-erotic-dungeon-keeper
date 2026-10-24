@@ -226,7 +226,7 @@ const ESCALATION_WORDS: [string, RegExp][] = [
 export function escalationsIn(text: string): string[] {
   return ESCALATION_WORDS.filter(([, re]) => (text.match(new RegExp(re, 'g'))?.length ?? 0) >= 2).map(([label]) => label)
 }
-const NARR_STRIP = /[「“"][^」”"]*[」”"]|<!--[\s\S]*?-->|\[(?:OPTIONS|STATS|DESC|SCENE)[\s\S]*$/gi
+const NARR_STRIP = /[「“"][^」”"]*[」”"]|<!--[\s\S]*?-->|\[(?:OPTIONS|STATS|DESC|SCENE|PARTNER)[\s\S]*$/gi
 /** 最近回合正文里反复出现的描写短语（4 到 8 字），合并重叠的片段，只取高频的 */
 export function repeatedPhrases(recentAssistant: string[], limit = 6): string[] {
   const texts = recentAssistant.slice(-2).map((t) => t.replace(NARR_STRIP, '|'))

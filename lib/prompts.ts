@@ -229,7 +229,7 @@ function dossierLine(label: string, value: string | undefined): string | null {
   return text ? `${label}：${text}` : null
 }
 
-function intruderArchive(character: Character): string {
+export function intruderArchive(character: Character): string {
   const split = [character.appearance, character.personality, character.speech, character.sexual, character.collapseLine].some((item) => item?.trim())
   const measurements = character.measurements
   const lines = [

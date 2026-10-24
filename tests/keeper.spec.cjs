@@ -155,3 +155,97 @@ test('prose guard: a mild miss inside the tolerance is kept without a retry', as
   expect(saved.guard.firstClear).toEqual([])
   await expect(page.getByTestId('guard-retried')).toHaveCount(0)
 })
+
+test('party: two intruders start together, split popup, switching focus', async ({ page }) => {
+  await setup(page)
+  const requests = []
+  await page.route('**/api/chat', async (route) => {
+    const body = route.request().postDataJSON()
+    requests.push(body)
+    const sys = body.messages[0].content
+    if (sys.includes('处置之后的短场面')) {
+      await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse('锁链从两侧同时收紧，把大凤和爱宕扯向两条岔路。爱宕回头喊了一声“指挥官，大凤就拜托了哦”，声音被石门吞掉。') })
+      return
+    }
+    const snap = { ...character, hp: 100, maxHp: 100, pleasure: 20, desire: 10, explorationProgress: 0 }
+    const partner = sys.includes('双人场面') ? '\n[PARTNER:{"name":"爱宕","hp":95,"pleasure":33,"desire":12}]' : ''
+    await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse(reply(snap, '她踏进潮湿的石廊，爱宕跟在后面红着脸别开眼。') + partner) })
+  })
+  await page.goto('/')
+  await page.getByText('迎接入侵者').click()
+  await page.getByLabel('指定闯入者').selectOption('大凤')
+  await page.getByLabel('指定同伴').selectOption('爱宕')
+  await expect(page.getByTestId('party-card')).toContainText('她不是一个人来的')
+  await page.getByRole('button', { name: /亲自上手/ }).click()
+  await page.getByRole('button', { name: '看她进来' }).click()
+  await expect.poll(() => requests.length).toBeGreaterThan(0)
+  const first = requests[0].messages[0].content
+  expect(first).toContain('双人场面')
+  expect(first).toContain('同伴档案：爱宕')
+  expect(requests[0].messages.at(-1).content).toContain('[PARTNER:')
+  const bar = page.getByTestId('party-bar')
+  await expect(bar).toContainText('两人同行')
+  await expect(bar).toContainText('快感 33')
+  const k = await keep(page)
+  expect(k.roster).toHaveLength(1)
+  expect(k.roster[0].character.partner?.name ?? (await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_game_v2')).character.partner.name))).toBe('爱宕')
+
+  // 状态面板切换（桌面右栏 / 手机弹层）
+  const mobile = (page.viewportSize()?.width ?? 1280) < 1024
+  if (mobile) {
+    await expect(page.getByTestId('mobile-partner')).toContainText('快感 33')
+    await page.getByTestId('mobile-status').click()
+  }
+  const toggle = page.locator('[data-testid=party-toggle]:visible')
+  await toggle.getByRole('tab', { name: /爱宕/ }).click()
+  await expect(toggle.getByRole('tab', { name: /爱宕/ })).toHaveAttribute('aria-selected', 'true')
+  if (mobile) await page.keyboard.press('Escape')
+
+  // 拆开
+  await bar.getByTestId('party-split').click()
+  const dialog = page.getByRole('dialog', { name: '把大凤和爱宕拆开' })
+  await expect(dialog).toContainText('扯向两条岔路')
+  await dialog.getByRole('button', { name: '跟着大凤' }).click()
+  await expect(bar).toContainText('已拆开')
+  await expect(bar).toContainText('爱宕排在第二')
+  const live = await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_game_v2')).character)
+  expect(live.party.split).toBe(true)
+  expect(live.party.note).toContain('岔路')
+
+  // 换到第二个
+  await bar.getByTestId('party-switch').click()
+  await expect(bar).toContainText('跟着爱宕')
+  await expect(bar).toContainText('大凤排在第二')
+  const swapped = await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_game_v2')).character)
+  expect(swapped.name).toBe('爱宕')
+  expect(swapped.partner.name).toBe('大凤')
+})
+
+test('party: settling the focus hands the scene to the partner in the same slot', async ({ page }) => {
+  await setup(page)
+  await page.route('**/api/chat', async (route) => {
+    const sys = route.request().postDataJSON().messages[0].content
+    const snap = { ...character, hp: 100, maxHp: 100, pleasure: 20, desire: 10, explorationProgress: 0 }
+    const partner = sys.includes('双人场面') ? '\n[PARTNER:{"name":"爱宕","hp":95,"pleasure":33,"desire":12}]' : ''
+    await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse(reply(snap, '她踏进潮湿的石廊。') + partner) })
+  })
+  await page.goto('/')
+  await page.getByText('迎接入侵者').click()
+  await page.getByLabel('指定闯入者').selectOption('大凤')
+  await page.getByLabel('指定同伴').selectOption('爱宕')
+  await page.getByRole('button', { name: /亲自上手/ }).click()
+  await page.getByRole('button', { name: '看她进来' }).click()
+  await expect(page.getByTestId('party-bar')).toContainText('快感 33')
+  await page.getByRole('button', { name: '作弊', exact: true }).click()
+  await page.getByLabel('作弊HP').fill('0')
+  await page.getByRole('button', { name: '知道了' }).click()
+  await expect.poll(async () => (await keep(page)).collection[0]?.name).toBe('大凤')
+  const k = await keep(page)
+  expect(k.roster).toHaveLength(1)
+  expect(k.roster[0].character.name).toBe('爱宕')
+  expect(k.collection[0].character.partner).toBeUndefined()
+  await expect(page.getByTestId('party-bar')).toHaveCount(0)
+  const live = await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_game_v2')).character)
+  expect(live.name).toBe('爱宕')
+  expect(live.pleasure).toBe(33)
+})

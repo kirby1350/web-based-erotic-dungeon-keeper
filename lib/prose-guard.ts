@@ -12,7 +12,7 @@ export const DIALOGUE_TOLERANCE = 1
 
 /** 只算正文：去掉注释、标记块和 *动作* 星号、空白。 */
 export function proseBody(text: string): string {
-  return text.replace(/<!--[\s\S]*?-->/g, '').replace(/\[(OPTIONS|SCENE|STATS|DESC)[\s\S]*$/i, '')
+  return text.replace(/<!--[\s\S]*?-->/g, '').replace(/\[(OPTIONS|SCENE|STATS|DESC|PARTNER)[\s\S]*$/i, '')
 }
 export function proseLength(text: string): number {
   return proseBody(text).replace(/\s|\*/g, '').length

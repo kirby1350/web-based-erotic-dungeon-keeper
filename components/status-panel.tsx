@@ -154,6 +154,12 @@ export function MobileStatusBar({ character, onOpen }: { character: Character; o
           ))}
         </div>
       </div>
+      {c.partner && (
+        <div className="flex items-center gap-1 flex-shrink-0" data-testid="mobile-partner">
+          <StatePortrait character={c.partner} variant="avatar" className="w-7 h-7 rounded-md border border-border opacity-80" />
+          <span className="text-[10px] tabular-nums text-muted-foreground leading-tight">{c.partner.name.slice(0, 4)}<br />快感 {c.partner.pleasure ?? 0}</span>
+        </div>
+      )}
       <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
     </button>
   )

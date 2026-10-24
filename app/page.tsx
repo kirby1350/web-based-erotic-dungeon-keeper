@@ -9,6 +9,7 @@ import { buildAftermathPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
 import { GameScreen } from '@/components/game-screen'
+import { promotePartner } from '@/lib/party'
 import { KeepHall } from '@/components/keep-hall'
 import { HallCheat } from '@/components/cheat-panel'
 import { CampaignCard, EndingOverlay } from '@/components/campaign-card'
@@ -118,7 +119,10 @@ export default function HomePage() {
     let next = parkActive(getKeep())
     const entry = next.roster.find((item) => item.id === id)
     if (!entry) return
-    const current = entry.character
+    const whole = entry.character
+    // 双人：只结算焦点这一个，同伴接着这一场（同一个名额、同一段记录）
+    const heir = promotePartner(whole)
+    const { partner: _partner, party: _party, ...current } = whole
     const remembered = buildCaptiveRecall(entry.session, fate)
     const record: CaptiveRecord = {
       id: crypto.randomUUID(),
@@ -134,6 +138,20 @@ export default function HomePage() {
       memory: remembered.memory,
       cage: entry.brief.cage ?? cageKind(undefined, fate),
       ledger: line.trim(),
+    }
+    if (heir) {
+      next = { ...next, campaign: recordFate(next.campaign ?? emptyCampaign(), current.name, fate) }
+      next = grantEssence({
+        ...next,
+        roster: next.roster.map((item) => item.id === id ? { ...item, character: heir, station: '同伴留在原地' } : item),
+        collection: [record, ...next.collection].slice(0, 40),
+      }, fateEssence(next, fate, current.floor ?? 1))
+      commitKeep(next)
+      if (next.activeId === id) {
+        writeLive(heir, entry.session, entry.conversationId)
+        openScene(heir)
+      } else setScreen('hall')
+      return
     }
     const removingActive = next.activeId === id
     next = { ...next, campaign: recordFate(next.campaign ?? emptyCampaign(), current.name, fate) }
@@ -191,6 +209,7 @@ export default function HomePage() {
     for (const payload of arrivals) {
       next = adoptArrival(next, payload)
       next = { ...next, recentNames: rememberIntruder(next, payload.character.name) }
+      if (payload.character.partner) next = { ...next, recentNames: rememberIntruder(next, payload.character.partner.name) }
     }
     const primary = entries[0]
     next = { ...next, roster: [...next.roster, ...entries].slice(0, 3), activeId: primary.id, brief: primary.brief }

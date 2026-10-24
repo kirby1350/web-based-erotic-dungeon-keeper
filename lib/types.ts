@@ -79,6 +79,10 @@ export interface Character {
   terms?: import('@/lib/terms').TermsState
   // 已结算回合数，淫纹按它计时
   turnCount?: number
+  // 双人闯入：同行的另一个人（她自己的状态、称呼、立绘）。旧档没有。同伴身上不再嵌套同伴。
+  partner?: Character | null
+  // 双人闯入的场面状态：split 为真时两人已被拆开，场面只跟着当前这一个，同伴排在第二。
+  party?: { split: boolean; note?: string } | null
 }
 
 // exploration progress gained per action toward unlocking the next floor

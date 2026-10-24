@@ -7,7 +7,7 @@ const FALLBACK_SCENE = 'dungeon entrance, stone corridor, torchlight, dark fanta
 const QUALITY_TAG = /^(?:masterpiece|best quality)$/i
 
 const PARTS = ['breast', 'clitoris', 'urethra', 'vagina', 'anus'] as const
-const MARKER_START = /\[OPTIONS\]|\[SCENE|\[STATS|\[DESC/i
+const MARKER_START = /\[OPTIONS\]|\[SCENE|\[STATS|\[DESC|\[PARTNER/i
 const bounded = (max: number) => z.number().finite().int().min(0).max(max)
 const text = (max: number) => z.string().trim().min(1).max(max)
 const descriptions = z.object(Object.fromEntries(PARTS.map((part) => [part, text(300).optional()])) as Record<typeof PARTS[number], z.ZodOptional<z.ZodString>>).strict()
@@ -90,7 +90,7 @@ export function cleanContent(content: string): string {
 }
 
 export function parseOptions(content: string): string[] {
-  const match = content.match(/\[OPTIONS\]([\s\S]*?)(?:\[\/OPTIONS\]|\[SCENE|\[STATS|\[DESC|$)/i)
+  const match = content.match(/\[OPTIONS\]([\s\S]*?)(?:\[\/OPTIONS\]|\[SCENE|\[STATS|\[DESC|\[PARTNER|$)/i)
   return match ? match[1].split('\n').map((line) => line.trim().replace(/^[-*•]\s*/, '').replace(/^\d+[.、)]\s*/, '')).filter(Boolean) : []
 }
 

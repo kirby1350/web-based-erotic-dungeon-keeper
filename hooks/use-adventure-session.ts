@@ -11,6 +11,7 @@ import { advancePhase, grantEssence, keeperPromptContext, turnEssence } from '@/
 import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
 import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
+import { checkReply, guardDisabled, pickBetter, retryNote, withRetryNote } from '@/lib/prose-guard'
 import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
 import { applyTermCommands, dkTerms, dkTermsLine, tickTerms } from '@/lib/terms-dk'
 import { termsChange } from '@/lib/terms'
@@ -88,6 +89,30 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
         }
       }
       const current = resolveTurnCharacter(pending.before, pending.result)
+      const guard = currentPending.guard
+      if (guard && !guard.guarded && !guardDisabled()) {
+        const spec = { dense: guard.dense, stepIndex: guard.stepIndex }
+        const first = checkReply(content, spec)
+        let next = { ...guard, guarded: true, retried: false, first: first.failures, failures: first.failures, firstClear: first.clear, clear: first.clear, extraMs: 0 }
+        if (first.clear.length) {
+          const started = Date.now()
+          let retry = ''
+          setDraft('')
+          await chatStream({ messages: withRetryNote(pending.requestMessages, retryNote(first, spec)), model: pending.model, grokApiKey: settings.grokApiKey, signal: controller.signal }, (delta) => {
+            if (controller.signal.aborted) return
+            retry += delta
+            if (mountedRef.current) setDraft(retry)
+          })
+          assertActive()
+          const second = checkReply(retry, spec)
+          const usable = (text: string) => !inspectReply(text, current, pending.result).errors.length
+          const kept = pickBetter({ text: content, check: first, usable: usable(content) }, { text: retry, check: second, usable: usable(retry) })
+          content = kept.text
+          next = { ...next, retried: true, failures: kept.check.failures, clear: kept.check.clear, extraMs: Date.now() - started }
+        }
+        currentPending = { ...currentPending, guard: next }
+        checkpoint('generating', content)
+      }
       let inspection = inspectReply(content, current, pending.result)
       if (inspection.errors.length) throw new Error(inspection.errors.join('；'))
       let repaired = !!pending.repaired || pending.phase === 'repair'
@@ -118,7 +143,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       assertActive()
       // A validated response can be saved again after storage recovery without another model call.
       checkpoint('ready', content, repaired)
-      const completed = completeTurn(sessionRef.current, pending, content, repaired)
+      const completed = completeTurn(sessionRef.current, { ...pending, guard: currentPending.guard }, content, repaired)
       completed.character = tickTerms(completed.character)
       const changed = termsChange(dkTerms(pending.before), dkTerms(completed.character), completed.character.name)
       const savedSession = settings.proseStyle === 'dense'
@@ -167,7 +192,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     const dense = settings.proseStyle === 'dense'
     const bank = dense ? denseBankOpts(input, current, Date.now() % 100000, saved.recentBank ?? []) : null
     const pending: PendingTurn = { id: crypto.randomUUID(), input, startedAt: Date.now(), before,
-      result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '',
+      result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '', guard: { dense, stepIndex: bank ? bank.stepIndex : null },
       requestMessages: [
         { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep(), saved.messages.filter((m) => m.role === 'assistant').slice(-2).map((m) => m.content))) + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
         ...saved.messages.map((message) => ({ role: message.role, content: message.content })),

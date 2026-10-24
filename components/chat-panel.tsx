@@ -345,7 +345,10 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
               </div>
             ) : (
               <div>
-                <span className="text-xs gold-text mb-1 block tracking-wider">地下城主</span>
+                <span className="text-xs gold-text mb-1 block tracking-wider">地下城主{msg.guard?.retried && (
+                  <span className="ml-2 text-[10px] text-muted-foreground/60 tracking-normal" data-testid="guard-retried"
+                    title={`第一版没过检查，已自动重写一次：${msg.guard.first.join('；')}${msg.guard.failures.length ? `\n保留较好的一版，仍有：${msg.guard.failures.join('；')}` : ''}`}>· 已自动重写</span>
+                )}</span>
                 <p className="text-foreground whitespace-pre-wrap">{cleanContent(msg.content)}</p>
                 {loading && i === messages.length - 1 && msg.content === '' && (
                   <div className="flex gap-1 mt-2">

@@ -8,7 +8,7 @@ import { Character, AppSettings } from '@/lib/types'
 import { getKeep, getSession, getSettings, saveCharacter } from '@/lib/storage'
 import { keeperPromptContext, sceneChrome, type IntruderFate } from '@/lib/keeper'
 import { ExploreControls } from '@/components/explore-controls'
-import { MobileStatusBar, StatusPanel } from '@/components/status-panel'
+import { MobileStatusBar } from '@/components/status-panel'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { pushChanges, statusChanges } from '@/lib/status-view'
 import { ChatPanel } from '@/components/chat-panel'
@@ -16,6 +16,10 @@ import { ImagePanel } from '@/components/image-panel'
 import { SettingsPanel } from '@/components/settings-panel'
 import { FateActions } from '@/components/fate-actions'
 import { SceneCheat } from '@/components/cheat-panel'
+import { PartyBar, PartyStatus } from '@/components/party-bar'
+import { AftermathPopup } from '@/components/aftermath-popup'
+import { useAftermath } from '@/hooks/use-aftermath'
+import { buildSplitPrompt, splitParty, swapFocus } from '@/lib/party'
 
 export type ExploreActions = { explore: () => void; advanceFloor: () => void }
 interface GameScreenProps {
@@ -74,6 +78,16 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
       return next
     })
   }, [])
+  const splitter = useAftermath(settings)
+  const replaceCharacter = (next: Character) => { characterRef.current = next; setCharacter(next); saveCharacter(next) }
+  const swap = () => { if (!busy && character.partner) replaceCharacter(swapFocus(characterRef.current)) }
+  const askSplit = () => {
+    const now = characterRef.current
+    if (busy || !now.partner || now.party?.split) return
+    const recent = getSession()?.messages.filter((m) => m.role === 'assistant').at(-1)?.content.split(/\[(?:OPTIONS|SCENE|STATS|DESC|PARTNER)/i)[0] ?? ''
+    splitter.ask({ title: `把${now.name}和${now.partner.name}拆开`, prompt: buildSplitPrompt(now, recent), confirmLabel: `跟着${now.name}`,
+      onConfirm: (text) => replaceCharacter(splitParty(characterRef.current, text)) })
+  }
   const keepView = getKeep()
   const chrome = sceneChrome(keeperPromptContext(keepView), character.floor ?? 1)
   const dead = (character.hp ?? 1) <= 0
@@ -144,23 +158,27 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
           <div className={cn('min-h-0 overflow-hidden', activeTab === 'image' ? 'flex-1 block' : 'hidden', showArt ? 'lg:block lg:flex-none lg:h-[42vh] lg:border-b border-border' : 'lg:hidden')}>
             <ImagePanel settings={settings} character={character} pendingScene={pendingScene} onSceneHandled={handleSceneHandled} />
           </div>
+          <div className={cn(activeTab === 'chat' ? 'block' : 'hidden', 'lg:block')}>
+            <PartyBar character={character} busy={busy} onSplit={askSplit} onSwap={swap} />
+          </div>
           <div className={cn('flex-1 min-h-0 overflow-hidden', activeTab === 'chat' ? 'block' : 'hidden', 'lg:block')}>
             <ChatPanel character={character} settings={settings} onRequestImage={handleRequestImage}
               onCharacterUpdate={handleCharacterUpdate} onTurnCommit={setCharacter} onBusyChange={setBusy} exploreActionsRef={actions} />
           </div>
         </section>
         <aside className="hidden lg:block border-l border-border min-h-0 overflow-y-auto">
-          <StatusPanel character={character} keep={keepView} log={changeLog} onOpenProfile={() => setShowProfile(true)} />
+          <PartyStatus character={character} keep={keepView} log={changeLog} onOpenProfile={() => setShowProfile(true)} />
         </aside>
       </main>
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto p-0 lg:hidden">
-          <SheetHeader className="px-4 pt-4 pb-0"><SheetTitle className="text-sm">{character.name} 的状态</SheetTitle></SheetHeader>
-          <StatusPanel character={character} keep={keepView} log={changeLog} onOpenProfile={() => { setSheetOpen(false); setShowProfile(true) }} />
+          <SheetHeader className="px-4 pt-4 pb-0"><SheetTitle className="text-sm">{character.partner ? `${character.name} 与 ${character.partner.name}` : character.name} 的状态</SheetTitle></SheetHeader>
+          <PartyStatus character={character} keep={keepView} log={changeLog} onOpenProfile={() => { setSheetOpen(false); setShowProfile(true) }} />
         </SheetContent>
       </Sheet>
       {showProfile && <CharacterProfile person={character} cheat={cheat || settings.cheatMode} status={`在狱 · 第 ${character.floor ?? 1} 层 · 快感 ${character.pleasure ?? 0} · 欲望 ${character.desire ?? 0}`}
         history={sessionHistory(getSession())} onChange={busy ? undefined : (next) => handleCharacterUpdate({ terms: next.terms, turnCount: next.turnCount })} onClose={() => setShowProfile(false)} />}
+      {splitter.popup && <AftermathPopup popup={splitter.popup} kicker="拆开" dismissLabel="先不拆" onConfirm={splitter.confirm} onDismiss={splitter.dismiss} />}
       {showSettings && <SettingsPanel settings={settings} onSettingsChange={setSettings} onClose={() => setShowSettings(false)} canImport={!busy} />}
     </div>
   )

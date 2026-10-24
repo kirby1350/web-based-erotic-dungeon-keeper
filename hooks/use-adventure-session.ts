@@ -12,7 +12,8 @@ import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
 import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
 import { checkReply, guardDisabled, pickBetter, retryNote, withRetryNote } from '@/lib/prose-guard'
-import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
+import { partyPromptBlock, together } from '@/lib/party'
+import { denseLength, denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
 import { applyTermCommands, dkTerms, dkTermsLine, tickTerms } from '@/lib/terms-dk'
 import { termsChange } from '@/lib/terms'
 import { toast } from 'sonner'
@@ -145,6 +146,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       checkpoint('ready', content, repaired)
       const completed = completeTurn(sessionRef.current, { ...pending, guard: currentPending.guard }, content, repaired)
       completed.character = tickTerms(completed.character)
+      if (together(completed.character) && completed.character.partner) completed.character = { ...completed.character, partner: tickTerms(completed.character.partner) }
       const changed = termsChange(dkTerms(pending.before), dkTerms(completed.character), completed.character.name)
       const savedSession = settings.proseStyle === 'dense'
         ? { ...completed.session, recentBank: rememberBankWords(sessionRef.current.recentBank, content) }
@@ -153,7 +155,10 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       saveGame(completed.character, savedSession)
       try {
         const live = advancePhase(getKeep(), getKeep().activeId, completed.character.encounter)
-        const gain = turnEssence(live, pending.before.pleasure ?? 0, completed.character.pleasure ?? 0, completed.character.floor ?? 1)
+        let gain = turnEssence(live, pending.before.pleasure ?? 0, completed.character.pleasure ?? 0, completed.character.floor ?? 1)
+        // 双人一起时，同伴身上涨的快感也算淫髓
+        if (together(pending.before) && pending.before.partner && completed.character.partner)
+          gain += turnEssence(live, pending.before.partner.pleasure ?? 0, completed.character.partner.pleasure ?? 0, completed.character.floor ?? 1)
         saveKeep(gain > 0 ? grantEssence(live, gain) : live)
       } catch { /* 淫髓没记上时，这一回合的正文和身体仍然算数 */ }
       committed = true
@@ -186,15 +191,20 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     const commanded = applyTermCommands(structuredClone(characterRef.current), input)
     const before = commanded.character
     if (commanded.found) toast('她记住了新的叫法', { description: '可以在角色档案的「称呼」卡里撤销' })
-    const termsNote = `\n\n${dkTermsLine(resolveTurnCharacter(before, result))}`
+    const duo = together(before) && before.partner ? before.partner : null
+    const termsNote0 = `\n\n${dkTermsLine(resolveTurnCharacter(before, result))}`
     const current = resolveTurnCharacter(before, result)
     const saved = sessionRef.current
     const dense = settings.proseStyle === 'dense'
     const bank = dense ? denseBankOpts(input, current, Date.now() % 100000, saved.recentBank ?? []) : null
+    const span = bank ? denseLength(bank.stepIndex) : null
+    const termsNote = termsNote0 + (duo
+      ? `\n${dkTermsLine(duo)}\n（${duo.name}也在场：她只占 1 到 2 个叙述段、至少 1 行台词，其余段落都写${current.name}。${span ? `两个人合计 ${span.min} 到 ${span.max} 字，不因为有两个人就写长；` : ''}台词行数也按整段合计。[DESC] 之后写 [PARTNER:{"name":"${duo.name}","hp":…,"pleasure":…,"desire":…}]。）`
+      : '')
     const pending: PendingTurn = { id: crypto.randomUUID(), input, startedAt: Date.now(), before,
       result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '', guard: { dense, stepIndex: bank ? bank.stepIndex : null },
       requestMessages: [
-        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep(), saved.messages.filter((m) => m.role === 'assistant').slice(-2).map((m) => m.content))) + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
+        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep(), saved.messages.filter((m) => m.role === 'assistant').slice(-2).map((m) => m.content))) + (current.partner ? `\n\n${partyPromptBlock(current)}` : '') + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
         ...saved.messages.map((message) => ({ role: message.role, content: message.content })),
         { role: 'user', content: (bank ? `${input}${denseTurnNote(bank.stepIndex)}${repeatNote(saved.messages.filter((m) => m.role === 'assistant').at(-1)?.content)}` : input) + termsNote },
       ],

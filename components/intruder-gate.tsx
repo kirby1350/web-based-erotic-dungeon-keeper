@@ -5,6 +5,7 @@ import { CHARACTER_PRESETS, PRESET_TRAPS, RACE_INFO, type Character, type Charac
 import { statusForTrap } from '@/lib/adventure-context'
 import { trapRestraint, trapStatuses } from '@/lib/trap-craft'
 import { rollIntruder } from '@/lib/intruder-roll'
+import { formParty, partyChance, rollParty } from '@/lib/party'
 import { IntruderDossier } from '@/components/intruder-dossier'
 import { CharacterProfile } from '@/components/character-profile'
 import {
@@ -59,6 +60,8 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
   const [primary, setPrimary] = useState<Arrival>(() => raidNext ? { source: 'library', preset: raidNext } : draw(firstSource(), keep.recentNames))
   const [second, setSecond] = useState<Arrival | null>(null)
   const [together, setTogether] = useState(false)
+  // 结伴：越深越常见。和「后面还跟着一个」不同，结伴的两人同场、共用布置、只占一个名额。
+  const [companion, setCompanion] = useState<Arrival | null>(() => !raidNext && rollParty(keep.progress.depth) ? draw('library', [...keep.recentNames, primary.preset.name]) : null)
   const [showProfile, setShowProfile] = useState(false)
   useEffect(() => {
     if (room < 2 || raidNext) return
@@ -89,7 +92,9 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
         brief: { opening, defenseName: defense?.name, defenseSummary: defense?.summary },
       }
     }
-    const payloads = [payload(primary)]
+    const lead = payload(primary)
+    if (companion && companion.preset.name !== primary.preset.name) lead.character = formParty(lead.character, payload(companion).character)
+    const payloads = [lead]
     if (together && second && room >= 2) payloads.push(payload(second))
     onBegin(payloads)
   }
@@ -140,6 +145,33 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
               {CHARACTER_PRESETS.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
             </select>
           </label>
+        )}
+        {step === 'choose' && cheat && !raidNext && (
+          <label className="flex items-center gap-2 rounded-xl border border-fuchsia-500/40 bg-fuchsia-950/30 p-3 text-xs text-fuchsia-100" data-testid="cheat-party">
+            <span>作弊：指定同伴</span>
+            <select aria-label="指定同伴" className="flex-1 rounded bg-secondary px-2 py-1" value={companion?.preset.name ?? ''}
+              onChange={(event) => { const found = CHARACTER_PRESETS.find((item) => item.name === event.target.value); setCompanion(found ? { source: 'library', preset: found } : null) }}>
+              <option value="">没有同伴</option>
+              {CHARACTER_PRESETS.filter((item) => item.name !== preset.name).map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+            </select>
+          </label>
+        )}
+
+        {step === 'choose' && companion && companion.preset.name !== preset.name && (
+          <section className="rounded-xl border border-primary/50 bg-card p-4 flex gap-3" data-testid="party-card">
+            <div className="w-14 h-18 lg:w-20 lg:h-24 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
+              {companion.preset.avatarUrl
+                ? <img src={companion.preset.avatarUrl} alt={companion.preset.name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-primary">{companion.preset.name[0]}</div>}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] tracking-widest text-primary">她不是一个人来的</p>
+              <p className="font-bold">{companion.preset.name}</p>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{RACE_INFO[companion.preset.race]?.label} · {companion.preset.backstory}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">两人同场，陷阱和魔物两人共用，淫髓两份。第 {keep.progress.depth} 层结伴几率 {Math.round(partyChance(keep.progress.depth) * 100)}%。</p>
+              <button type="button" onClick={() => setCompanion(null)} className="text-xs text-muted-foreground mt-1">把同伴挡在外面</button>
+            </div>
+          </section>
         )}
 
         {step === 'choose' && (

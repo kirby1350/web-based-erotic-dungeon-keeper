@@ -1,4 +1,5 @@
 import { AppSettings, GameSession, Character, IMAGE_STYLES, IMAGE_MODELS, IMAGE_TAG_PRESETS, PROSE_STYLE_LABELS, TENSORART_MODELS } from '@/lib/types'
+import { normalizeParty } from '@/lib/party'
 import { readMemory } from '@/lib/adventure-memory'
 import { readRecentBank } from '@/lib/prose-bank'
 import { emptyKeep, normalizeKeep, type KeeperSave } from '@/lib/keeper'
@@ -92,7 +93,7 @@ export function getDefaultSettings(): AppSettings {
 export function getCharacter() {
   if (typeof window === 'undefined') return null
   try {
-    return readGame().character as Character | null
+    return normalizeParty(readGame().character as Character | null)
   } catch {
     return null
   }

@@ -1,3 +1,4 @@
+import { normalizeParty } from '@/lib/party'
 import {
   CHARACTER_PRESETS,
   getFloorTheme,
@@ -433,7 +434,7 @@ export function normalizeKeep(value: unknown): KeeperSave {
     return [{
       id: text(row.id, 80) || encounterId(character.name),
       station: text(row.station, 40) || '在狱里',
-      character,
+      character: normalizeParty(character),
       session: readSession(row.session),
       conversationId: text(row.conversationId, 80) || encounterId(character.name),
       brief,

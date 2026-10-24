@@ -265,7 +265,7 @@ export default function HomePage() {
       {aftermath.popup && <AftermathPopup popup={aftermath.popup} onConfirm={aftermath.confirm} onDismiss={aftermath.dismiss} />}
       {screen === 'hall' && keep.campaign && <EndingOverlay campaign={keep.campaign} onRestart={() => commitKeep(emptyKeep())} onContinue={(campaign) => commitKeep({ ...keep, campaign })} />}
       {screen === 'hall' && (
-        <div className="max-w-3xl mx-auto px-4 pt-4 space-y-2">
+        <div className="max-w-3xl lg:max-w-6xl mx-auto px-4 lg:px-8 pt-4 space-y-2">
           {settings.cheatMode && <HallCheat keep={keep} onKeep={commitKeep} />}
           <CampaignCard campaign={keep.campaign} />
         </div>

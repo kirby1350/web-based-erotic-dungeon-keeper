@@ -121,7 +121,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
     sendMessage(`城主把${character.name}送进第 ${next} 层「${theme.name}」。`)
   }
 
-  // expose explore/advance to the sibling CharacterCard (buttons live next to the progress bar)
+  // expose explore/advance to the sibling ExploreControls (left nav on desktop, status row on mobile)
   useEffect(() => {
     if (exploreActionsRef) exploreActionsRef.current = { explore, advanceFloor }
   })

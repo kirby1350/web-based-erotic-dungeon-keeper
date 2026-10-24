@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/build-portraits-manifest.cjs",
     "dev": "next dev",
+    "prebuild": "node scripts/build-portraits-manifest.cjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --incremental false",
-    "test:adventure": "node scripts/check-adventure-context.cjs && node scripts/check-turns.cjs && node scripts/check-stream.cjs && node scripts/check-keeper.cjs && node scripts/check-terms.cjs",
+    "test:adventure": "node scripts/check-adventure-context.cjs && node scripts/check-turns.cjs && node scripts/check-stream.cjs && node scripts/check-keeper.cjs && node scripts/check-terms.cjs && node scripts/check-portraits.cjs",
     "test:e2e": "playwright test",
     "eval:prompts": "node scripts/evaluate-prompts.cjs"
   },

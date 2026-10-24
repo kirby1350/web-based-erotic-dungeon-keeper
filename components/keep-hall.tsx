@@ -123,25 +123,20 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
         </button>
         </div>
 
-        <button type="button" onClick={onOpenDungeon} className="w-full dungeon-border rounded-xl bg-card p-4 text-left">
-          <p className="text-xs tracking-widest text-primary">地城</p>
-          <p className="text-lg font-bold mt-1">布置地城</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            {keep.dungeonDescription ? keep.dungeonDescription : '给这座狱写脾气，再把陷阱和魔物塞进某一层。临时捏一只魔物要花淫髓。'}
-          </p>
-        </button>
+        <div className="dungeon-border rounded-xl bg-card p-4" data-testid="dungeon-card">
+          <button type="button" onClick={onOpenDungeon} className="w-full text-left">
+            <p className="text-xs tracking-widest text-primary">地城</p>
+            <p className="text-lg font-bold mt-1">布置 · 工房 · 图鉴</p>
+            <p className="text-sm text-muted-foreground mt-1">陷阱 {placedTraps}/{keep.progress.trapSlots} · 魔物 {placedMonsters}/{keep.progress.monsterSlots} · 库里 {keep.traps.length + keep.monsters.length} 件 · 强度 {keep.progress.monsterRank}/5</p>
+          </button>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <button type="button" onClick={onOpenDungeon} className="px-3 py-1 rounded-md border border-border">布置地城</button>
+            <button type="button" onClick={onOpenTraps} className="px-3 py-1 rounded-md border border-border">陷阱工房</button>
+            <button type="button" onClick={onOpenMonsters} className="px-3 py-1 rounded-md border border-border">魔物工房</button>
+          </div>
+        </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <button type="button" onClick={onOpenTraps} className="dungeon-border rounded-xl bg-card p-4 text-left">
-            <p className="text-xs text-muted-foreground">陷阱工房</p>
-            <p className="text-lg font-bold mt-1">已布置 {placedTraps}/{keep.progress.trapSlots}</p>
-            <p className="text-xs text-muted-foreground mt-2">库里 {keep.traps.length} 件。超过栏位的只能先存着。</p>
-          </button>
-          <button type="button" onClick={onOpenMonsters} className="dungeon-border rounded-xl bg-card p-4 text-left">
-            <p className="text-xs text-muted-foreground">魔物工房</p>
-            <p className="text-lg font-bold mt-1">已放出 {placedMonsters}/{keep.progress.monsterSlots}</p>
-            <p className="text-xs text-muted-foreground mt-2">强度 {keep.progress.monsterRank}/5。它们听你的命令。</p>
-          </button>
           <button type="button" onClick={onOpenCollection} className="dungeon-border rounded-xl bg-card p-4 text-left">
             <p className="text-xs text-muted-foreground">收藏室</p>
             <p className="text-lg font-bold mt-1">{keep.collection.length} 人</p>

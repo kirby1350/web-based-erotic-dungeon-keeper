@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Character, type AppSettings, type GameSession } from '@/lib/types'
 import { getCharacter, getKeep, getSession, getSettings, saveGame, saveKeep } from '@/lib/storage'
 import { dzmmReady } from '@/lib/dzmm'
-import { adoptMonster, adoptTrap, emptyKeep, buildCaptiveRecall, collapsed, cageKind, FATE_ESSENCE, FATE_LABEL, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, trainingSessionSummary, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
+import { adoptMonster, adoptTrap, emptyKeep, buildCaptiveRecall, collapsed, cageKind, fateEssence, FATE_LABEL, recordSprung, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, trainingSessionSummary, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
 import { buildAftermathPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
@@ -14,13 +14,12 @@ import { HallCheat } from '@/components/cheat-panel'
 import { CampaignCard, EndingOverlay } from '@/components/campaign-card'
 import { emptyCampaign, isRaidMember, raidRemaining, recordFate, scaleIntruder, threatTier } from '@/lib/campaign'
 import { IntruderGate, type BeginIntrusion } from '@/components/intruder-gate'
-import { KeeperWorkshop } from '@/components/keeper-workshop'
 import { KeeperCollection } from '@/components/keeper-collection'
 import { KeeperArchive } from '@/components/keeper-archive'
-import { DungeonEditor } from '@/components/dungeon-editor'
+import { DungeonPage, type DungeonTab } from '@/components/dungeon-page'
 import { SettingsPanel } from '@/components/settings-panel'
 
-type Screen = 'hall' | 'gate' | 'traps' | 'monsters' | 'collection' | 'archive' | 'dungeon' | 'scene'
+type Screen = 'hall' | 'gate' | 'collection' | 'archive' | 'dungeon' | 'scene'
 const CONVERSATION_KEY = 'dungeon_conversation_id'
 
 function parkActive(keep: KeeperSave): KeeperSave {
@@ -65,6 +64,8 @@ function entryFrom(payload: BeginIntrusion): RosterEntry {
 
 export default function HomePage() {
   const [screen, setScreen] = useState<Screen>('hall')
+  const [dungeonView, setDungeonView] = useState<{ tab: DungeonTab; kind: 'trap' | 'monster' }>({ tab: 'layout', kind: 'trap' })
+  const openDungeon = (tab: DungeonTab, kind: 'trap' | 'monster' = 'trap') => { setDungeonView({ tab, kind }); setScreen('dungeon') }
   const [character, setCharacter] = useState<Character | null>(null)
   const [keep, setKeep] = useState<KeeperSave | null>(null)
   const [settings, setSettings] = useState<AppSettings | null>(null)
@@ -142,7 +143,7 @@ export default function HomePage() {
       collection: [record, ...next.collection].slice(0, 40),
       activeId: removingActive ? null : next.activeId,
       brief: removingActive ? null : next.brief,
-    }, FATE_ESSENCE[fate])
+    }, fateEssence(next, fate, current.floor ?? 1))
     commitKeep(next)
     if (removingActive) {
       writeLive(null, null, null)
@@ -193,6 +194,10 @@ export default function HomePage() {
     }
     const primary = entries[0]
     next = { ...next, roster: [...next.roster, ...entries].slice(0, 3), activeId: primary.id, brief: primary.brief }
+    entries.forEach((entry) => {
+      const hit = entry.character.encounter
+      if (hit && (entry.brief.opening === 'trap' || entry.brief.opening === 'monster')) next = recordSprung(next, hit, entry.character.name, entry.character.floor ?? 1, entry.id)
+    })
     commitKeep(next)
     writeLive(primary.character, null, primary.conversationId)
     openScene(primary.character)
@@ -277,22 +282,20 @@ export default function HomePage() {
           onEnter={() => setScreen('gate')}
           onResume={resume}
           onSettle={askSettle}
-          onOpenTraps={() => setScreen('traps')}
-          onOpenMonsters={() => setScreen('monsters')}
+          onOpenTraps={() => openDungeon('workshop', 'trap')}
+          onOpenMonsters={() => openDungeon('workshop', 'monster')}
           onOpenCollection={() => setScreen('collection')}
           onOpenArchive={() => setScreen('archive')}
-          onOpenDungeon={() => setScreen('dungeon')}
+          onOpenDungeon={() => openDungeon('layout')}
           onOpenSettings={() => setShowSettings(true)}
         />
       )}
       {screen === 'gate' && <IntruderGate keep={keep} raidNext={keep.campaign?.raid ? raidRemaining(keep.campaign)[0] : undefined} cheat={settings.cheatMode === true} onBegin={begin} onBack={() => setScreen('hall')} />}
-      {screen === 'traps' && <KeeperWorkshop mode="trap" keep={keep} settings={settings} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
-      {screen === 'monsters' && <KeeperWorkshop mode="monster" keep={keep} settings={settings} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'collection' && (
         <KeeperCollection keep={keep} settings={settings} cheat={settings.cheatMode === true} blocked={keep.roster.length >= keep.progress.intruderSlots} onBringBack={bringBack} onUpdate={updateCaptive} onBack={() => setScreen('hall')} />
       )}
       {screen === 'archive' && <KeeperArchive keep={keep} cheat={settings.cheatMode === true} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
-      {screen === 'dungeon' && <DungeonEditor keep={keep} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
+      {screen === 'dungeon' && <DungeonPage key={`${dungeonView.tab}-${dungeonView.kind}`} keep={keep} settings={settings} initialTab={dungeonView.tab} initialKind={dungeonView.kind} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'scene' && character && (
         <GameScreen
           key={sceneKey}

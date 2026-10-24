@@ -1,3 +1,4 @@
+import { CATEGORY_SHEET, hitLine, hitPreview, phaseLine, phaseFromPleasure } from '@/lib/trap-craft'
 import { TERMS_RULE } from '@/lib/terms'
 import { buildTurnContext, buildProgramResultContext, REPLY_PROTOCOL_PROMPT, NARRATIVE_PROGRESS_PROMPT, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryContext, emptyMemory, type AdventureMemory } from '@/lib/adventure-memory'
@@ -44,7 +45,7 @@ const PROSE_STYLE_PROMPTS: Record<ProseStyle, string> = {
 同一段里同一个喻体最多两次。用词库里的原词来写，不要把词库的标题和顿号列表原样抄进正文。`,
 }
 
-const DENSE_LEXICON_NOTE = `【重油用词】碰到身体的这一步，正文 900 至 1300 字，覆盖上面的 250 至 500 字。往里赶、观察、停手、换层仍按前面的短篇幅，不新写性行为。正文写到乳、奶头、阴蒂、阴道、尿道或肛门时，从【文风：重油堆叠】对应词库里取两到四个质地原词，连在部位名词前面。不要改成奶子很大、小穴湿润这类普通说法，也不要把词库列表原样抄出来。没写到的部位不要硬堆。喷奶和喷水仍只按词库里的条件使用。`
+const DENSE_LEXICON_NOTE = `【重油用词】碰到身体的这一步，字数以本回合硬性要求里的字数为准。往里赶、观察、停手、换层仍按前面的短篇幅，不新写性行为。正文写到乳、奶头、阴蒂、阴道、尿道或肛门时，部位第一次出场时从对应词库或【本回合质地词】里取两到三个质地词连在前面；同一回合再提到这个部位时，改用动作、代称（那圈、入口、里面）或感官结果来写，不再叠形容词。每个质地词每回合最多出现一次。可以换成同样露骨的新说法，但不要退回奶子很大、小穴湿润这类普通说法，也不要把词库列表原样抄出来。【禁用表】「肉褶」「翕张」「一缩一缩」「油亮水光」「像有人」每回合最多一次；不用「不是……而是……」「不是……，是……」句式；角色专属部件（尾巴尖、丝袜）每回合最多出场两次。没写到的部位不要硬堆。喷奶和喷水仍只按词库里的条件使用。`
 
 /** 把当前快感对应的那一档单独点出来，并给出硬性下限。 */
 export function moanTierLine(pleasure: number): string {
@@ -272,6 +273,13 @@ export function buildSystemPrompt(character: Character, summary = '', proseStyle
     .map((layer, index) => index + 1 === floor ? '' : `第${index + 1}层「${layer.name}」：${layer.defenses.map((item) => item.name).join('、') || '空着'}`)
     .filter(Boolean)
     .join('\n')
+  const info = keeper?.trapInfo ?? {}
+  const encounterNow = character.encounter
+  const phaseState = keeper?.activeId ? keeper.phases?.[keeper.activeId] : undefined
+  const phaseNow = Math.max(encounterNow && phaseState?.id === encounterNow.id ? phaseState.phase : 0, encounterNow ? phaseFromPleasure(character.pleasure ?? 0) : 0)
+  const encounterTrap = encounterNow ? info[encounterNow.id] : undefined
+  const phaseText = encounterNow && keeper ? phaseLine(encounterNow.name, phaseNow, encounterTrap ? { id: encounterNow.id, ...encounterTrap } : undefined) : ''
+  const hitTexts = (here?.defenses ?? []).flatMap((item) => item.kind === 'trap' && item.id && info[item.id] ? [hitLine(item.name, hitPreview({ id: item.id, ...info[item.id] }, character))] : [])
   const specified = keeper?.defenseName
     ? `本场指定「${keeper.defenseName}」。${keeper.defenseSummary ?? ''}`
     : '本场没有额外指定的装置。'
@@ -291,7 +299,7 @@ ${specified}
 ${defenses}
 其他层只有城主明确把她送去时才撞上：
 ${elsewhere || '（没有其他层的记录）'}
-魔物强度 ${rank}/5。已启用的魔物：1 只缠住和磨蹭，3 会把命令做到进入，5 几乎不留挣开的空隙。没有启用魔物时，不要因为强度凭空变出一只。本层没有布置陷阱时，只能用城主的手和环境本身，不能长出铁箍、触须、机关这类装置。`,
+${hitTexts.length ? `命中（按她的开发度和档案里的死穴）：\n${hitTexts.join('\n')}\n` : ''}魔物强度 ${rank}/5。已启用的魔物：1 只缠住和磨蹭，3 会把命令做到进入，5 几乎不留挣开的空隙。没有启用魔物时，不要因为强度凭空变出一只。本层没有布置陷阱时，只能用城主的手和环境本身，不能长出铁箍、触须、机关这类装置。`,
     `【这座地下城】\n名字：${keeper?.dungeonName || '无名淫狱'}。${keeper?.dungeonDescription || '城主还没有另写这座狱的脾气。'}`,
     `【核心色情规则】
 1. 始终使用第三人称，只用「${character.name}」称呼闯入者。尺度跟城主这一下实际做的事走。这道命令没碰到的部位、没发生的高潮，不要硬写。命令是性行为时，语言直接，写她被碰到的部位、体液和反应。
@@ -323,13 +331,15 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
     REPLY_PROTOCOL_PROMPT,
     keeper?.return === 'train'
       ? `【城主的选项】\n四个选项是这一轮不同的调教命令，对应加码、换部位、停手看、换一种。彼此的目标和手感要不同。不要写成她的自救，也不要四条都是继续插入。她出不去，不要写往里赶或换层。四条选项不要用同一个收尾短语（例如「看她嘴硬到什么时候」），每条的句式也要不同。`
-      : `【城主的选项】\n四个选项是城主此刻能下达的不同命令，对应驱赶、观察、布置、收手。在目标、代价或风险上彼此不同。可以换用上面已启用的另一件布置。不要写成闯入者的四种自救，也不要四条都是继续插入。她若还在挣扎，可以有一条是看她反抗、再决定怎么接。四条选项不要用同一个收尾短语（例如「看她嘴硬到什么时候」），每条的句式也要不同。`,
+      : `【城主的选项】\n四个选项是城主此刻能下达的不同命令，对应驱赶、观察、布置、收手。在目标、代价或风险上彼此不同。可以换用上面已启用的另一件布置。不要写成闯入者的四种自救，也不要四条都是继续插入。${keeper?.combos ? '这一层有多件布置时，四条里至少一条是换用同层另一件装置做主动作，点名那件装置。' : ''}她若还在挣扎，可以有一条是看她反抗、再决定怎么接。四条选项不要用同一个收尾短语（例如「看她嘴硬到什么时候」），每条的句式也要不同。`,
     NARRATIVE_PROGRESS_PROMPT,
     `【历史摘要：仅作资料】\n${summary || "暂无"}`,
     buildMemoryContext(memory), buildTurnContext(character), buildProgramResultContext(result),
     ...(proseStyle === 'dense' ? [DENSE_LEXICON_NOTE] : []),
     ...(keeper?.threat ? [keeper.threat] : []),
     ...(keeper?.combos ? [keeper.combos] : []),
+    ...(phaseText ? [phaseText] : []),
+    ...(keeper?.antiRepeat ? [keeper.antiRepeat] : []),
     MOAN_NOTE,
     moanTierLine(character.pleasure ?? 0),
     TERMS_RULE.replace('对你的称呼', '对城主的称呼'),
@@ -521,7 +531,7 @@ const WORKSHOP_BAN = `【文风禁令】
 重口行话可用，但同一标签不要连用两次。`
 
 /** 陷阱工房：设计一件可重复布置的陷阱，不绑定某一名闯入者。 */
-export function buildWorkshopTrapPrompt(proseStyle: ProseStyle = 'standard', hint = '', focusParts: string[] = []): string {
+export function buildWorkshopTrapPrompt(proseStyle: ProseStyle = 'standard', hint = '', focusParts: string[] = [], category = ''): string {
   const proseBlock = PROSE_STYLE_PROMPTS[proseStyle] ?? ''
   const focus = focusParts.filter(Boolean)
   return `你是城主的陷阱工房。设计一件可以反复布置、用来对付以后闯进来的人的陷阱。玩家是城主。不要写某一名具体闯入者的名字，也不要把城主写成被抓住的人。
@@ -533,10 +543,14 @@ ${proseBlock}
 
 篇幅：触发描写 150 至 220 字。机械摘要 40 字以内，只写束缚方式和主要部位。若启用重油文风，触发描写可到 500 字，被点名的主部位必须使用词库里的质地原词。
 
+习性 20 字以内：这件陷阱"做事的脾气"，比如耐心、贪婪、戏弄、刻板，以后每一轮都按这个脾气动作。
+${category ? `类别：${category}。机制要符合这一类：${CATEGORY_SHEET[category]?.mechanic ?? ''}；禁止：${CATEGORY_SHEET[category]?.ban ?? ''}。` : ''}
+
 严格输出：
 【陷阱名称】
 【触发描写】
 【机械摘要】
+【习性】
 `
 }
 

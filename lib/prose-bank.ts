@@ -203,14 +203,23 @@ ${pickExemplar(o.seed, o.input ?? '')}
 export function denseTurnNote(stepIndex: number): string {
   const length = densePromptLength(stepIndex)
   return `\n\n【本回合硬性要求】
-1. 正文 ${length.min}–${length.max} 字，超过 ${length.max} 字不合格。写够就停，停在她的一句台词上。
+1. 正文 ${length.min}–${length.max} 字（只算正文，不算选项和标记），${length.max >= 1500 ? '瞄准 1200 字左右，' : ''}超过 ${length.max} 字不合格，少于 ${length.min} 字也不合格。写够就停，停在她的一句台词上。
 2. 叙述段和台词行交替，叙述段 ${densParas(length.max)} 个，每段 60–110 字，不要写成大段。
 3. 台词 4 到 7 行，约占正文五分之一，不必每个叙述段后都跟一行；相邻两行台词的句式不能一样，长串淫叫全段最多两行，器官叫法最多两行带出，口吃最多两处。
 4. 叙述每段都要有新东西（新动作 / 新位置 / 新感觉 / 她态度的变化），同一个短语、比喻在这段回复里只用一次，「又亮了一分 / 又加了一档」这类加码句全段最多一次；能写高潮时写「逼近 → 高潮 → 余韵」的弧线，不在高潮上原地打转。
-5. 围着这道命令写，不提前推进，不越过高潮闸门。不要复用示例句子。不用「不是……而是……」「不是……，是……」句式。`
+5. 围着这道命令写，不提前推进，不越过高潮闸门。不要复用示例句子。「不是……而是……」「不是……，是……」「不是 X，不是 Y——是 Z」这类否定转折句全段最多一次，最好一次都不用：直接写正面的那一半（「不是哭，是被揉出来的」改成「眼眶被揉得发红」）。`
 }
 
 /** 上一段回复里自我重复的句子（叙述部分，按逗号句号切分，出现两次以上的），最多 8 条。 */
+const NEGATION_TURN = /不是[^，。！？；\n「」]{1,14}?[，,、—…\s]*(?:不是[^，。！？；\n「」]{1,14}?[，,、—…\s]*)*(?:而|就|只|才)?是/g
+
+/** 「不是X，是Y」否定转折句。正文和台词都算。 */
+export function negationTurns(text: string | undefined): string[] {
+  if (!text) return []
+  const body = text.replace(/<!--[\s\S]*?-->/g, '').replace(/\[(OPTIONS|SCENE|STATS|DESC)[\s\S]*$/i, '')
+  return [...body.matchAll(NEGATION_TURN)].map((m) => m[0]).filter((m) => !/^不是(?:吗|嘛|么|啊|呢)/.test(m))
+}
+
 export function repeatedClauses(text: string | undefined, limit = 8): string[] {
   if (!text) return []
   const body = text
@@ -230,5 +239,8 @@ export function repeatedClauses(text: string | undefined, limit = 8): string[] {
 /** 接在本回合要求后面：点名上一段自我重复的句子，这回合不要再用。 */
 export function repeatNote(previousReply: string | undefined): string {
   const list = repeatedClauses(previousReply)
-  return list.length ? `\n6. 上一段这些句子写了不止一次，本回合一次都不要再用，换新的动作和反应：${list.map((c) => `「${c}」`).join('、')}。` : ''
+  const neg = negationTurns(previousReply)
+  const clauses = list.length ? `\n6. 上一段这些句子写了不止一次，本回合一次都不要再用，换新的动作和反应：${list.map((c) => `「${c}」`).join('、')}。` : ''
+  const turns = neg.length > 1 ? `\n7. 上一段用了 ${neg.length} 次「不是……是……」句式（${neg.slice(0, 4).map((c) => `「${c}…」`).join('、')}），超了。本回合最多一次，直接写正面那一半。` : ''
+  return clauses + turns
 }

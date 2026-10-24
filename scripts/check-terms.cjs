@@ -19,7 +19,7 @@ assert.deepEqual(T.detectTermCommands('叫我一声就放你走'), [])
 // 档位：器官跟快感走，但不超过堕落 +1；自称跟堕落走
 const atago = K.characterFromPreset(types.CHARACTER_PRESETS.find((p) => p.name === '爱宕'))
 let r = D.dkTerms({ ...atago, pleasure: 10 })
-assert.equal(r.breast.value, '胸部'); assert.equal(r.self.value, '姐姐'); assert.equal(r.player.value, '弟弟')
+assert.equal(r.breast.value, '胸部'); assert.equal(r.self.value, '姐姐'); assert.equal(r.player.value, '你')
 r = D.dkTerms({ ...atago, pleasure: 90 })
 assert.equal(r.breast.value, '姐姐的胸') // 堕落矜持，最多到动摇档
 const ruined = { ...atago, pleasure: 90, bodyDevelopment: { breast: 5, clitoris: 5, urethra: 5, vagina: 5, anus: 5 } }
@@ -46,7 +46,7 @@ assert.equal(D.dkTerms(D.removeCrest(D.applyCrest(atago))).boosted, false)
 // 改口提示与注入行
 const before = D.dkTerms(atago), after = D.dkTerms(ruined)
 assert.match(T.termsChange(before, after, '爱宕'), /爱宕改口了/)
-assert.match(D.dkTermsLine(atago), /【本回合称呼·爱宕】自称「姐姐」｜叫你「弟弟」/)
+assert.match(D.dkTermsLine(atago), /【本回合称呼·爱宕】自称「姐姐」｜叫你「你」/)
 assert.equal(D.sourceWork(types.CHARACTER_PRESETS.find((p) => p.name === '爱宕')), '碧蓝航线')
 // 台词形态轮换与叙述推进写进重油要求；上一段自我重复的句子会被点名
 const B = load('@/lib/prose-bank'), PR = load('@/lib/prompts')

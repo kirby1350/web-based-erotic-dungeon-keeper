@@ -6,7 +6,8 @@ import { FATE_LABEL, fateGate, type IntruderFate } from '@/lib/keeper'
 
 const FATES: IntruderFate[] = ['kept', 'broken', 'defeated']
 
-export function FateActions({ character, disabled, onSettle }: { character: Character; disabled?: boolean; onSettle: (fate: IntruderFate) => void }) {
+/** reasons=false 时不把「为什么还不能」逐行列出来（仍在按钮的悬停提示里），给手机标题栏省地方 */
+export function FateActions({ character, disabled, onSettle, reasons = true }: { character: Character; disabled?: boolean; onSettle: (fate: IntruderFate) => void; reasons?: boolean }) {
   const [armed, setArmed] = useState<IntruderFate | null>(null)
   return (
     <div className="space-y-1">
@@ -39,7 +40,7 @@ export function FateActions({ character, disabled, onSettle }: { character: Char
           )
         })}
       </div>
-      {FATES.map((fate) => {
+      {reasons && FATES.map((fate) => {
         const gate = fateGate(character, fate)
         return gate.ok ? null : <p key={fate} className="text-[10px] text-muted-foreground leading-relaxed">{FATE_LABEL[fate]}：{gate.reason}</p>
       })}

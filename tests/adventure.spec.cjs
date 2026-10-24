@@ -339,10 +339,11 @@ test('training scene stays in the cage and offers a new interrogation', async ({
   await expect(page.getByRole('button', { name: '往里赶', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '送下层', exact: true })).toHaveCount(0)
   await expect(page.getByPlaceholder('写下这一轮的拷问...')).toBeVisible()
-  // 手机：切到插图标签再切回；桌面 ≥1024：插图在侧栏，直接可见
+  // 手机：切到插图标签再切回；桌面 ≥1024：插图折叠在对话上方，点开
   const imageTab = page.getByRole('button', { name: /^场景插图/ })
   const tabbed = await imageTab.isVisible()
   if (tabbed) await imageTab.click()
+  else await page.getByTestId('art-toggle').click()
   await expect(page.getByText('这一轮的画面会留在这里')).toBeVisible()
   if (tabbed) await page.locator('button.flex-1').first().click()
   await expect(page.getByText('加码', { exact: true })).toBeVisible()

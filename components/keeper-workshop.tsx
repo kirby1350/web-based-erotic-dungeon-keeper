@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { PRESET_TRAPS, type AppSettings } from '@/lib/types'
+import { PRESET_TRAPS, TRAP_GROUPS, trapGroup, type AppSettings } from '@/lib/types'
 import { chatStream } from '@/lib/dzmm'
 import { buildMonsterPrompt, buildWorkshopTrapPrompt } from '@/lib/prompts'
 import {
@@ -39,6 +39,7 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [group, setGroup] = useState('全部')
 
   const generate = async () => {
     setLoading(true)
@@ -99,7 +100,9 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
     setError('')
   }
 
-  const catalogTraps = PRESET_TRAPS.filter((item) => !keep.traps.some((trap) => trap.id === item.id))
+  const allCatalogTraps = PRESET_TRAPS.filter((item) => !keep.traps.some((trap) => trap.id === item.id))
+  const catalogTraps = group === '全部' ? allCatalogTraps : allCatalogTraps.filter((item) => trapGroup(item.category) === group)
+  const groups = ['全部', ...TRAP_GROUPS.map((g) => g.label).filter((label) => allCatalogTraps.some((item) => trapGroup(item.category) === label))]
   const catalogMonsters = PRESET_MONSTERS.filter((item) => !keep.monsters.some((monster) => monster.id === item.id))
   const placedCount = isTrap ? keep.traps.filter((trap) => trap.placed).length : keep.monsters.filter((monster) => monster.placed).length
   const slotCap = isTrap ? keep.progress.trapSlots : keep.progress.monsterSlots
@@ -116,7 +119,8 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
           </p>
         </div>
 
-        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[1fr_2fr] lg:gap-6 lg:items-start">
+        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+        <div className="space-y-5 lg:sticky lg:top-4">
         <section className="space-y-2">
           <h2 className="text-sm font-bold">已经入库</h2>
           {isTrap && keep.traps.length === 0 && <p className="text-xs text-muted-foreground">还没有陷阱。</p>}
@@ -144,12 +148,20 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
             />
           ))}
         </section>
+        <FloorLayout keep={keep} isTrap={isTrap} />
+        </div>
 
-        <section className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-2 lg:content-start">
-          <h2 className="text-sm font-bold lg:col-span-2 lg:mb-1">预设</h2>
+        <section className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-2 lg:content-start">
+          <div className="lg:col-span-2 xl:col-span-3 lg:mb-1 flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-bold mr-2">预设</h2>
+            {isTrap && groups.length > 2 && groups.map((label) => (
+              <button key={label} type="button" onClick={() => setGroup(label)} aria-pressed={group === label}
+                className={`px-2.5 py-0.5 rounded-full border text-[11px] ${group === label ? 'border-primary bg-primary/15 text-primary' : 'border-border text-muted-foreground'}`}>{label}</button>
+            ))}
+          </div>
           {isTrap && catalogTraps.map((trap) => (
             <button key={trap.id} type="button" onClick={() => onKeep({ ...keep, traps: [...keep.traps, trapFromPreset(trap)] })} className="w-full rounded-lg border border-dashed border-border p-3 text-left text-sm">
-              <span className="font-bold">{trap.name}</span>
+              <span className="flex items-center justify-between gap-2"><span className="font-bold">{trap.name}</span><span className="text-[10px] text-muted-foreground/70">{trap.category}</span></span>
               <span className="block text-xs text-muted-foreground mt-1">{trap.hint}</span>
             </button>
           ))}
@@ -179,6 +191,30 @@ export function KeeperWorkshop({ mode, keep, settings, onKeep, onBack }: KeeperW
         </section>
       </div>
     </div>
+  )
+}
+
+/** 各层布置一览：哪一层放了哪些陷阱 / 魔物 */
+function FloorLayout({ keep, isTrap }: { keep: KeeperSave; isTrap: boolean }) {
+  const floors = keep.floors.slice(0, keep.progress.depth)
+  return (
+    <section className="space-y-2" data-testid="floor-layout">
+      <h2 className="text-sm font-bold">各层布置</h2>
+      <ol className="space-y-1">
+        {floors.map((floor, i) => {
+          const names = isTrap
+            ? floor.trapIds.map((id) => keep.traps.find((t) => t.id === id)?.name).filter(Boolean)
+            : floor.monsterIds.map((id) => keep.monsters.find((m) => m.id === id)?.name).filter(Boolean)
+          return (
+            <li key={i} className="rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-[11px]">
+              <span className="text-primary tabular-nums mr-1.5">{i + 1}</span><span className="font-bold">{floor.name}</span>
+              <span className="block text-muted-foreground mt-0.5">{names.length ? names.join('、') : '空着'}</span>
+            </li>
+          )
+        })}
+      </ol>
+      <p className="text-[10px] text-muted-foreground/70">换层到「布置地城」。</p>
+    </section>
   )
 }
 

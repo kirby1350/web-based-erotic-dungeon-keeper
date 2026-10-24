@@ -382,6 +382,16 @@ export interface PresetTrap {
   hint: string
 }
 
+/** 预设陷阱的类别很碎（一件一类），工房里并成几组来筛 */
+export const TRAP_GROUPS: { label: string; categories: string[] }[] = [
+  { label: '触手·生物', categories: ['触手系', '粘液系', '虫群系', '寄生/产卵', '怪物巢穴', '兽奸系', '催情植物'] },
+  { label: '拘束·机械', categories: ['拘束系', '魔法拘束', '机械', '电击系', '榨取系'] },
+  { label: '精神·魔法', categories: ['催眠幻觉', '操控系', '诅咒系', '药物系', '特殊系'] },
+]
+export function trapGroup(category: string): string {
+  return TRAP_GROUPS.find((g) => g.categories.includes(category))?.label ?? '其他'
+}
+
 export const PRESET_TRAPS: PresetTrap[] = [
   {
     id: 'tentacle_pit',

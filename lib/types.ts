@@ -91,6 +91,8 @@ export interface ChatMessage {
   content: string
   timestamp: number
   turnId?: string
+  /** 代码侧检查：retried 为真表示这一回合自动重写过一次。first 是第一版没过的项，failures 是最终版仍没过的项。 */
+  guard?: { retried: boolean; first: string[]; failures: string[]; extraMs: number }
 }
 
 export interface GeneratedImage {

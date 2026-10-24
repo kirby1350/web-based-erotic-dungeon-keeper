@@ -100,3 +100,35 @@ test('tap a stocked trap then a floor to place it', async ({ page }) => {
   await expect.poll(async () => (await keep(page)).floors[1].trapIds).toEqual(['tentacle_pit'])
   await expect(page.getByTestId('slot-usage')).toContainText('1/')
 })
+
+test('prose guard: a failing dense reply is regenerated once with a note, and the better one is kept', async ({ page }) => {
+  await setup(page)
+  const requests = []
+  const snap = { ...character, hp: 100, maxHp: 100, pleasure: 20, desire: 10, explorationProgress: 0 }
+  const body = '她踏进潮湿的石廊，奶香混着汗香，裙摆被风掀起又落下。'.repeat(14)
+  await page.route('**/api/chat', async (route) => {
+    const req = route.request().postDataJSON()
+    if (req.messages[0].content.includes('状态数据')) return route.fulfill({ status: 503, body: '{}' })
+    requests.push(req)
+    const first = requests.length === 1
+    const text = first ? `${body}不是害怕，是好奇。不是退缩，是试探。` : `${body}“啊啦。”`
+    await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse(reply(snap, text)) })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: '升级全满' }).click()
+  await page.getByText('迎接入侵者').click()
+  await page.getByLabel('指定闯入者').selectOption('大凤')
+  await page.getByRole('button', { name: /亲自上手/ }).click()
+  await page.getByRole('button', { name: '看她进来' }).click()
+  await expect(page.getByTestId('guard-retried')).toBeVisible()
+  expect(requests.length).toBe(2)
+  expect(requests[1].messages.at(-1).content).toContain('【重写：上一版没通过检查】')
+  expect(requests[1].messages.at(-1).content).toContain('不是X，是Y」句 2 处')
+  expect(requests[0].messages.at(-1).content).not.toContain('【重写')
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_game_v2')).session.messages.filter((m) => m.role === 'assistant').at(-1))
+  expect(saved.content).toContain('啊啦')
+  expect(saved.guard.retried).toBe(true)
+  expect(saved.guard.failures).toEqual([])
+  await page.waitForTimeout(500)
+  expect(requests.length).toBe(2)
+})

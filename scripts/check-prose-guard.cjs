@@ -53,4 +53,31 @@ assert.equal(G.pickBetter(B, A).text, 'b')
 assert.equal(G.pickBetter(A, { ...A, text: 'a2' }).text, 'a')
 assert.equal(G.pickBetter(A, { ...B, usable: false }).text, 'a')
 assert.equal(G.pickBetter({ ...B, usable: false }, A).text, 'a')
+// tolerance: strict failures still listed, but only clear misses trigger a retry
+const exact = (chars, lines = 5) => [...Array(lines)].map(() => '“唔”').join('\n') + '\n' + '她'.repeat(chars - lines * 3) + '\n[OPTIONS]\n1. a\n[/OPTIONS]'
+const lenOf = (chars) => G.checkReply(exact(chars), full)
+let t = lenOf(1580)
+assert.ok(t.length > 1500 && t.length <= 1650, String(t.length))
+assert.equal(t.failures.length, 1); assert.deepEqual(t.clear, [])
+t = lenOf(1800); assert.ok(t.length > 1650); assert.equal(t.clear.length, 1)
+t = lenOf(950); assert.ok(t.length >= 900 && t.length < 1000, String(t.length)); assert.equal(t.failures.length, 1); assert.deepEqual(t.clear, [])
+t = lenOf(800); assert.ok(t.length < 900); assert.equal(t.clear.length, 1)
+// short tier: 500 cap, clear above 550
+t = G.checkReply(exact(520, 2), { dense: true, stepIndex: 0 }); assert.equal(t.failures.length, 1); assert.deepEqual(t.clear, [])
+t = G.checkReply(exact(620, 2), { dense: true, stepIndex: 0 }); assert.equal(t.clear.length, 1)
+// dialogue: 8 and 3 are strict-only, 9 and 2 are clear
+assert.deepEqual(G.checkReply(reply({ lines: 8 }), full).clear, []); assert.equal(G.checkReply(reply({ lines: 8 }), full).failures.length, 1)
+assert.deepEqual(G.checkReply(reply({ lines: 3 }), full).clear, []); assert.equal(G.checkReply(reply({ lines: 3 }), full).failures.length, 1)
+assert.equal(G.checkReply(reply({ lines: 9 }), full).clear.length, 1)
+assert.equal(G.checkReply(reply({ lines: 2 }), full).clear.length, 1)
+// negation ≥2 and missing options are always clear
+assert.equal(G.checkReply(reply({ neg: 2 }), full).clear.length, 1)
+assert.equal(G.checkReply(reply({ options: false }), full).clear.length, 1)
+assert.deepEqual(G.checkReply(reply(), full).clear, [])
+// fewer clear misses beats a lower score: 1509 字 + 9 行 (one clear miss) vs 1700 字 (one clear miss, lower score) vs 1520 字 + 8 行 (no clear miss)
+const mild = { text: 'mild', check: G.checkReply(exact(1520, 8), full), usable: true }
+const loud = { text: 'loud', check: G.checkReply(exact(1700, 5), full), usable: true }
+assert.ok(loud.check.score < G.checkReply(exact(1509, 9), full).score)
+assert.equal(G.pickBetter({ text: 'nine', check: G.checkReply(exact(1509, 9), full), usable: true }, mild).text, 'mild')
+assert.equal(G.pickBetter(mild, loud).text, 'mild')
 console.log('prose guard checks passed')

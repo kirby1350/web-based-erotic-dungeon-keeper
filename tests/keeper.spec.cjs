@@ -131,3 +131,27 @@ test('prose guard: a failing dense reply is regenerated once with a note, and th
   await page.waitForTimeout(500)
   expect(requests.length).toBe(2)
 })
+
+test('prose guard: a mild miss inside the tolerance is kept without a retry', async ({ page }) => {
+  await setup(page)
+  const requests = []
+  const snap = { ...character, hp: 100, maxHp: 100, pleasure: 20, desire: 10, explorationProgress: 0 }
+  const body = '她踏进潮湿的石廊，奶香混着汗香，裙摆被风掀起又落下。'.repeat(20).slice(0, 520)
+  await page.route('**/api/chat', async (route) => {
+    requests.push(route.request().postDataJSON())
+    await route.fulfill({ status: 200, contentType: 'text/event-stream', body: sse(reply(snap, body)) })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: '升级全满' }).click()
+  await page.getByText('迎接入侵者').click()
+  await page.getByLabel('指定闯入者').selectOption('大凤')
+  await page.getByRole('button', { name: /亲自上手/ }).click()
+  await page.getByRole('button', { name: '看她进来' }).click()
+  await expect.poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_game_v2') || '{}').session?.messages?.length ?? 0))).toBe(2)
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_game_v2')).session.messages.at(-1))
+  expect(requests.length).toBe(1)
+  expect(saved.guard.retried).toBe(false)
+  expect(saved.guard.first.join()).toContain('超过上限 500')
+  expect(saved.guard.firstClear).toEqual([])
+  await expect(page.getByTestId('guard-retried')).toHaveCount(0)
+})

@@ -93,8 +93,8 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       if (guard && !guard.guarded && !guardDisabled()) {
         const spec = { dense: guard.dense, stepIndex: guard.stepIndex }
         const first = checkReply(content, spec)
-        let next = { ...guard, guarded: true, retried: false, first: first.failures, failures: first.failures, extraMs: 0 }
-        if (first.failures.length) {
+        let next = { ...guard, guarded: true, retried: false, first: first.failures, failures: first.failures, firstClear: first.clear, clear: first.clear, extraMs: 0 }
+        if (first.clear.length) {
           const started = Date.now()
           let retry = ''
           setDraft('')
@@ -108,7 +108,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
           const usable = (text: string) => !inspectReply(text, current, pending.result).errors.length
           const kept = pickBetter({ text: content, check: first, usable: usable(content) }, { text: retry, check: second, usable: usable(retry) })
           content = kept.text
-          next = { ...next, retried: true, failures: kept.check.failures, extraMs: Date.now() - started }
+          next = { ...next, retried: true, failures: kept.check.failures, clear: kept.check.clear, extraMs: Date.now() - started }
         }
         currentPending = { ...currentPending, guard: next }
         checkpoint('generating', content)

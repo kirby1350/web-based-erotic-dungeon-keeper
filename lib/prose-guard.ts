@@ -2,10 +2,13 @@ import { denseLength, negationTurns } from '@/lib/prose-bank'
 
 /** 生成后的代码侧检查：字数档、台词行数（重油 4–7）、「不是X是Y」≤ 1、[OPTIONS] 存在。 */
 export interface GuardSpec { dense: boolean; stepIndex: number | null }
-export interface GuardResult { failures: string[]; score: number; length: number; dialogue: number; negations: number; options: boolean }
+/** failures 是严格限制下没过的项（统计用）；clear 是明显越界、值得重写的项（容差：字数超出档位 10% 以上、台词差 2 行以上）。 */
+export interface GuardResult { failures: string[]; clear: string[]; score: number; length: number; dialogue: number; negations: number; options: boolean }
 
 export const DENSE_DIALOGUE = { min: 4, max: 7 }
 export const NEGATION_MAX = 1
+export const LENGTH_TOLERANCE = 0.1
+export const DIALOGUE_TOLERANCE = 1
 
 /** 只算正文：去掉注释、标记块和 *动作* 星号、空白。 */
 export function proseBody(text: string): string {
@@ -25,20 +28,21 @@ export function checkReply(text: string, spec: GuardSpec): GuardResult {
   const negations = negationTurns(text).length
   const options = /\[OPTIONS\]/i.test(text)
   const failures: string[] = []
+  const clear: string[] = []
   let score = 0
   if (spec.dense && spec.stepIndex !== null) {
     const tier = denseLength(spec.stepIndex)
-    if (length > tier.max) { failures.push(`正文 ${length} 字，超过上限 ${tier.max}`); score += (length - tier.max) / 100 }
-    else if (length < tier.min) { failures.push(`正文 ${length} 字，少于下限 ${tier.min}`); score += (tier.min - length) / 100 }
+    if (length > tier.max) { const f = `正文 ${length} 字，超过上限 ${tier.max}`; failures.push(f); if (length > tier.max * (1 + LENGTH_TOLERANCE)) clear.push(f); score += (length - tier.max) / 100 }
+    else if (length < tier.min) { const f = `正文 ${length} 字，少于下限 ${tier.min}`; failures.push(f); if (length < tier.min * (1 - LENGTH_TOLERANCE)) clear.push(f); score += (tier.min - length) / 100 }
     // 只在完整档检查台词行数；短档 4 行下限不适用。
     if (tier.max >= 1500) {
-      if (dialogue > DENSE_DIALOGUE.max) { failures.push(`台词 ${dialogue} 行，超过 ${DENSE_DIALOGUE.max} 行`); score += dialogue - DENSE_DIALOGUE.max }
-      else if (dialogue < DENSE_DIALOGUE.min) { failures.push(`台词 ${dialogue} 行，少于 ${DENSE_DIALOGUE.min} 行`); score += DENSE_DIALOGUE.min - dialogue }
+      if (dialogue > DENSE_DIALOGUE.max) { const f = `台词 ${dialogue} 行，超过 ${DENSE_DIALOGUE.max} 行`; failures.push(f); if (dialogue > DENSE_DIALOGUE.max + DIALOGUE_TOLERANCE) clear.push(f); score += dialogue - DENSE_DIALOGUE.max }
+      else if (dialogue < DENSE_DIALOGUE.min) { const f = `台词 ${dialogue} 行，少于 ${DENSE_DIALOGUE.min} 行`; failures.push(f); if (dialogue < DENSE_DIALOGUE.min - DIALOGUE_TOLERANCE) clear.push(f); score += DENSE_DIALOGUE.min - dialogue }
     }
   }
-  if (negations > NEGATION_MAX) { failures.push(`「不是X，是Y」句 ${negations} 处，最多 ${NEGATION_MAX} 处`); score += negations - NEGATION_MAX }
-  if (!options) { failures.push('缺少 [OPTIONS] 选项块'); score += 10 }
-  return { failures, score, length, dialogue, negations, options }
+  if (negations > NEGATION_MAX) { const f = `「不是X，是Y」句 ${negations} 处，最多 ${NEGATION_MAX} 处`; failures.push(f); clear.push(f); score += negations - NEGATION_MAX }
+  if (!options) { failures.push('缺少 [OPTIONS] 选项块'); clear.push('缺少 [OPTIONS] 选项块'); score += 10 }
+  return { failures, clear, score, length, dialogue, negations, options }
 }
 
 /** 重生成时追加在最后一条用户消息后的短提示。 */
@@ -54,9 +58,10 @@ export function withRetryNote(messages: { role: string; content: string }[], not
   return out
 }
 
-/** 两版都没过时留分数低的；平分留第一版。不可用（解析错误）的一版总是输。 */
+/** 两版都没过时先比明显越界项的个数，再比分数；平分留第一版。不可用（解析错误）的一版总是输。 */
 export function pickBetter(a: { text: string; check: GuardResult; usable: boolean }, b: { text: string; check: GuardResult; usable: boolean }) {
   if (a.usable !== b.usable) return a.usable ? a : b
+  if (a.check.clear.length !== b.check.clear.length) return b.check.clear.length < a.check.clear.length ? b : a
   return b.check.score < a.check.score ? b : a
 }
 

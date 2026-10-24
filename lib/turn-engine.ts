@@ -17,7 +17,7 @@ export interface PendingTurn {
   repaired?: boolean
   promptVersion: string
   /** 代码侧字数/台词/否定句检查。guarded 为真表示已检查（含至多一次重生成），恢复时不再重跑。 */
-  guard?: { dense: boolean; stepIndex: number | null; guarded?: boolean; retried?: boolean; first?: string[]; failures?: string[]; extraMs?: number }
+  guard?: { dense: boolean; stepIndex: number | null; guarded?: boolean; retried?: boolean; first?: string[]; failures?: string[]; firstClear?: string[]; clear?: string[]; extraMs?: number }
 }
 export interface TurnRecord {
   id: string
@@ -51,7 +51,7 @@ export function completeTurn(session: GameSession, pending: PendingTurn, content
   const messages: ChatMessage[] = [...session.messages,
     { role: 'user', content: pending.input, timestamp: pending.startedAt, turnId: pending.id },
     { role: 'assistant', content: canonical, timestamp, turnId: pending.id,
-      ...(pending.guard?.guarded ? { guard: { retried: !!pending.guard.retried, first: pending.guard.first ?? [], failures: pending.guard.failures ?? [], extraMs: pending.guard.extraMs ?? 0 } } : {}) },
+      ...(pending.guard?.guarded ? { guard: { retried: !!pending.guard.retried, first: pending.guard.first ?? [], failures: pending.guard.failures ?? [], firstClear: pending.guard.firstClear ?? [], clear: pending.guard.clear ?? [], extraMs: pending.guard.extraMs ?? 0 } } : {}) },
   ]
   const record: TurnRecord = { id: pending.id, promptVersion: pending.promptVersion, model: pending.model,
     result: pending.result, before: { ...pending.before, avatarUrl: null }, after: { ...character, avatarUrl: null }, input: pending.input, reply: canonical,

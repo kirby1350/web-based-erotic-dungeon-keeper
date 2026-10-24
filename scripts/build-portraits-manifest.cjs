@@ -9,7 +9,16 @@ if (fs.existsSync(dir)) {
   for (const slug of fs.readdirSync(dir).sort()) {
     const sub = path.join(dir, slug)
     if (!/^[\w-]+$/.test(slug) || !fs.statSync(sub).isDirectory()) continue
-    const states = fs.readdirSync(sub).filter((f) => f.endsWith('.png')).map((f) => f.slice(0, -4)).filter((s) => STATE.test(s)).sort()
+    // .png 记成 "pure"，.webp 记成 "pure.webp"（同名时 webp 优先，体积小一半）
+    const files = fs.readdirSync(sub)
+    const states = []
+    for (const f of files) {
+      const m = f.match(/^(.+)\.(png|webp)$/)
+      if (!m || !STATE.test(m[1])) continue
+      if (m[2] === 'webp') states.push(`${m[1]}.webp`)
+      else if (!files.includes(`${m[1]}.webp`)) states.push(m[1])
+    }
+    states.sort()
     if (states.length) manifest[slug] = states
   }
 }

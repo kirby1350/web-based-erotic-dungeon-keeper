@@ -9,7 +9,7 @@ const PART_PATTERNS: Record<BodyPart, RegExp> = {
   breast: /乳头|乳晕|乳房|乳沟|乳肉|乳尖|奶子|奶头|双乳|巨乳|酥胸|奶肉/,
   clitoris: /阴蒂|阴核|豆豆/,
   urethra: /尿道|尿孔|尿口/,
-  vagina: /阴道|子宫|宫口|花心|花穴|蜜穴|骚穴|嫩穴|淫穴|小穴|穴口|穴内|肉穴|肉壁|腔道|甬道/,
+  vagina: /阴道|子宫|宫口|花心|花穴|蜜穴|骚穴|嫩穴|淫穴|小穴|穴口|穴内|肉穴|肉壁|腔道/,
   anus: /肛门|肛口|后庭|菊穴|后穴|菊蕾|屁眼|肠壁|肠内/,
 }
 const CONTACT = /插入|抽插|抽送|挺入|顶入|顶弄|没入|贯穿|操|肏|舔弄|舔过|舔舐|吮吸|吸吮|含住|揉捏|揉弄|抠挖|抠弄|磨蹭|蹭弄|爱抚|抚摸|玩弄|蹂躏|射进|射入|灌入|撑开|搅弄|吞入|吞没|夹紧|缠住|缠上|吸住|咬住|按住|压住|捣入|抽动|撞击/
@@ -22,6 +22,7 @@ function near(text: string, index: number, length: number, pattern: RegExp): boo
 /** Exp for parts the prose actually stimulates. The model's own level and exp are ignored. */
 export function developmentAwards(narrative: string, pleasureBefore: number, pleasureAfter: number): Partial<Record<BodyPart, number>> {
   const text = narrative ?? ''
+  // 「甬道」多半指通道，不算阴道。
   const rose = pleasureAfter - pleasureBefore
   const intense = CLIMAX.test(text) || rose >= 20 || (pleasureAfter >= 80 && rose > 0)
   const gain = intense ? INTENSE_DEVELOPMENT_EXP : MILD_DEVELOPMENT_EXP
@@ -31,7 +32,8 @@ export function developmentAwards(narrative: string, pleasureBefore: number, ple
     let involved = false
     for (let match = matcher.exec(text); match; match = matcher.exec(text)) {
       const localContact = near(text, match.index, match[0].length, CONTACT) || near(text, match.index, match[0].length, CLIMAX)
-      if (localContact || rose > 0) involved = true
+      // 只算正文真碰到的部位。快感涨了不代表每个被提到的部位都被碰了。
+      if (localContact) involved = true
       if (match[0].length === 0) matcher.lastIndex += 1
     }
     if (involved) awards[part] = gain

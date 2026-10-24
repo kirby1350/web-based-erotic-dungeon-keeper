@@ -7,7 +7,7 @@ import { corruptTierOf } from '@/lib/terms'
 
 export const PORTRAIT_TIERS = ['pure', 'shaken', 'fallen', 'broken'] as const
 export type PortraitTier = (typeof PORTRAIT_TIERS)[number]
-/** slug → 这个角色已有的状态文件名（不含 .png） */
+/** slug → 这个角色已有的状态文件名（.png 不带后缀，.webp 带 ".webp"） */
 export type PortraitManifest = Record<string, string[]>
 
 /** 快感到这里就算高潮态 */
@@ -17,6 +17,14 @@ export const CLIMAX_AT = 95
 export const PORTRAIT_FOCUS: Record<string, string> = {
   atago: '50% 22%',
   eclipse: '50% 25%',
+  taihou: '50% 18%',
+  shinano: '50% 20%',
+  'sagisawa-fumika': '50% 17%',
+  noshiro: '50% 18%',
+  'new-jersey': '50% 18%',
+  anila: '50% 18%',
+  cheshire: '50% 20%',
+  yuel: '50% 17%',
 }
 export const DEFAULT_FOCUS = '50% 20%'
 
@@ -43,8 +51,10 @@ export function resolvePortrait(c: Character, manifest: PortraitManifest | null)
   const have = slug ? manifest?.[slug] : undefined
   if (slug && have?.length) {
     const { tier, climax } = portraitState(c)
-    const hit = portraitCandidates(tier, climax).find((s) => have.includes(s))
-    if (hit) return { src: `/portraits/${slug}/${hit}.png`, state: hit, focus }
+    for (const s of portraitCandidates(tier, climax)) {
+      if (have.includes(`${s}.webp`)) return { src: `/portraits/${slug}/${s}.webp`, state: s, focus }
+      if (have.includes(s)) return { src: `/portraits/${slug}/${s}.png`, state: s, focus }
+    }
   }
   return { src: c.avatarUrl || null, state: null, focus }
 }

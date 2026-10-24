@@ -1085,3 +1085,11 @@ export function collectionNeedsSlot(effect: CollectionEffect): boolean {
 export function collectionActions(fate: IntruderFate): CollectionAction[] {
   return COLLECTION_ACTIONS[fate]
 }
+
+/** 这一场城主在不在她面前：调教和亲自迎上是面对面；被抓过又回来的认得城主但看不见；其余她不知道有城主。 */
+export function keeperPresence(ctx: Pick<KeeperPromptContext, 'opening' | 'return'> | null): 'present' | 'known' | 'absent' {
+  if (!ctx) return 'absent'
+  if (ctx.return === 'train' || ctx.opening === 'personal') return 'present'
+  if (ctx.return === 'recall' || ctx.return === 'reexplore' || ctx.return === 'pretend') return 'known'
+  return 'absent'
+}

@@ -1,6 +1,7 @@
 // 地下城城主里的称呼接线：堕落度怎么算、淫纹怎么算、回合里怎么注入。
 import type { Character } from '@/lib/types'
 import { addOverrides, detectTermCommands, resolveTerms, termsLine, type ResolvedTerms, type TermsState } from '@/lib/terms'
+import type { KeeperPresence } from '@/lib/terms'
 import { dkProfile } from '@/lib/terms-canon'
 
 export const CREST_ITEM = { label: '改口淫纹', cost: 12, turns: 8 }
@@ -21,8 +22,8 @@ export function dkTerms(c: Character): ResolvedTerms {
   return resolveTerms(dkProfile(c), c.terms, { corruption: corruptionOf(c), pleasure: c.pleasure ?? 0, now: c.turnCount ?? 0, boost: crestFromScene(c) })
 }
 
-export function dkTermsLine(c: Character): string {
-  return termsLine(c.name, dkTerms(c))
+export function dkTermsLine(c: Character, presence: KeeperPresence = 'present'): string {
+  return termsLine(c.name, dkTerms(c), presence)
 }
 
 /** 回合开始前：把玩家输入里的改称呼命令写进角色 */

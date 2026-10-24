@@ -99,7 +99,7 @@ export function settlePartner(focusAfter: Character, partnerBefore: Character, c
 }
 
 /** 双人场面的系统提示段。拆开后只写一句：她不在场。 */
-export function partyPromptBlock(c: Character): string {
+export function partyPromptBlock(c: Character, presence: 'present' | 'known' | 'absent' = 'present'): string {
   const p = c.partner
   if (!p) return ''
   if (c.party?.split) {
@@ -110,7 +110,7 @@ export function partyPromptBlock(c: Character): string {
 2. 篇幅：整段回复的字数和台词行数照本回合硬性要求算，两个人合计，不是各算一份。${c.name}占大部分；${p.name}写 1 到 2 个叙述段、至少 1 行台词，她的台词也算进总行数。
 3. 两人互相起反应，用各自原作的口吻：看着对方被弄时的羞耻和别开脸、想帮对方挣开或替她挡、被对方的声音和样子一起拖下去。不要两个人说同一种话。
 4. 状态：[STATS] 和 [DESC] 只写${c.name}。${p.name}的状态在 [DESC] 之后另起一行写：[PARTNER:{"name":"${p.name}","hp":数字,"pleasure":数字,"desire":数字}]，每回合都要写，数值按她本回合实际遭遇变化。
-5. ${p.name}此刻：生命 ${p.hp}/${p.maxHp}，快感 ${p.pleasure ?? 0}，欲望 ${p.desire ?? 0}。${dkTermsLine(p)}`,
+5. ${p.name}此刻：生命 ${p.hp}/${p.maxHp}，快感 ${p.pleasure ?? 0}，欲望 ${p.desire ?? 0}。${dkTermsLine(p, presence)}`,
     intruderArchive(p).replace('【闯入者档案：仅作资料】', `【同伴档案：${p.name}，仅作资料】`),
   ].join('\n')
 }

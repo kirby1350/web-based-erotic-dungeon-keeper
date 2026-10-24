@@ -102,6 +102,24 @@ console.log('prose guard checks passed')
 }
 console.log('plan-leak ok')
 
+// keeper presence: exploration drops "叫你", returners may shout, training keeps it; 屌肉 triggers retry
+{
+  const T = load('@/lib/terms')
+  const K = load('@/lib/keeper')
+  const r = { self: { value: '柴郡' }, player: { value: '亲爱的' }, breast: { value: '奶子' }, pussy: { value: '小穴' }, anus: { value: '后面' }, corruptTier: 2, arousalTier: 2 }
+  assert.ok(!T.termsLine('柴郡', r, 'absent').includes('亲爱的'))
+  assert.match(T.termsLine('柴郡', r, 'absent'), /不要称呼城主/)
+  assert.match(T.termsLine('柴郡', r, 'known'), /叫你「亲爱的」/)
+  assert.match(T.termsLine('柴郡', r, 'known'), /不会回应/)
+  assert.ok(!/城主不在场/.test(T.termsLine('柴郡', r)))
+  assert.equal(K.keeperPresence({ opening: 'trap' }), 'absent')
+  assert.equal(K.keeperPresence({ opening: 'corridor' }), 'absent')
+  assert.equal(K.keeperPresence({ opening: 'personal' }), 'present')
+  assert.equal(K.keeperPresence({ opening: 'trap', return: 'train' }), 'present')
+  assert.equal(K.keeperPresence({ opening: 'trap', return: 'reexplore' }), 'known')
+  assert.match(G.checkReply(reply().replace('*她', '*屌肉她'), full).clear.join(), /屌肉/)
+}
+console.log('presence ok')
 // stacked modifiers: required in the hard note and retry note, recorded (not retried) when thin
 {
   const B = load('@/lib/prose-bank')

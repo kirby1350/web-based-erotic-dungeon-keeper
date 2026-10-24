@@ -331,22 +331,17 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
             )}
           >
             {msg.role === 'user' ? (
-              <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {character.avatarUrl ? (
-                    <img src={character.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <span className="text-xs text-primary">{character.name[0]}</span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground mb-1 block">{character.name}</span>
-                  <p className="text-foreground">{msg.content}</p>
-                </div>
+              <div>
+                <span className="text-xs gold-text mb-1 block tracking-wider">城主</span>
+                <p className="text-foreground">{msg.content}</p>
               </div>
             ) : (
               <div>
-                <span className="text-xs gold-text mb-1 block tracking-wider">地下城主{msg.guard?.retried && (
+                <span className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {character.avatarUrl ? <img src={character.avatarUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-primary">{character.name[0]}</span>}
+                  </span>
+                  {character.name}{msg.guard?.retried && (
                   <span className="ml-2 text-[10px] text-muted-foreground/60 tracking-normal" data-testid="guard-retried"
                     title={`第一版没过检查，已自动重写一次：${msg.guard.first.join('；')}${msg.guard.failures.length ? `\n保留较好的一版，仍有：${msg.guard.failures.join('；')}` : ''}`}>· 已自动重写</span>
                 )}</span>

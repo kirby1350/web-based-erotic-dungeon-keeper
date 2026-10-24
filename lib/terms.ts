@@ -68,8 +68,18 @@ export function resolveTerms(profile: TermProfile, state: TermsState | undefined
 }
 
 /** 每回合贴在最新消息旁边的一行 */
-export function termsLine(name: string, r: ResolvedTerms): string {
-  return `【本回合称呼·${name}】自称「${r.self.value}」｜叫你「${r.player.value}」｜胸叫「${r.breast.value}」｜下面叫「${r.pussy.value}」｜后面叫「${r.anus.value}」（堕落：${CORRUPT_TIERS[r.corruptTier]}，快感：${AROUSAL_TIERS[r.arousalTier]}）。要叫到这些时只用这几个叫法，不要混回旧叫法；器官叫法一段回复里最多点两三次，其余用「那里」「里面」、代词或省掉，不要每句台词都带，自称也不必句句都有；${r.corruptTier < 3 && !/母猪|肉便器/.test(r.self.value) ? '她还没堕到底，台词里不准自称母猪、肉便器之类；' : ''}叙述部分照常。`
+/** 城主在不在她面前：present 面对面（调教、亲自迎上）；known 她认识城主但他不在场（被抓过又回来）；absent 她不知道有城主。 */
+export type KeeperPresence = 'present' | 'known' | 'absent'
+
+const PRESENCE_NOTE: Record<Exclude<KeeperPresence, 'present'>, string> = {
+  absent: '城主不在场：她不知道有城主，也看不见在操纵机关的人。台词只能是自言自语、对陷阱和魔物的反应、骂这座地城，或者对着空无一人的通道喊话；不要称呼城主、不要看向城主、不要问城主问题。',
+  known: '城主不在场：她被城主抓过，认得他，但此刻看不见他。可以对着空气嘴硬、挑衅或喊他，城主不会回应，也不要写她看向城主；喊他时用下面这个叫法。',
+}
+
+export function termsLine(name: string, r: ResolvedTerms, presence: KeeperPresence = 'present'): string {
+  const you = presence === 'absent' ? '' : `叫你「${r.player.value}」｜`
+  const note = presence === 'present' ? '' : PRESENCE_NOTE[presence]
+  return `${note}【本回合称呼·${name}】自称「${r.self.value}」｜${you}胸叫「${r.breast.value}」｜下面叫「${r.pussy.value}」｜后面叫「${r.anus.value}」（堕落：${CORRUPT_TIERS[r.corruptTier]}，快感：${AROUSAL_TIERS[r.arousalTier]}）。要叫到这些时只用这几个叫法，不要混回旧叫法；器官叫法一段回复里最多点两三次，其余用「那里」「里面」、代词或省掉，不要每句台词都带，自称也不必句句都有；${r.corruptTier < 3 && !/母猪|肉便器/.test(r.self.value) ? '她还没堕到底，台词里不准自称母猪、肉便器之类；' : ''}叙述部分照常。`
 }
 
 export const TERMS_RULE = '称呼规则：每个角色的自称、对你的称呼、器官叫法以【本回合称呼】那一行为准，会随堕落和快感改变；同一回合内保持一致，不要混用旧叫法；「母猪」「肉便器」「精液便所」这类自贬只有那一行里写了才能说，没写就不准自己升级；口癖、语气、句尾仍按原作。'

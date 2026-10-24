@@ -23,13 +23,17 @@ assert.equal(P.resolvePortrait({ ...broken, pleasure: 50 }, { atago: ['pure', 's
 assert.equal(P.resolvePortrait(broken, { atago: ['broken-climax', 'climax'] }).state, 'broken-climax')
 assert.equal(P.resolvePortrait({ ...atago, avatarUrl: null }, { atago: ['pure'] }).src, null)
 assert.equal(P.resolvePortrait(atago, null).focus, P.PORTRAIT_FOCUS.atago)
+assert.equal(P.resolvePortrait(broken, { atago: ['pure.webp', 'climax.webp'] }).src, '/portraits/atago/climax.webp', 'webp 优先')
+assert.equal(P.resolvePortrait({ ...broken, pleasure: 50 }, { atago: ['pure.webp', 'shaken'] }).src, '/portraits/atago/shaken.png', 'png 和 webp 混用')
 
 // 清单脚本：只收合法状态名
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'portraits-'))
 fs.mkdirSync(path.join(tmp, 'portraits', 'eclipse'), { recursive: true })
 for (const f of ['pure.png', 'fallen-climax.png', 'climax.png', 'draft.png', 'notes.txt']) fs.writeFileSync(path.join(tmp, 'portraits', 'eclipse', f), '')
+fs.mkdirSync(path.join(tmp, 'portraits', 'yuel'), { recursive: true })
+for (const f of ['pure.webp', 'pure.png', 'shaken.png', 'old.webp']) fs.writeFileSync(path.join(tmp, 'portraits', 'yuel', f), '')
 execFileSync(process.execPath, [path.join(__dirname, 'build-portraits-manifest.cjs')], { env: { ...process.env, PORTRAITS_PUBLIC: tmp }, stdio: 'ignore' })
-assert.deepEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'portraits-manifest.json'), 'utf8')), { eclipse: ['climax', 'fallen-climax', 'pure'] })
+assert.deepEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'portraits-manifest.json'), 'utf8')), { eclipse: ['climax', 'fallen-climax', 'pure'], yuel: ['pure.webp', 'shaken'] })
 fs.rmSync(tmp, { recursive: true, force: true })
 
 // 状态面板：堕落进度、变化日志、布置

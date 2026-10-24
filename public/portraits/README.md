@@ -1,6 +1,6 @@
 # 状态立绘
 
-放在 `public/portraits/<slug>/<state>.png`，slug 与 `public/avatars/<slug>.png` 相同。
+放在 `public/portraits/<slug>/<state>.webp`（或 .png），slug 与 `public/avatars/<slug>.png` 相同。
 
 - 堕落四档：`pure.png` `shaken.png` `fallen.png` `broken.png`
 - 高潮（快感 ≥95）：`<档>-climax.png`，或通用 `climax.png`

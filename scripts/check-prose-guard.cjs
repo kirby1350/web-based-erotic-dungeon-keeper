@@ -2,7 +2,7 @@ const assert = require('node:assert/strict')
 const load = require('./load-ts.cjs').createLoader()
 const G = load('@/lib/prose-guard')
 
-const para = (n) => '她' + '被压着慢慢往里顶'.repeat(Math.ceil(n / 9)).slice(0, n - 1)
+const para = (n) => '她' + '滚烫软糯滑腻黏稠肥厚香汗'.repeat(Math.ceil(n / 9)).slice(0, n - 1)
 const reply = ({ chars = 1200, lines = 5, neg = 0, options = true } = {}) => {
   const out = []
   const per = Math.floor(chars / 8)
@@ -54,7 +54,7 @@ assert.equal(G.pickBetter(A, { ...A, text: 'a2' }).text, 'a')
 assert.equal(G.pickBetter(A, { ...B, usable: false }).text, 'a')
 assert.equal(G.pickBetter({ ...B, usable: false }, A).text, 'a')
 // tolerance: strict failures still listed, but only clear misses trigger a retry
-const exact = (chars, lines = 5) => [...Array(lines)].map(() => '“唔”').join('\n') + '\n' + '她'.repeat(chars - lines * 3) + '\n[OPTIONS]\n1. a\n[/OPTIONS]'
+const exact = (chars, lines = 5) => [...Array(lines)].map(() => '“唔”').join('\n') + '\n' + '滚烫软糯滑腻黏稠肥厚香汗' + '她'.repeat(chars - lines * 3 - 12) + '\n[OPTIONS]\n1. a\n[/OPTIONS]'
 const lenOf = (chars) => G.checkReply(exact(chars), full)
 let t = lenOf(1580)
 assert.ok(t.length > 1500 && t.length <= 1800, String(t.length))
@@ -101,3 +101,16 @@ console.log('prose guard checks passed')
   assert.match(B.denseTurnNote(3), /不要先写计划/)
 }
 console.log('plan-leak ok')
+
+// stacked modifiers: required in the hard note and retry note, recorded (not retried) when thin
+{
+  const B = load('@/lib/prose-bank')
+  assert.match(B.denseTurnNote(3), /全段至少三串/)
+  assert.match(B.denseTurnNote(0), /短篇幅回合至少一串/)
+  assert.match(G.retryNote(G.checkReply(reply({ neg: 2 }), full), full), /叠加修饰的浓度/)
+  const thin = G.checkReply(reply().replace(/滚烫|软糯|滑腻|黏稠|肥厚|香汗/g, '慢慢'), full)
+  assert.match(thin.failures.join(), /质地词只用了/)
+  assert.ok(!thin.clear.some((c) => /质地词/.test(c)))
+  assert.ok(B.textureWordsUsed('滚烫黏稠的软糯奶肉') >= 2)
+}
+console.log('stack ok')

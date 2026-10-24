@@ -119,6 +119,11 @@ export function StatusPanel({ character, keep, log, onOpenProfile }: { character
               <div key={key} title={c.bodyDevelopment?.descriptions?.[key] ?? `${label} Lv${lv}`} className={cn('rounded-md border px-1 py-1 text-center', lv >= 4 ? 'border-pink-400/60 bg-pink-600/30' : lv >= 2 ? 'border-pink-500/40 bg-pink-900/30' : 'border-border bg-secondary/40')}>
                 <p className="text-[10px] text-muted-foreground">{label}</p>
                 <p className="text-sm font-bold tabular-nums">{lv}</p>
+                {lv < 5 && (
+                  <div className="mt-0.5 h-1 rounded-full bg-black/30 overflow-hidden" data-testid={`development-exp-${key}`} title={`经验 ${c.bodyDevelopment?.exp?.[key] ?? 0}/100`}>
+                    <div className="h-full bg-pink-400/80" style={{ width: `${Math.min(100, c.bodyDevelopment?.exp?.[key] ?? 0)}%` }} />
+                  </div>
+                )}
               </div>
             )
           })}

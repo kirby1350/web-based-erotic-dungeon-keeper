@@ -5,11 +5,11 @@ import { dkProfile } from '@/lib/terms-canon'
 
 export const CREST_ITEM = { label: '改口淫纹', cost: 12, turns: 8 }
 
-/** 长期堕落 0–100：身体开发等级 ×4 + 烙印 ×12 + 回合里的高潮积累 */
+/** 长期堕落 0–100：身体开发等级 ×6 + 烙印 ×18 + 回合里的高潮积累 */
 export function corruptionOf(c: Pick<Character, 'bodyDevelopment' | 'brands' | 'terms'>): number {
   const d = c.bodyDevelopment
   const dev = d ? (d.breast ?? 0) + (d.clitoris ?? 0) + (d.urethra ?? 0) + (d.vagina ?? 0) + (d.anus ?? 0) : 0
-  return Math.max(0, Math.min(100, dev * 4 + (c.brands?.length ?? 0) * 12 + (c.terms?.corruptionBonus ?? 0)))
+  return Math.max(0, Math.min(100, dev * 6 + (c.brands?.length ?? 0) * 18 + (c.terms?.corruptionBonus ?? 0)))
 }
 
 /** 陷阱「淫纹拘束」或身上带淫纹状态时，也算淫纹（不占道具时长） */
@@ -35,8 +35,8 @@ export function applyTermCommands(c: Character, input: string, source: 'command'
 /** 回合结算后：计回合数，高潮回合积累堕落 */
 export function tickTerms(c: Character): Character {
   const p = c.pleasure ?? 0
-  const gain = p >= 80 ? 3 : p >= 60 ? 1 : 0
-  const terms: TermsState = { ...(c.terms ?? {}), corruptionBonus: Math.min(60, (c.terms?.corruptionBonus ?? 0) + gain) }
+  const gain = p >= 80 ? 9 : p >= 60 ? 4 : p >= 40 ? 2 : 0
+  const terms: TermsState = { ...(c.terms ?? {}), corruptionBonus: Math.min(80, (c.terms?.corruptionBonus ?? 0) + gain) }
   return { ...c, turnCount: (c.turnCount ?? 0) + 1, terms }
 }
 

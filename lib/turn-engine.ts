@@ -1,6 +1,7 @@
 import type { Character, ChatMessage, GameSession } from '@/lib/types'
 import { resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { inspectReply, serializeReply } from '@/lib/chat-protocol'
+import { settleBodyDevelopment, splitNarrative } from '@/lib/body-development'
 import { partnerMarker, settlePartner, together } from '@/lib/party'
 
 function lean(c: Character): Character {
@@ -56,7 +57,9 @@ export function completeTurn(session: GameSession, pending: PendingTurn, content
   let canonical = serializeReply(reply, character)
   if (together(current) && current.partner) {
     const settled = settlePartner(character, current.partner, content)
-    character = { ...character, partner: settled.partner }
+    const partnerText = splitNarrative(reply.narrative, current.name, current.partner.name).partner
+    const partnerDev = settleBodyDevelopment(current.partner.bodyDevelopment ?? { breast: 0, clitoris: 0, urethra: 0, vagina: 0, anus: 0 }, partnerText, current.partner.pleasure ?? 0, settled.partner.pleasure ?? 0)
+    character = { ...character, partner: { ...settled.partner, bodyDevelopment: partnerDev } }
     if (settled.warning) warnings.push(settled.warning)
     canonical += `\n${partnerMarker(settled.partner)}`
   }

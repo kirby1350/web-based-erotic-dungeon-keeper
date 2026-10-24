@@ -168,7 +168,7 @@ export function pickExemplar(seed: number, input: string): string {
 
 /** 短篇幅的步骤段落少一些。 */
 function densParas(max: number): string {
-  return max <= 500 ? '3 到 5' : max <= 800 ? '5 到 8' : '8 到 12'
+  return max <= 500 ? '3 到 4' : max <= 800 ? '5 到 7' : '7 到 9'
 }
 
 export function denseStyleBlock(o: BankOpts): string {
@@ -183,12 +183,12 @@ export function denseStyleBlock(o: BankOpts): string {
     ? '本回合有人到了高潮档：高潮类的词（白浊 / 潮水…）可以用，写在已经高潮的那个人身上'
     : `本回合没有人到高潮：不写射精、白浊、喷发、潮吹、绝顶——浓度加在「${step}」这一步此刻的动作上`
   return `【★重油文风（最后的文风指令，前面重油段里的数量要求以这里为准；不压过这一步的强度上限、高潮闸门）★】
-重油 = 镜头贴着身体走，一拍一拍写满，人物一直在出声。不是做填词题。
+重油 = 镜头贴着身体走，一拍一拍写满，她的声音穿插其中，但台词数有上限。别写成填词题。
 - ${gate}
 - 「${step}」这一步没给的部位与动作不要提前写，但这一步之内要写透：从头到尾围着城主这道命令打转，一个动作拆成几拍慢慢写。
 【写法】
-1. 分段：叙述段和台词行交替，叙述段 ${paras} 个，一段一拍：动作、部位近景、她的反应。台词可以单独一行，夹在叙述段之间。不写总结段，不写「她感到无比……」。
-2. 对白约占正文五分之一，4 到 7 句，分散在全段，不要挤在开头。她的台词要像她本人：原作口癖、自称、性格都保留（高傲的嘴硬，温柔的撒娇，冷淡的就冷淡地说出羞耻的话）。${DIALOGUE_VARIETY}
+1. 分段：叙述段 ${paras} 个，一段一拍：动作、部位近景、她的反应。台词单独一行，只插在其中几段之间，不是每段后都跟台词；不要把一句台词拆成「台词 + 一小段动作 + 台词」的好几行。不写总结段，不写「她感到无比……」。
+2. 对白约占正文五分之一，全段 4 到 7 行（单独成行的淫叫、半句叫声也各算一行），分散在全段，不要挤在开头。她的台词要像她本人：原作口癖、自称、性格都保留（高傲的嘴硬，温柔的撒娇，冷淡的就冷淡地说出羞耻的话）。${DIALOGUE_VARIETY}
 3. 一拍的写法：动作落到具体部位 → 部位近景（形状、颜色、湿度、温度、气味里挑两三样）→ 声音或她的一句话。部位前的修饰可以连成长串（四到八个字的叠加），在主部位上用，次要部位一笔带过。
 4. 拟声要具体，写清是什么发出的：咕啾的水声、乳肉拍打的啪嗒声、吸吮的滋溜声。激烈处可以写一句「几种声音混在一起」的合奏。
 5. ${NARRATION_PROGRESS}结尾停在她的一句台词或一个正在进行的动作上，不收束、不总结。
@@ -203,14 +203,24 @@ ${pickExemplar(o.seed, o.input ?? '')}
 export function denseTurnNote(stepIndex: number): string {
   const length = densePromptLength(stepIndex)
   return `\n\n【本回合硬性要求】
-1. 正文 ${length.min}–${length.max} 字，超过 ${length.max} 字不合格。写够就停，停在她的一句台词上。
-2. 叙述段和台词行交替，叙述段 ${densParas(length.max)} 个，每段 60–110 字，不要写成大段。
-3. 台词 4 到 7 行，约占正文五分之一，不必每个叙述段后都跟一行；相邻两行台词的句式不能一样，长串淫叫全段最多两行，器官叫法最多两行带出，口吃最多两处。
+1. 正文 ${length.min}–${length.max} 字（只算正文，不算选项和标记），${length.max >= 1500 ? '瞄准 1100–1300 字：写完第八个叙述段就收尾，' : length.max <= 500 ? '瞄准 350 字左右：四段就收尾，' : ''}超过 ${length.max} 字不合格，少于 ${length.min} 字也不合格。写够就停，停在她的一句台词上。
+2. 叙述段 ${densParas(length.max)} 个，每段 60–110 字，不要写成大段，也不要切成二三十字的碎段。
+3. 台词瞄准 5 行，4 到 7 行，所有引号行都算：她的话、单独成行的淫叫（哪怕只有「——！！❤❤」）、城主的话。城主全段最多开口一次。第 8 行就算不合格，高潮前后的叫声并进同一行，不要一声一行，约占正文五分之一，不必每个叙述段后都跟一行；相邻两行台词的句式不能一样，长串淫叫全段最多两行，器官叫法最多两行带出，口吃最多两处。
 4. 叙述每段都要有新东西（新动作 / 新位置 / 新感觉 / 她态度的变化），同一个短语、比喻在这段回复里只用一次，「又亮了一分 / 又加了一档」这类加码句全段最多一次；能写高潮时写「逼近 → 高潮 → 余韵」的弧线，不在高潮上原地打转。
-5. 围着这道命令写，不提前推进，不越过高潮闸门。不要复用示例句子。不用「不是……而是……」「不是……，是……」句式。`
+5. 围着这道命令写，不提前推进，不越过高潮闸门。不要复用示例句子。「不是……而是……」「不是……，是……」「不是 X，不是 Y——是 Z」这类否定转折句全段最多一次，最好一次都不用：直接写正面的那一半（「不是哭，是被揉出来的」改成「眼眶被揉得发红」）。
+6. 交稿前自查两件事：全文「不是」后面接「是」的句子数一遍，多于一句就改掉；字数超过 ${length.max} 就删掉最后几拍，停在一句台词上。`
 }
 
 /** 上一段回复里自我重复的句子（叙述部分，按逗号句号切分，出现两次以上的），最多 8 条。 */
+const NEGATION_TURN = /不是[^，。！？；\n「」]{1,14}?[，,、—…\s]*(?:不是[^，。！？；\n「」]{1,14}?[，,、—…\s]*)*(?:而|就|只|才)?是/g
+
+/** 「不是X，是Y」否定转折句。正文和台词都算。 */
+export function negationTurns(text: string | undefined): string[] {
+  if (!text) return []
+  const body = text.replace(/<!--[\s\S]*?-->/g, '').replace(/\[(OPTIONS|SCENE|STATS|DESC)[\s\S]*$/i, '')
+  return [...body.matchAll(NEGATION_TURN)].map((m) => m[0]).filter((m) => !/^不是(?:吗|嘛|么|啊|呢)/.test(m))
+}
+
 export function repeatedClauses(text: string | undefined, limit = 8): string[] {
   if (!text) return []
   const body = text
@@ -230,5 +240,8 @@ export function repeatedClauses(text: string | undefined, limit = 8): string[] {
 /** 接在本回合要求后面：点名上一段自我重复的句子，这回合不要再用。 */
 export function repeatNote(previousReply: string | undefined): string {
   const list = repeatedClauses(previousReply)
-  return list.length ? `\n6. 上一段这些句子写了不止一次，本回合一次都不要再用，换新的动作和反应：${list.map((c) => `「${c}」`).join('、')}。` : ''
+  const neg = negationTurns(previousReply)
+  const clauses = list.length ? `\n7. 上一段这些句子写了不止一次，本回合一次都不要再用，换新的动作和反应：${list.map((c) => `「${c}」`).join('、')}。` : ''
+  const turns = neg.length > 1 ? `\n8. 上一段用了 ${neg.length} 次「不是……是……」句式（${neg.slice(0, 4).map((c) => `「${c}…」`).join('、')}），超了。本回合最多一次，直接写正面那一半。` : ''
+  return clauses + turns
 }

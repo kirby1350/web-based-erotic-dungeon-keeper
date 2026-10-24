@@ -1,3 +1,4 @@
+import { leakedLatinWords } from '@/lib/chat-protocol'
 import { denseLength, negationTurns } from '@/lib/prose-bank'
 
 /** 生成后的代码侧检查：字数档、台词行数（重油 4–7）、「不是X是Y」≤ 1、[OPTIONS] 存在。 */
@@ -42,6 +43,8 @@ export function checkReply(text: string, spec: GuardSpec): GuardResult {
     }
   }
   if (negations > NEGATION_MAX) { const f = `「不是X，是Y」句 ${negations} 处，最多 ${NEGATION_MAX} 处`; failures.push(f); clear.push(f); score += negations - NEGATION_MAX }
+  const leaked = leakedLatinWords(text)
+  if (leaked >= 4) { const f = `正文混进了 ${leaked} 个英文词（写作计划漏出来了）`; failures.push(f); clear.push(f); score += 10 }
   if (!options) { failures.push('缺少 [OPTIONS] 选项块'); clear.push('缺少 [OPTIONS] 选项块'); score += 10 }
   return { failures, clear, score, length, dialogue, negations, options }
 }
@@ -49,7 +52,7 @@ export function checkReply(text: string, spec: GuardSpec): GuardResult {
 /** 重生成时追加在最后一条用户消息后的短提示。 */
 export function retryNote(result: GuardResult, spec: GuardSpec): string {
   const tier = spec.dense && spec.stepIndex !== null ? denseLength(spec.stepIndex) : null
-  return `\n\n【重写：上一版没通过检查】${result.failures.join('；')}。按同样的命令重写这一回合${tier ? `，正文 ${tier.min}–${tier.max} 字` : ''}${tier && tier.max >= 1500 ? `，台词 ${DENSE_DIALOGUE.min}–${DENSE_DIALOGUE.max} 行（所有引号行都算）` : ''}，「不是X，是Y」最多一处，结尾带 [OPTIONS]。`
+  return `\n\n【重写：上一版没通过检查】${result.failures.join('；')}。按同样的命令重写这一回合${tier ? `，正文 ${tier.min}–${tier.max} 字` : ''}${tier && tier.max >= 1500 ? `，台词 ${DENSE_DIALOGUE.min}–${DENSE_DIALOGUE.max} 行（所有引号行都算）` : ''}，「不是X，是Y」最多一处，结尾带 [OPTIONS]。直接写正文，不要写计划、思考或英文。`
 }
 
 export function withRetryNote(messages: { role: string; content: string }[], note: string) {

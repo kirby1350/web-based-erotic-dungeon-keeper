@@ -82,3 +82,22 @@ assert.ok(loud.check.score < G.checkReply(exact(1509, 11), full).score)
 assert.equal(G.pickBetter({ text: 'nine', check: G.checkReply(exact(1509, 11), full), usable: true }, mild).text, 'mild')
 assert.equal(G.pickBetter(mild, loud).text, 'mild')
 console.log('prose guard checks passed')
+
+// plan leaks at the start are stripped; mixed English/Chinese planning too
+{
+  const P = load('@/lib/chat-protocol')
+  const a = 'Write 7-9 paragraphs, ~1100-1300 chars, 5 dialogue lines, pulse suction on nipples, orgasm arc, use her fallen称呼 (阿妮拉的骚奶 etc., max 2-3 organ mentions). End on a line of dialogue.榨乳机关的泵声换了个调子。\n「啊……」\n[OPTIONS]\n1. 继续\n[/OPTIONS]'
+  assert.ok(P.cleanContent(a).startsWith('榨乳机关的泵声'), P.cleanContent(a))
+  const b = 'Pause command: this is a停手/observation turn — short format allowed (250-500字), no new sex act. But硬性要求 says 1000-1500? The rules say停手/观察 turns use short format. I\'ll write ~350-450字. Say pleasure 30, desire 55.齿轮声一节一节地停了。吸杯松开她的奶头。'
+  assert.ok(P.stripPlanLeak(b).startsWith('齿轮声一节一节地停了'), P.stripPlanLeak(b))
+  const clean = '她咬着嘴唇。「才不要……」\n*石壁上渗着水。*'
+  assert.equal(P.stripPlanLeak(clean), clean)
+  assert.equal(P.stripPlanLeak('「OK啦，城主。」她笑了。'), '「OK啦，城主。」她笑了。')
+  const mid = reply().replace('\n\n[OPTIONS]', '\n\nShe will moan here then orgasm now.\n\n[OPTIONS]')
+  assert.match(G.checkReply(mid, full).clear.join(), /英文词/)
+  const B = load('@/lib/prose-bank')
+  assert.deepEqual(B.denseLength(4), { min: 250, max: 500 })
+  assert.match(B.denseTurnNote(4), /正文 250–500 字/)
+  assert.match(B.denseTurnNote(3), /不要先写计划/)
+}
+console.log('plan-leak ok')

@@ -1,18 +1,18 @@
 import type { BodyDevelopment, BodyPart } from '@/lib/types'
 
 export const BODY_PARTS = ['breast', 'clitoris', 'urethra', 'vagina', 'anus'] as const
-export const MILD_DEVELOPMENT_EXP = 10
+export const MILD_DEVELOPMENT_EXP = 25
 export const INTENSE_DEVELOPMENT_EXP = 40
 const STIMULUS_WINDOW = 40
 
 const PART_PATTERNS: Record<BodyPart, RegExp> = {
   breast: /乳头|乳晕|乳房|乳沟|乳肉|乳尖|奶子|奶头|双乳|巨乳|酥胸|奶肉/,
-  clitoris: /阴蒂|阴核|豆豆/,
+  clitoris: /阴蒂|阴核|豆豆|花核|肉芽|肉豆|蒂珠|蒂头|小豆子/,
   urethra: /尿道|尿孔|尿口/,
-  vagina: /阴道|子宫|宫口|花心|花穴|蜜穴|骚穴|嫩穴|淫穴|小穴|穴口|穴内|肉穴|肉壁|腔道/,
+  vagina: /阴道|子宫|宫口|花心|花穴|蜜穴|骚穴|嫩穴|淫穴|小穴|穴口|穴内|肉穴|肉壁|腔道|阴唇|花唇|唇缝|肉唇|屄|膣|腿心/,
   anus: /肛门|肛口|后庭|菊穴|后穴|菊蕾|屁眼|肠壁|肠内/,
 }
-const CONTACT = /插入|抽插|抽送|挺入|顶入|顶弄|没入|贯穿|操|肏|舔弄|舔过|舔舐|吮吸|吸吮|含住|揉捏|揉弄|抠挖|抠弄|磨蹭|蹭弄|爱抚|抚摸|玩弄|蹂躏|射进|射入|灌入|撑开|搅弄|吞入|吞没|夹紧|缠住|缠上|吸住|咬住|按住|压住|捣入|抽动|撞击/
+const CONTACT = /捏|掐|碾|攥|搓|拧|拨弄|拨开|揉|舔|吸着|嘬|吮|含着|插|捅|塞进|挤进|钻进|顶进|顶开|撞进|抠|掰开|拍打|按揉|捻|弹弄|插入|抽插|抽送|挺入|顶入|顶弄|没入|贯穿|操|肏|舔弄|舔过|舔舐|吮吸|吸吮|含住|揉捏|揉弄|抠挖|抠弄|磨蹭|蹭弄|爱抚|抚摸|玩弄|蹂躏|射进|射入|灌入|撑开|搅弄|吞入|吞没|夹紧|缠住|缠上|吸住|咬住|按住|压住|捣入|抽动|撞击/
 const CLIMAX = /高潮|绝顶|喷潮|潮吹|潮喷/
 
 function near(text: string, index: number, length: number, pattern: RegExp): boolean {
@@ -62,4 +62,18 @@ export function settleBodyDevelopment(current: BodyDevelopment, narrative: strin
     exp[part] = partExp
   }
   return next
+}
+
+/**
+ * 双人一起时把正文按段落分给两人：只提到同伴、没提到主角的段落算同伴的，其余算主角的。
+ * 这样同伴被碰的部位不会记到主角身上，同伴自己也能涨开发度。
+ */
+export function splitNarrative(narrative: string, focusName: string, partnerName: string): { focus: string; partner: string } {
+  const focus: string[] = []
+  const partner: string[] = []
+  for (const paragraph of (narrative ?? '').split(/\n+/)) {
+    if (partnerName && paragraph.includes(partnerName) && !(focusName && paragraph.includes(focusName))) partner.push(paragraph)
+    else focus.push(paragraph)
+  }
+  return { focus: focus.join('\n'), partner: partner.join('\n') }
 }

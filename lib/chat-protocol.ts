@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { ENCOUNTER_CLEAR_GAIN, TARGET_FLOOR, type Character } from '@/lib/types'
 import { enforceTurnResult, type ProgramTurnResult } from '@/lib/adventure-context'
-import { settleBodyDevelopment } from '@/lib/body-development'
+import { settleBodyDevelopment, splitNarrative } from '@/lib/body-development'
 
 const FALLBACK_SCENE = 'dungeon entrance, stone corridor, torchlight, dark fantasy, adult'
 const QUALITY_TAG = /^(?:masterpiece|best quality)$/i
@@ -132,7 +132,8 @@ export function inspectReply(content: string, character: Character, result: Prog
     metadataErrors.push(...parsed.error.issues.map((issue) => `STATS.${issue.path.join('.') || '结构'}`))
   } else {
     const stats = parsed.data
-    const settled = settleBodyDevelopment(character.bodyDevelopment, narrative, character.pleasure ?? 0, stats.pleasure)
+    const ownText = character.partner && !character.party?.split ? splitNarrative(narrative, character.name, character.partner.name).focus : narrative
+    const settled = settleBodyDevelopment(character.bodyDevelopment, ownText, character.pleasure ?? 0, stats.pleasure)
     updates = { ...stats, bodyDevelopment: {
       ...settled,
       descriptions: { ...character.bodyDevelopment.descriptions, ...stats.bodyDevelopment.descriptions },

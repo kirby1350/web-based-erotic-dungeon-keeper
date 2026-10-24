@@ -12,6 +12,20 @@ assert.equal(B.developmentAwards('城主的手指揉捏她的乳头。', 10, 15)
 assert.equal(B.developmentAwards('触手抽插着她的小穴，她高潮了。', 50, 90).vagina, B.INTENSE_DEVELOPMENT_EXP)
 const s = B.settleBodyDevelopment({ breast: 0, clitoris: 0, urethra: 0, vagina: 0, anus: 0, exp: {} }, shoulder, 10, 25)
 assert.equal(s.exp.vagina, 0)
+// 常见写法：屄、阴唇、捏住阴蒂、攥住乳肉都算碰到
+assert.ok(B.developmentAwards('你捏住那颗肥硕的阴蒂碾了一下。', 40, 48).clitoris)
+assert.ok(B.developmentAwards('城主一把攥住她沉甸甸的乳肉，拇指按在奶头上。', 20, 30).breast)
+assert.ok(B.developmentAwards('肉棒一下下插进湿透的屄里。', 50, 60).vagina)
+// 呼吸、咬着牙、衣料摩擦、头顶不算碰到
+assert.deepEqual(B.developmentAwards('胸脯随着急促的呼吸起伏。', 10, 12), {})
+assert.deepEqual(B.developmentAwards('乳房随着步伐轻轻晃动时，布料摩擦出细微声响。', 10, 12), {})
+// 双人：只提到同伴的段落归同伴
+const sp = B.splitNarrative('城主揉捏大凤的乳头。\n触手插进爱宕的小穴。\n大凤看着爱宕。', '大凤', '爱宕')
+assert.ok(B.developmentAwards(sp.partner, 0, 30).vagina && !B.developmentAwards(sp.focus, 0, 30).vagina)
+// 专注一个部位、普通回合约 4 回合升 1 级
+let d = { breast: 0, clitoris: 0, urethra: 0, vagina: 0, anus: 0, exp: {} }
+for (let i = 0; i < 4; i++) d = B.settleBodyDevelopment(d, '城主的手指揉捏她的乳头。', 10, 15)
+assert.equal(d.breast, 1)
 console.log('body development checks passed')
 const P = createLoader()('@/lib/prose-bank')
 assert.equal(P.negationTurns('不是哭，是被揉出来的。不是风声，不是水滴——是脚步。这不是待客之道呀。').length, 2)

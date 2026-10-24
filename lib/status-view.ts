@@ -58,6 +58,10 @@ export function statusChanges(before: Character, after: Character): string[] {
   for (const { key, label } of BODY_PARTS) {
     const a = before.bodyDevelopment?.[key] ?? 0, b = after.bodyDevelopment?.[key] ?? 0
     if (a !== b) out.push(`开发·${label} ${a}→${b}`)
+    else {
+      const ea = before.bodyDevelopment?.exp?.[key] ?? 0, eb = after.bodyDevelopment?.exp?.[key] ?? 0
+      if (eb > ea) out.push(`开发·${label} +${eb - ea}`)
+    }
   }
   const ta = corruptTierOf(corruptionOf(before)), tb = corruptTierOf(corruptionOf(after))
   if (ta !== tb) out.push(`堕落 ${CORRUPT_TIERS[ta]}→${CORRUPT_TIERS[tb]}`)

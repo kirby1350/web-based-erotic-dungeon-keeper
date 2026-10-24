@@ -108,7 +108,6 @@ test('prose guard: a failing dense reply is regenerated once with a note, and th
   const body = '她踏进潮湿的石廊，奶香混着汗香，裙摆被风掀起又落下。'.repeat(14)
   await page.route('**/api/chat', async (route) => {
     const req = route.request().postDataJSON()
-    if (req.messages[0].content.includes('状态数据')) return route.fulfill({ status: 503, body: '{}' })
     requests.push(req)
     const first = requests.length === 1
     const text = first ? `${body}不是害怕，是好奇。不是退缩，是试探。` : `${body}“啊啦。”`

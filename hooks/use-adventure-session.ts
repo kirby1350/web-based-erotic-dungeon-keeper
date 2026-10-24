@@ -143,7 +143,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       assertActive()
       // A validated response can be saved again after storage recovery without another model call.
       checkpoint('ready', content, repaired)
-      const completed = completeTurn(sessionRef.current, pending, content, repaired)
+      const completed = completeTurn(sessionRef.current, { ...pending, guard: currentPending.guard }, content, repaired)
       completed.character = tickTerms(completed.character)
       const changed = termsChange(dkTerms(pending.before), dkTerms(completed.character), completed.character.name)
       const savedSession = settings.proseStyle === 'dense'

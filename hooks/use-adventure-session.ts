@@ -10,7 +10,7 @@ import { buildStateRepairPrompt, buildSystemPrompt, withQualityPrefix } from '@/
 import { advancePhase, grantEssence, keeperPromptContext, turnEssence } from '@/lib/keeper'
 import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
-import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
+import { inspectReply, stripPlanLeak, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
 import { checkReply, guardDisabled, pickBetter, retryNote, withRetryNote } from '@/lib/prose-guard'
 import { partyPromptBlock, together } from '@/lib/party'
 import { denseLength, denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
@@ -86,6 +86,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
             if (mountedRef.current) setDraft(content)
           })
           assertActive()
+          content = stripPlanLeak(content)
           checkpoint('generating', content)
         }
       }
@@ -105,6 +106,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
             if (mountedRef.current) setDraft(retry)
           })
           assertActive()
+          retry = stripPlanLeak(retry)
           const second = checkReply(retry, spec)
           const usable = (text: string) => !inspectReply(text, current, pending.result).errors.length
           const kept = pickBetter({ text: content, check: first, usable: usable(content) }, { text: retry, check: second, usable: usable(retry) })

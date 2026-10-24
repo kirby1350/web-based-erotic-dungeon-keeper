@@ -84,7 +84,41 @@ export function extractMarkerJson(content: string, marker: string): Record<strin
   return null
 }
 
+const PLAN_META = /硬性要求|字数|正文\s*\d|段落数|台词行|叙述段|规则说|按短格式|短篇幅|\bstats?\b|pleasure|desire/i
+const LATIN_WORD = /[A-Za-z]{2,}/g
+
+/** 一句话是不是模型的写作计划或思考：两个以上英文词，或者提到字数、规则这类元信息。 */
+export function isPlanSentence(sentence: string): boolean {
+  const s = sentence.trim()
+  if (!s) return true
+  if (/^[「“"『]/.test(s)) return false
+  const latin = (s.match(LATIN_WORD) ?? []).length
+  return latin >= 2 || PLAN_META.test(s)
+}
+
+/** 模型偶尔先把写作计划或思考写在正文前面。从开头逐句去掉，碰到第一句真正的正文就停。 */
+export function stripPlanLeak(content: string): string {
+  const head = content.match(/^[\s\S]*?(?=\[OPTIONS\]|\[SCENE|\[STATS|\[DESC|\[PARTNER|$)/i)?.[0] ?? content
+  const parts = head.match(/[^.。!?！？\n]*(?:\.{3}|[.。!?！？]+|\n+|$)/g) ?? []
+  let cut = 0
+  let dropped = false
+  for (const part of parts) {
+    if (!part) break
+    if (!isPlanSentence(part)) break
+    if (part.trim()) dropped = true
+    cut += part.length
+  }
+  return dropped ? content.slice(cut).replace(/^\s+/, '') : content
+}
+
+/** 去完开头之后，正文里还残留的英文词数（混在中间的计划）。 */
+export function leakedLatinWords(content: string): number {
+  const body = cleanContent(content).replace(/[「“"『][^」”"』]*[」”"』]/g, '')
+  return (body.match(LATIN_WORD) ?? []).length
+}
+
 export function cleanContent(content: string): string {
+  content = stripPlanLeak(content)
   const index = content.search(MARKER_START)
   return (index < 0 ? content : content.slice(0, index)).trim()
 }

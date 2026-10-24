@@ -41,7 +41,7 @@ export function buffTags(c: Character): BuffTag[] {
   const turn = c.turnCount ?? 0
   if (c.terms?.itemUntil != null && c.terms.itemUntil > turn) tags.push({ label: c.terms.itemLabel ?? '改口淫纹', detail: `称呼提前一档，还剩 ${c.terms.itemUntil - turn} 回合`, tone: 'crest' })
   else if (crestFromScene(c)) tags.push({ label: '淫纹发作', detail: '场景里的淫纹让称呼提前一档，离开后回落', tone: 'crest' })
-  for (const b of c.brands ?? []) tags.push({ label: b, detail: `永久烙印：堕落 +12`, tone: 'brand' })
+  for (const b of c.brands ?? []) tags.push({ label: b, detail: `永久烙印：堕落 +18`, tone: 'brand' })
   for (const s of c.statusEffects ?? []) tags.push({ label: s.title, detail: s.description, tone: 'status' })
   return tags
 }

@@ -106,4 +106,13 @@ assert.match(sys, /精灵亲近草木/)
 assert.match(sys, /【接力顺序】连携「[^」]*催情触手/)
 assert.match(sys, /【别重复加码】最近两回合已经反复用过：调亮/)
 assert.ok(T.weakParts({ sexual: '死穴是乳头，一碰就软', otherDescription: '' }).includes('breast'))
+{
+  const rep = '她的粉嫩鲜红的肉褶被照亮。粉嫩鲜红的肉褶一缩。「啊」黑丝袜在大腿根绷紧，粉嫩鲜红的肉褶又翻开，黑丝袜在大腿根湿透。'
+  const ph = T.repeatedPhrases([rep, rep])
+  assert.ok(ph.some((p) => p.includes('粉嫩鲜红的肉褶') || '粉嫩鲜红的肉褶'.includes(p)), ph.join(','))
+  const line = T.antiRepeatLine([rep, rep])
+  assert.match(line, /【别重复描写】/)
+  assert.match(line, /【台词里的器官】/)
+  assert.match(T.relayLine([{ name: 'A', kind: 'trap' }, { name: 'B', kind: 'trap' }], []), /即使城主只命令了其中一件/)
+}
 console.log('dungeon ok: placement, synergy settlement, theme, phases, level-up, migration, prompts')

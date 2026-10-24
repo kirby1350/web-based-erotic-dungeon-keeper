@@ -64,7 +64,7 @@ export const PHASE_RULES: string[] = [
   '第一次接触。写装置怎么启动、先碰哪里。她还在反抗、找出口。不要直接写到高潮。',
   '固定住她。定下姿势和受力点，只加一种新刺激。',
   '加码。从本陷阱的加码清单里换一种上回合没用过的；同层有别的布置时让它接力。',
-  '可以把她推过顶点。高潮必须由本装置的机制造成，写对应部位的反应。',
+  '可以把她推过顶点。高潮必须由本装置的机制造成，部位的反应写在正文里。',
   '余韵。装置放缓或维持，写过载、残留（黏液、勒痕、电麻、卵的重量）和她的状态；可以准备下一轮。',
 ]
 
@@ -206,10 +206,15 @@ export function trapPromptLine(trap: TrapLike): string {
   return `〔${trapCategory(trap)}｜状态：${status}｜Lv${trap.level ?? 1}〕机制：${sheet.mechanic}。感官：${sheet.sense}。习性：${trapHabit(trap)}。禁止：${sheet.ban}。加码清单：${sheet.escalate.join('／')}。`
 }
 
+/** 快感推着阶段走：<40 触发，40–59 锁定，60–79 加码，80+ 高潮 */
+export function phaseFromPleasure(pleasure: number): number {
+  return pleasure >= 80 ? 3 : pleasure >= 60 ? 2 : pleasure >= 40 ? 1 : 0
+}
+
 export function phaseLine(name: string, phase: number, trap?: TrapLike): string {
   const p = Math.max(0, Math.min(PHASES.length - 1, phase))
   const habit = trap ? `按它的习性（${trapHabit(trap)}）来。` : ''
-  return `【遭遇阶段】「${name}」当前阶段 ${p + 1}/${PHASES.length}「${PHASES[p]}」：${PHASE_RULES[p]}${habit}`
+  return `【遭遇阶段】「${name}」当前阶段 ${p + 1}/${PHASES.length}「${PHASES[p]}」：${PHASE_RULES[p]}${habit}阶段和淫叫档冲突时以快感档为准；城主命令继续而她已经去过，就写过载和刺激的差别（麻木、痛痒、失禁），不重演同一个高潮。`
 }
 
 const ESCALATION_WORDS: [string, RegExp][] = [
@@ -221,17 +226,85 @@ const ESCALATION_WORDS: [string, RegExp][] = [
 export function escalationsIn(text: string): string[] {
   return ESCALATION_WORDS.filter(([, re]) => (text.match(new RegExp(re, 'g'))?.length ?? 0) >= 2).map(([label]) => label)
 }
-/** 最近两回合反复用过的加码手段；只拿高频的，避免把顺带一提的也禁掉 */
-export function antiRepeatLine(recentAssistant: string[], escalate?: string[]): string {
-  const used = [...new Set(recentAssistant.slice(-2).flatMap(escalationsIn))]
-  if (!used.length) return ''
-  return `【别重复加码】最近两回合已经反复用过：${used.join('、')}。这一回合换一种${escalate?.length ? `，可以从这里挑：${escalate.join('／')}` : ''}。同一个身体反应的句子不要再写一遍。`
+const NARR_STRIP = /[「“"][^」”"]*[」”"]|<!--[\s\S]*?-->|\[(?:OPTIONS|STATS|DESC|SCENE)[\s\S]*$/gi
+/** 最近回合正文里反复出现的描写短语（4 到 8 字），合并重叠的片段，只取高频的 */
+export function repeatedPhrases(recentAssistant: string[], limit = 6): string[] {
+  const texts = recentAssistant.slice(-2).map((t) => t.replace(NARR_STRIP, '|'))
+  const chunks = texts.flatMap((t) => t.split(/[\s，。、！？…—「」❤～！,.!?;；：:（）()|*]+/)).filter((c) => c.length >= 4)
+  const count = (g: string) => chunks.reduce((n, c) => n + c.split(g).length - 1, 0)
+  const found: { g: string; n: number }[] = []
+  for (let len = 8; len >= 4; len--) {
+    const seen = new Set<string>()
+    for (const c of chunks) for (let i = 0; i + len <= c.length; i++) {
+      const g = c.slice(i, i + len)
+      if (seen.has(g)) continue
+      seen.add(g)
+      const n = count(g)
+      if (n < 2) continue
+      if (/^[的了着地得]/.test(g) || found.some((f) => f.g.includes(g) || g.includes(f.g))) continue
+      found.push({ g, n })
+    }
+  }
+  // 滑窗会切出互相重叠的片段（「里面那圈紧致肥焖」「面那圈紧致肥焖的」），能拼回原文的就拼成一条
+  const merged: { g: string; n: number }[] = []
+  for (const f of found.sort((a, b) => b.n - a.n || b.g.length - a.g.length)) {
+    const hit = merged.find((m) => [3, 4, 5, 6, 7].some((k) => (m.g.endsWith(f.g.slice(0, k)) && chunks.some((c) => c.includes(m.g + f.g.slice(k)))) || (f.g.endsWith(m.g.slice(0, k)) && chunks.some((c) => c.includes(f.g + m.g.slice(k))))))
+    if (!hit) { merged.push({ ...f }); continue }
+    for (const k of [7, 6, 5, 4, 3]) {
+      if (hit.g.endsWith(f.g.slice(0, k)) && chunks.some((c) => c.includes(hit.g + f.g.slice(k)))) { hit.g += f.g.slice(k); break }
+      if (f.g.endsWith(hit.g.slice(0, k)) && chunks.some((c) => c.includes(f.g + hit.g.slice(k)))) { hit.g = f.g + hit.g.slice(k); break }
+    }
+  }
+  return merged.slice(0, limit).map((f) => f.g)
 }
 
-export function relayLine(order: { name: string; kind: 'trap' | 'monster' }[], comboNames: string[]): string {
+/** 最近两回合反复用过的加码手段和描写短语；只拿高频的，避免把顺带一提的也禁掉 */
+export function antiRepeatLine(recentAssistant: string[], escalate?: string[]): string {
+  const used = [...new Set(recentAssistant.slice(-2).flatMap(escalationsIn))]
+  const phrases = repeatedPhrases(recentAssistant)
+  const parts: string[] = []
+  if (used.length) parts.push(`【别重复加码】最近两回合已经反复用过：${used.join('、')}。这一回合换一种${escalate?.length ? `，可以从这里挑：${escalate.join('／')}` : ''}。同一个身体反应的句子不要再写一遍。`)
+  if (phrases.length) parts.push(`【别重复描写】这些短语前面已经写过好几次：${phrases.map((p) => `「${p}」`).join('、')}。这一回合一次都不要用，换别的细节（声音、温度、姿势、她的念头），不要只换个近义词。`)
+  parts.push(ORGAN_LINE_NOTE)
+  return parts.join('\n')
+}
+export const ORGAN_LINE_NOTE = '【台词里的器官】部位写在正文里。她的台词大多说感受、求饶、逞强或冲城主说话，整回合最多两句台词直接说出器官的叫法，其余用「那里」「里面」或干脆不说。'
+
+/** 每回合抽的质地词：按部位分组，每组抽一个，排除最近正文里已经用过的 */
+export const TEXTURE_POOL: Record<BodyPart, string[][]> = {
+  anus: [['粉嫩鲜红', '深褐泛粉', '熟透发紫', '褶纹细密', '肥嘟嘟地鼓起'], ['紧致肥焖', '外头软里头紧得发烫', '滚烫湿黏', '嫩肉咬人', '吸着不放'], ['一圈一圈地吞', '被撑成一个圆', '往外翻出一点嫩肉', '空着时还合不拢'], ['咕啾地吐气', '黏腻的吸啜声', '湿响']],
+  vagina: [['肥厚无毛', '馒头肉屄', '粉嫩屄肉', '熟红肥嫩'], ['厚实宣软', '肥嫩多汁', '滑嫩', '外头软里头紧得发烫'], ['阴唇被扯开', '屄口一张一合', '嫩肉往外翻', '淫水拉丝'], ['咕啾的水声', '黏响', '啪嗒的拍打声']],
+  clitoris: [['硕大红润', '肥硕饱满', '半截指节长短'], ['胀得发硬', '烫得发疼', '一碰就跳'], ['直挺挺地翘着', '从包皮里顶出来', '被吸得拉长']],
+  breast: [['糯软肥奶', '沉甸甸', '雪滑', '厚重肥乳'], ['乳晕又大又肿', '奶头胀得发硬', '奶孔微张'], ['乳浪晃荡', '被勒得鼓出', '被吸得拉长']],
+  urethra: [['又肥又嫩', '最是紧致'], ['一缩就漏', '烫得发麻']],
+}
+export function textureSample(parts: BodyPart[], recentAssistant: string[], seed: number): string {
+  const recent = recentAssistant.join('')
+  const rows = [...new Set(parts)].map((part) => {
+    const picks = TEXTURE_POOL[part].map((group, i) => {
+      const fresh = group.filter((w) => !recent.includes(w))
+      const list = fresh.length ? fresh : group
+      return list[Math.abs(seed * 7 + i * 13 + part.length) % list.length]
+    })
+    return `${PART_LABEL[part]}：${picks.join('、')}`
+  })
+  return rows.length ? `【本回合质地词】每个最多用一次，用完就换动作和感官写：${rows.join('；')}。` : ''
+}
+
+export interface RelayItem { name: string; kind: 'trap' | 'monster'; parts?: BodyPart[] }
+/** 城主命令的那件做主动作；其他件各写至少两句，碰不同的部位。primary 缺省时取第一件。 */
+export function relayLine(order: RelayItem[], comboNames: string[], primaryName?: string): string {
   if (order.length < 2) return ''
-  const steps = order.map((item, index) => `${index + 1}.「${item.name}」${index === 0 ? '先动手，1 到 3 句把她准备好' : index === order.length - 1 ? '接着上，做这一回合的主动作' : '接力'}`).join('；')
-  return `【接力顺序】${comboNames.length ? `连携「${comboNames.join('、')}」。` : ''}${steps}。这一回合每一件都要有自己的动作，不要合成一团。`
+  const main = order.find((o) => o.name === primaryName) ?? order[0]
+  const taken = new Set(main.parts ?? [])
+  const support = order.filter((o) => o !== main).map((o) => {
+    const own = (o.parts ?? []).filter((p) => !taken.has(p))
+    const part = own[0] ?? (['breast', 'clitoris', 'vagina', 'anus'] as BodyPart[]).find((p) => !taken.has(p))
+    if (part) taken.add(part)
+    return { ...o, part }
+  })
+  const steps = support.map((o) => `「${o.name}」至少两句自己的动作${o.part ? `，碰${PART_LABEL[o.part]}（和主装置不同的部位）` : ''}`).join('；')
+  return `【接力顺序】${comboNames.length ? `连携「${comboNames.join('、')}」。` : ''}城主这回合命令的「${main.name}」做主动作，占正文一半以上。同层已布置的${steps}，时机放在主动作的间隙：开场替主装置把她摆好，或者在她快到时插一手。即使城主只命令了其中一件，其余的也要点名出场；辅装置不抢主动作，也不能整回合缺席，不要合成一团。【城主的选项】四条里至少一条是换用「${support[0].name}」做主动作（或两件一起上）。`
 }
 
 export function groupIcon(category: string): string {

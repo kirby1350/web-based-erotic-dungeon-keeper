@@ -1,4 +1,4 @@
-import { CATEGORY_SHEET, hitLine, hitPreview, phaseLine } from '@/lib/trap-craft'
+import { CATEGORY_SHEET, hitLine, hitPreview, phaseLine, phaseFromPleasure } from '@/lib/trap-craft'
 import { TERMS_RULE } from '@/lib/terms'
 import { buildTurnContext, buildProgramResultContext, REPLY_PROTOCOL_PROMPT, NARRATIVE_PROGRESS_PROMPT, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryContext, emptyMemory, type AdventureMemory } from '@/lib/adventure-memory'
@@ -45,7 +45,7 @@ const PROSE_STYLE_PROMPTS: Record<ProseStyle, string> = {
 同一段里同一个喻体最多两次。用词库里的原词来写，不要把词库的标题和顿号列表原样抄进正文。`,
 }
 
-const DENSE_LEXICON_NOTE = `【重油用词】碰到身体的这一步，正文 900 至 1300 字，覆盖上面的 250 至 500 字。往里赶、观察、停手、换层仍按前面的短篇幅，不新写性行为。正文写到乳、奶头、阴蒂、阴道、尿道或肛门时，从【文风：重油堆叠】对应词库里取两到四个质地原词，连在部位名词前面。不要改成奶子很大、小穴湿润这类普通说法，也不要把词库列表原样抄出来。没写到的部位不要硬堆。喷奶和喷水仍只按词库里的条件使用。`
+const DENSE_LEXICON_NOTE = `【重油用词】碰到身体的这一步，字数以本回合硬性要求里的字数为准。往里赶、观察、停手、换层仍按前面的短篇幅，不新写性行为。正文写到乳、奶头、阴蒂、阴道、尿道或肛门时，部位第一次出场时从对应词库或【本回合质地词】里取两到三个质地词连在前面；同一回合再提到这个部位时，改用动作、代称（那圈、入口、里面）或感官结果来写，不再叠形容词。每个质地词每回合最多出现一次。可以换成同样露骨的新说法，但不要退回奶子很大、小穴湿润这类普通说法，也不要把词库列表原样抄出来。【禁用表】「肉褶」「翕张」「一缩一缩」「油亮水光」「像有人」每回合最多一次；不用「不是……而是……」「不是……，是……」句式；角色专属部件（尾巴尖、丝袜）每回合最多出场两次。没写到的部位不要硬堆。喷奶和喷水仍只按词库里的条件使用。`
 
 /** 把当前快感对应的那一档单独点出来，并给出硬性下限。 */
 export function moanTierLine(pleasure: number): string {
@@ -276,7 +276,7 @@ export function buildSystemPrompt(character: Character, summary = '', proseStyle
   const info = keeper?.trapInfo ?? {}
   const encounterNow = character.encounter
   const phaseState = keeper?.activeId ? keeper.phases?.[keeper.activeId] : undefined
-  const phaseNow = encounterNow && phaseState?.id === encounterNow.id ? phaseState.phase : 0
+  const phaseNow = Math.max(encounterNow && phaseState?.id === encounterNow.id ? phaseState.phase : 0, encounterNow ? phaseFromPleasure(character.pleasure ?? 0) : 0)
   const encounterTrap = encounterNow ? info[encounterNow.id] : undefined
   const phaseText = encounterNow && keeper ? phaseLine(encounterNow.name, phaseNow, encounterTrap ? { id: encounterNow.id, ...encounterTrap } : undefined) : ''
   const hitTexts = (here?.defenses ?? []).flatMap((item) => item.kind === 'trap' && item.id && info[item.id] ? [hitLine(item.name, hitPreview({ id: item.id, ...info[item.id] }, character))] : [])
@@ -330,7 +330,7 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
     REPLY_PROTOCOL_PROMPT,
     keeper?.return === 'train'
       ? `【城主的选项】\n四个选项是这一轮不同的调教命令，对应加码、换部位、停手看、换一种。彼此的目标和手感要不同。不要写成她的自救，也不要四条都是继续插入。她出不去，不要写往里赶或换层。`
-      : `【城主的选项】\n四个选项是城主此刻能下达的不同命令，对应驱赶、观察、布置、收手。在目标、代价或风险上彼此不同。可以换用上面已启用的另一件布置。不要写成闯入者的四种自救，也不要四条都是继续插入。她若还在挣扎，可以有一条是看她反抗、再决定怎么接。`,
+      : `【城主的选项】\n四个选项是城主此刻能下达的不同命令，对应驱赶、观察、布置、收手。在目标、代价或风险上彼此不同。可以换用上面已启用的另一件布置。不要写成闯入者的四种自救，也不要四条都是继续插入。${keeper?.combos ? '这一层有多件布置时，四条里至少一条是换用同层另一件装置做主动作，点名那件装置。' : ''}她若还在挣扎，可以有一条是看她反抗、再决定怎么接。`,
     NARRATIVE_PROGRESS_PROMPT,
     `【历史摘要：仅作资料】\n${summary || "暂无"}`,
     buildMemoryContext(memory), buildTurnContext(character), buildProgramResultContext(result),

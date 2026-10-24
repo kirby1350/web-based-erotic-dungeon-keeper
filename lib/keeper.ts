@@ -14,7 +14,7 @@ import {
 import { emptyMemory, readMemory, type AdventureMemory } from '@/lib/adventure-memory'
 import { cleanContent } from '@/lib/chat-protocol'
 import { floorSynergies, synergyBonus } from '@/lib/synergy'
-import { BASE_TRIGGER, FLOOR_MONSTER_CAP, FLOOR_TRAP_CAP, PHASES, THEME_BONUS, THEME_TRIGGER, TRAP_CATEGORIES, antiRepeatLine, nextLevelRule, levelUpBlock, relayLine, themeMatch, trapCategory, trapHabit, trapParts, trapPromptLine, trapRestraint, trapSheet, trapStatusId, trapStatuses } from '@/lib/trap-craft'
+import { BASE_TRIGGER, FLOOR_MONSTER_CAP, FLOOR_TRAP_CAP, PHASES, THEME_BONUS, THEME_TRIGGER, TRAP_CATEGORIES, antiRepeatLine, nextLevelRule, levelUpBlock, relayLine, themeMatch, trapCategory, trapHabit, trapParts, trapPromptLine, trapRestraint, trapSheet, trapStatusId, trapStatuses, textureSample } from '@/lib/trap-craft'
 import { emptyCampaign, isRaidMember, readCampaign, threatPromptLine, type Campaign } from '@/lib/campaign'
 
 export type OpeningKind = 'personal' | 'trap' | 'monster' | 'corridor'
@@ -544,15 +544,21 @@ function floorViews(save: KeeperSave): KeeperFloorView[] {
 }
 
 /** 当前层的接力顺序：陷阱先把人准备好，魔物接上；守层魔物排在魔物最前 */
+function floorParts(save: KeeperSave, floor: number): BodyPart[] {
+  const layer = save.floors?.[floor - 1]
+  return (layer?.trapIds ?? []).flatMap((id) => { const t = save.traps.find((x) => x.id === id); return t ? trapParts(t) : [] })
+}
+
 export function floorRelay(save: KeeperSave, floor: number): string {
   const layer = save.floors?.[floor - 1]
   if (!layer) return ''
   const traps = layer.trapIds.map((id) => save.traps.find((t) => t.id === id)).filter((t): t is KeeperTrap => !!t)
   const monsters = [...layer.monsterIds].sort((a, b) => (a === layer.guardId ? -1 : b === layer.guardId ? 1 : 0))
     .map((id) => save.monsters.find((m) => m.id === id)).filter((m): m is KeeperMonster => !!m)
-  const order = [...traps.map((t) => ({ name: t.name, kind: 'trap' as const })), ...monsters.map((m) => ({ name: m.name, kind: 'monster' as const }))]
+  const order = [...traps.map((t) => ({ name: t.name, kind: 'trap' as const, parts: trapParts(t) })), ...monsters.map((m) => ({ name: m.name, kind: 'monster' as const }))]
   const combos = floorSynergies(save, floor)
-  const base = relayLine(order, combos.map((c) => c.name))
+  const active = save.roster?.find((entry) => entry.id === save.activeId)
+  const base = relayLine(order, combos.map((c) => c.name), active?.character.encounter?.name)
   return base && combos.length ? `${base}${combos.map((c) => `「${c.name}」${c.note}`).join('')}` : base
 }
 
@@ -656,7 +662,7 @@ export function keeperPromptContext(save: KeeperSave, recentAssistant: string[] 
     combos: floorRelay(save, floor),
     phases: save.phases ?? {},
     activeId: save.activeId,
-    antiRepeat: antiRepeatLine(recentAssistant, trap ? trapSheet(trap).escalate : undefined),
+    antiRepeat: [antiRepeatLine(recentAssistant, trap ? trapSheet(trap).escalate : undefined), textureSample(floorParts(save, floor), recentAssistant, recentAssistant.join('').length)].filter(Boolean).join('\n'),
     trapInfo: Object.fromEntries(save.traps.map((t) => [t.id, { name: t.name, habit: trapHabit(t), escalate: trapSheet(t).escalate, mechanism: t.mechanism, prose: t.prose, category: trapCategory(t), level: t.level ?? 1 }])),
     threat: threatPromptLine(save.campaign ?? emptyCampaign(), isRaidMember(save.roster?.find((entry) => entry.id === save.activeId)?.character.name ?? '')),
   }

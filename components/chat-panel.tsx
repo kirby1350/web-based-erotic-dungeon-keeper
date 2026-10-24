@@ -4,8 +4,8 @@ import { useState, useRef, useEffect, type MutableRefObject } from 'react'
 import { Send, Loader2, BookOpen, Square, RotateCcw, Wrench, Zap, Sparkles, ShieldAlert, Unlock, HeartCrack } from 'lucide-react'
 import { Character, AppSettings, StatusEffect, Encounter, EXPLORE_GAIN, ENCOUNTER_CLEAR_GAIN, getFloorTheme } from '@/lib/types'
 import { statusForTrap, type ProgramTurnResult } from '@/lib/adventure-context'
-import { getKeep } from '@/lib/storage'
-import { defensesOnFloor, encounterId, keeperPromptContext, sceneChrome } from '@/lib/keeper'
+import { getKeep, saveKeep } from '@/lib/storage'
+import { keeperPromptContext, recordSprung, rollPlacedDefense, sceneChrome } from '@/lib/keeper'
 import { buildOpeningUserPrompt, startScreenCopy } from '@/lib/prompts'
 import { cn } from '@/lib/utils'
 import { cleanContent } from '@/lib/chat-protocol'
@@ -13,13 +13,6 @@ import { MEMORY_CATEGORIES } from '@/lib/adventure-memory'
 import { useAdventureSession } from '@/hooks/use-adventure-session'
 import { InterrogationGenerator } from '@/components/trap-generator'
 import { StatusPicker } from '@/components/status-picker'
-
-function rollPlacedDefense(floor: number): Encounter | null {
-  const placed = defensesOnFloor(getKeep(), floor)
-  if (placed.length === 0 || Math.random() >= 0.65) return null
-  const pick = placed[Math.floor(Math.random() * placed.length)]
-  return { id: encounterId(pick.id), name: pick.name, kind: pick.kind, summary: pick.summary.slice(0, 180), restraint: 2 }
-}
 
 function dispelChance(character: Character): number {
   const arousal = ((character.pleasure ?? 0) + (character.desire ?? 0)) / 2
@@ -100,9 +93,12 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
     if (loading || summarising || pending || character.encounter) return
     const cur = character.explorationProgress ?? 0
     if (cur >= 100) return
-    const encounter = rollPlacedDefense(character.floor ?? 1)
-    const statusEffect = statusForTrap(encounter)
-    pendingResultRef.current = { kind: 'explore', explorationProgress: Math.min(100, cur + EXPLORE_GAIN), encounter, statusEffect }
+    const keep = getKeep()
+    const rolled = rollPlacedDefense(keep, character.floor ?? 1)
+    const encounter = rolled?.encounter ?? null
+    const statusEffect = rolled ? (rolled.statuses[0] ?? statusForTrap(encounter)) : null
+    if (rolled) saveKeep(recordSprung(keep, rolled.encounter, character.name, character.floor ?? 1, keep.activeId))
+    pendingResultRef.current = { kind: 'explore', explorationProgress: Math.min(100, cur + EXPLORE_GAIN), encounter, statusEffect, extraStatus: rolled?.statuses[1] ?? null }
     const theme = getFloorTheme(character.floorThemes, character.floor ?? 1)
     sendMessage(encounter
       ? `城主把${character.name}往「${theme.name}」更里面赶了一步。她撞上了「${encounter.name}」${statusEffect ? `，并陷入「${statusEffect.title}」。` : '。'}`

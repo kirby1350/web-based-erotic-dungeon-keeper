@@ -7,11 +7,10 @@ import type { AppSettings, Character, GameSession } from '@/lib/types'
 import { getKeep, getSession, saveGame, saveKeep } from '@/lib/storage'
 import { chatStream } from '@/lib/dzmm'
 import { buildStateRepairPrompt, buildSystemPrompt, withQualityPrefix } from '@/lib/prompts'
-import { essenceFromPleasure, grantEssence, keeperPromptContext } from '@/lib/keeper'
+import { advancePhase, grantEssence, keeperPromptContext, turnEssence } from '@/lib/keeper'
 import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
 import { inspectReply, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
-import { floorSynergies, synergyBonus } from '@/lib/synergy'
 import { denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
 import { applyTermCommands, dkTerms, dkTermsLine, tickTerms } from '@/lib/terms-dk'
 import { termsChange } from '@/lib/terms'
@@ -128,10 +127,9 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       // This single write commits story, character, audit record and removal of pending work.
       saveGame(completed.character, savedSession)
       try {
-        const live = getKeep()
-        const raw = essenceFromPleasure(pending.before.pleasure ?? 0, completed.character.pleasure ?? 0)
-        const gain = Math.round(raw * (1 + synergyBonus(floorSynergies(live, completed.character.floor ?? 1))))
-        if (gain > 0) saveKeep(grantEssence(live, gain))
+        const live = advancePhase(getKeep(), getKeep().activeId, completed.character.encounter)
+        const gain = turnEssence(live, pending.before.pleasure ?? 0, completed.character.pleasure ?? 0, completed.character.floor ?? 1)
+        saveKeep(gain > 0 ? grantEssence(live, gain) : live)
       } catch { /* 淫髓没记上时，这一回合的正文和身体仍然算数 */ }
       committed = true
       characterRef.current = completed.character
@@ -171,7 +169,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     const pending: PendingTurn = { id: crypto.randomUUID(), input, startedAt: Date.now(), before,
       result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '',
       requestMessages: [
-        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep())) + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
+        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep(), saved.messages.filter((m) => m.role === 'assistant').slice(-2).map((m) => m.content))) + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
         ...saved.messages.map((message) => ({ role: message.role, content: message.content })),
         { role: 'user', content: (bank ? `${input}${denseTurnNote(bank.stepIndex)}${repeatNote(saved.messages.filter((m) => m.role === 'assistant').at(-1)?.content)}` : input) + termsNote },
       ],

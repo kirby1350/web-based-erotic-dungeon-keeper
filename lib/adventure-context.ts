@@ -2,7 +2,7 @@ import { EXPLORE_ENCOUNTER_CHANCE, PRESET_STATUS_EFFECTS, PRESET_TRAPS, type Cha
 
 export type ProgramTurnResult =
   | { kind: 'escape'; encounter: Encounter | null; explorationProgress: number }
-  | { kind: 'explore'; explorationProgress: number; encounter: Encounter | null; statusEffect?: StatusEffect | null }
+  | { kind: 'explore'; explorationProgress: number; encounter: Encounter | null; statusEffect?: StatusEffect | null; extraStatus?: StatusEffect | null }
   | { kind: 'advance'; floor: number }
   | { kind: 'dispel'; removed: boolean; effect: StatusEffect }
 
@@ -50,7 +50,7 @@ export function resolveTurnCharacter(character: Character, result: ProgramTurnRe
         ...character,
         explorationProgress: result.explorationProgress,
         encounter: result.encounter ?? null,
-        statusEffects: withStatus(character.statusEffects, result.statusEffect),
+        statusEffects: withStatus(withStatus(character.statusEffects, result.statusEffect), result.extraStatus),
       }
     case 'advance':
       return { ...character, floor: result.floor, explorationProgress: 0, encounter: null }

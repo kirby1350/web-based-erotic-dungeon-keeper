@@ -274,8 +274,9 @@ test('keeper hall receives an intruder and stocks a trap', async ({ page }) => {
   await expect(page.getByText('还没来过的角色库')).toBeVisible()
   await page.getByRole('button', { name: '回到城主厅' }).click()
   await page.getByRole('button', { name: /陷阱工房/ }).click()
-  await page.getByRole('button', { name: /触手深渊/ }).click()
-  await expect(page.getByRole('button', { name: '布置', exact: true })).toBeVisible()
+  await page.getByTestId('workshop-grid').getByRole('button', { name: /触手深渊/ }).click()
+  await page.getByTestId('item-detail').getByRole('button', { name: '只入库', exact: true }).click()
+  await page.keyboard.press('Escape')
   const keep = await page.evaluate(() => JSON.parse(localStorage.getItem('dungeon_keep')))
   expect(keep.traps.some((trap) => trap.id === 'tentacle_pit' && trap.placed === false)).toBe(true)
   expect(keep.collection).toEqual([])
@@ -319,8 +320,8 @@ test('keeper hall receives an intruder and stocks a trap', async ({ page }) => {
   await expect(page.getByText('收藏室还是空的')).toBeVisible()
   await page.getByRole('button', { name: '回到城主厅' }).click()
   await page.getByRole('button', { name: /魔物工房/ }).click()
-  await expect(page.getByRole('heading', { name: '魔物工房' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /廊道触手看守/ })).toBeVisible()
+  await expect(page.getByRole('tab', { name: '工房' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('workshop-grid').getByRole('button', { name: /廊道触手看守/ })).toBeVisible()
 })
 
 test('training scene stays in the cage and offers a new interrogation', async ({ page }) => {

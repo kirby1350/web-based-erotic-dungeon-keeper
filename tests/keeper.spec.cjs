@@ -79,6 +79,24 @@ test('same-floor synergy shows in the dungeon editor', async ({ page }) => {
     localStorage.setItem('dungeon_keep', JSON.stringify(k))
   })
   await page.reload()
-  await page.getByText('布置地城').click()
+  await page.getByRole('button', { name: '布置地城', exact: true }).click()
   await expect(page.getByTestId('synergy').first()).toContainText('催情触手')
+})
+
+test('tap a stocked trap then a floor to place it', async ({ page }) => {
+  await setup(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: '淫髓 +100', exact: true }).click()
+  await expect.poll(async () => (await keep(page))?.progress.essence ?? 0).toBeGreaterThan(99)
+  await page.evaluate(() => {
+    const k = JSON.parse(localStorage.getItem('dungeon_keep'))
+    k.traps = [{ id: 'tentacle_pit', name: '触手深渊', mechanism: '触手缠绕', prose: '', placed: false, source: 'preset' }]
+    localStorage.setItem('dungeon_keep', JSON.stringify(k))
+  })
+  await page.reload()
+  await page.getByRole('button', { name: '布置地城', exact: true }).click()
+  await page.getByTestId('stock-tray').getByRole('button', { name: /触手深渊/ }).click()
+  await page.getByRole('button', { name: '放到第 2 层', exact: true }).click()
+  await expect.poll(async () => (await keep(page)).floors[1].trapIds).toEqual(['tentacle_pit'])
+  await expect(page.getByTestId('slot-usage')).toContainText('1/')
 })

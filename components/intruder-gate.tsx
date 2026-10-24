@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { CHARACTER_PRESETS, PRESET_TRAPS, RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
 import { statusForTrap } from '@/lib/adventure-context'
+import { trapRestraint, trapStatuses } from '@/lib/trap-craft'
 import { rollIntruder } from '@/lib/intruder-roll'
 import { IntruderDossier } from '@/components/intruder-dossier'
 import { CharacterProfile } from '@/components/character-profile'
@@ -76,8 +77,10 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext }:
     const payload = (card: Arrival): BeginIntrusion => {
       const next = applyOpening(characterFromPreset(card.preset), opening, defense)
       if (next.encounter && opening === 'trap') {
-        const effect = statusForTrap(next.encounter)
-        if (effect) next.statusEffects = [effect]
+        const effects = trap ? trapStatuses(trap) : []
+        const effect = effects.length ? null : statusForTrap(next.encounter)
+        next.statusEffects = effects.length ? effects : effect ? [effect] : next.statusEffects
+        next.encounter = { ...next.encounter, restraint: trapRestraint(trap) }
       }
       return {
         character: next,

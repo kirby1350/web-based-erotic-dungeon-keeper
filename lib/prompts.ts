@@ -1,3 +1,4 @@
+import { CATEGORY_SHEET, hitLine, hitPreview, phaseLine } from '@/lib/trap-craft'
 import { TERMS_RULE } from '@/lib/terms'
 import { buildTurnContext, buildProgramResultContext, REPLY_PROTOCOL_PROMPT, NARRATIVE_PROGRESS_PROMPT, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryContext, emptyMemory, type AdventureMemory } from '@/lib/adventure-memory'
@@ -272,6 +273,13 @@ export function buildSystemPrompt(character: Character, summary = '', proseStyle
     .map((layer, index) => index + 1 === floor ? '' : `第${index + 1}层「${layer.name}」：${layer.defenses.map((item) => item.name).join('、') || '空着'}`)
     .filter(Boolean)
     .join('\n')
+  const info = keeper?.trapInfo ?? {}
+  const encounterNow = character.encounter
+  const phaseState = keeper?.activeId ? keeper.phases?.[keeper.activeId] : undefined
+  const phaseNow = encounterNow && phaseState?.id === encounterNow.id ? phaseState.phase : 0
+  const encounterTrap = encounterNow ? info[encounterNow.id] : undefined
+  const phaseText = encounterNow && keeper ? phaseLine(encounterNow.name, phaseNow, encounterTrap ? { id: encounterNow.id, ...encounterTrap } : undefined) : ''
+  const hitTexts = (here?.defenses ?? []).flatMap((item) => item.kind === 'trap' && item.id && info[item.id] ? [hitLine(item.name, hitPreview({ id: item.id, ...info[item.id] }, character))] : [])
   const specified = keeper?.defenseName
     ? `本场指定「${keeper.defenseName}」。${keeper.defenseSummary ?? ''}`
     : '本场没有额外指定的装置。'
@@ -291,7 +299,7 @@ ${specified}
 ${defenses}
 其他层只有城主明确把她送去时才撞上：
 ${elsewhere || '（没有其他层的记录）'}
-魔物强度 ${rank}/5。已启用的魔物：1 只缠住和磨蹭，3 会把命令做到进入，5 几乎不留挣开的空隙。没有启用魔物时，不要因为强度凭空变出一只。`,
+${hitTexts.length ? `命中（按她的开发度和档案里的死穴）：\n${hitTexts.join('\n')}\n` : ''}魔物强度 ${rank}/5。已启用的魔物：1 只缠住和磨蹭，3 会把命令做到进入，5 几乎不留挣开的空隙。没有启用魔物时，不要因为强度凭空变出一只。`,
     `【这座地下城】\n名字：${keeper?.dungeonName || '无名淫狱'}。${keeper?.dungeonDescription || '城主还没有另写这座狱的脾气。'}`,
     `【核心色情规则】
 1. 始终使用第三人称，只用「${character.name}」称呼闯入者。尺度跟城主这一下实际做的事走。这道命令没碰到的部位、没发生的高潮，不要硬写。命令是性行为时，语言直接，写她被碰到的部位、体液和反应。
@@ -329,6 +337,8 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
     ...(proseStyle === 'dense' ? [DENSE_LEXICON_NOTE] : []),
     ...(keeper?.threat ? [keeper.threat] : []),
     ...(keeper?.combos ? [keeper.combos] : []),
+    ...(phaseText ? [phaseText] : []),
+    ...(keeper?.antiRepeat ? [keeper.antiRepeat] : []),
     MOAN_NOTE,
     moanTierLine(character.pleasure ?? 0),
     TERMS_RULE.replace('对你的称呼', '对城主的称呼'),
@@ -520,7 +530,7 @@ const WORKSHOP_BAN = `【文风禁令】
 重口行话可用，但同一标签不要连用两次。`
 
 /** 陷阱工房：设计一件可重复布置的陷阱，不绑定某一名闯入者。 */
-export function buildWorkshopTrapPrompt(proseStyle: ProseStyle = 'standard', hint = '', focusParts: string[] = []): string {
+export function buildWorkshopTrapPrompt(proseStyle: ProseStyle = 'standard', hint = '', focusParts: string[] = [], category = ''): string {
   const proseBlock = PROSE_STYLE_PROMPTS[proseStyle] ?? ''
   const focus = focusParts.filter(Boolean)
   return `你是城主的陷阱工房。设计一件可以反复布置、用来对付以后闯进来的人的陷阱。玩家是城主。不要写某一名具体闯入者的名字，也不要把城主写成被抓住的人。
@@ -532,10 +542,14 @@ ${proseBlock}
 
 篇幅：触发描写 150 至 220 字。机械摘要 40 字以内，只写束缚方式和主要部位。若启用重油文风，触发描写可到 500 字，被点名的主部位必须使用词库里的质地原词。
 
+习性 20 字以内：这件陷阱"做事的脾气"，比如耐心、贪婪、戏弄、刻板，以后每一轮都按这个脾气动作。
+${category ? `类别：${category}。机制要符合这一类：${CATEGORY_SHEET[category]?.mechanic ?? ''}；禁止：${CATEGORY_SHEET[category]?.ban ?? ''}。` : ''}
+
 严格输出：
 【陷阱名称】
 【触发描写】
 【机械摘要】
+【习性】
 `
 }
 

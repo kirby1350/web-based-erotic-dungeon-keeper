@@ -7,10 +7,14 @@ import {
   type GameSession,
   type PresetTrap,
   type Race,
+  type BodyPart,
+  type Encounter,
+  type StatusEffect,
 } from '@/lib/types'
 import { emptyMemory, readMemory, type AdventureMemory } from '@/lib/adventure-memory'
 import { cleanContent } from '@/lib/chat-protocol'
-import { floorSynergies, synergyPromptLine } from '@/lib/synergy'
+import { floorSynergies, synergyBonus } from '@/lib/synergy'
+import { BASE_TRIGGER, FLOOR_MONSTER_CAP, FLOOR_TRAP_CAP, PHASES, THEME_BONUS, THEME_TRIGGER, TRAP_CATEGORIES, antiRepeatLine, nextLevelRule, levelUpBlock, relayLine, themeMatch, trapCategory, trapHabit, trapParts, trapPromptLine, trapRestraint, trapSheet, trapStatusId, trapStatuses } from '@/lib/trap-craft'
 import { emptyCampaign, isRaidMember, readCampaign, threatPromptLine, type Campaign } from '@/lib/campaign'
 
 export type OpeningKind = 'personal' | 'trap' | 'monster' | 'corridor'
@@ -73,6 +77,12 @@ export interface KeeperTrap {
   prose: string
   placed: boolean
   source: 'preset' | 'custom'
+  /** 17 类之一，决定感官表和撞上时的状态 */
+  category?: string
+  status?: string
+  habit?: string
+  level?: number
+  hits?: number
 }
 
 export interface KeeperMonster {
@@ -106,7 +116,12 @@ export interface DungeonFloor {
   ambience: string
   trapIds: string[]
   monsterIds: string[]
+  /** 守在这一层的魔物：她在这层时它先出场 */
+  guardId?: string
 }
+
+export interface EncounterRecord { id: string; name: string; kind: 'trap' | 'monster'; intruder: string; floor: number; at: number }
+export interface PhaseState { id: string; phase: number }
 
 export const TEMP_MONSTER_COST = 6
 
@@ -143,12 +158,16 @@ export interface KeeperSave {
   roster: RosterEntry[]
   activeId: string | null
   campaign?: Campaign
+  /** 图鉴：谁在哪一层撞上了什么 */
+  history?: EncounterRecord[]
+  /** 每个在狱的人当前遭遇进行到哪个阶段 */
+  phases?: Record<string, PhaseState>
 }
 
 export interface KeeperFloorView {
   name: string
   ambience: string
-  defenses: { name: string; kind: 'trap' | 'monster'; summary: string }[]
+  defenses: { id?: string; name: string; kind: 'trap' | 'monster'; summary: string; parts?: BodyPart[] }[]
 }
 
 export interface KeeperPromptContext {
@@ -164,6 +183,10 @@ export interface KeeperPromptContext {
   floors: KeeperFloorView[]
   threat?: string
   combos?: string
+  phases?: Record<string, PhaseState>
+  activeId?: string | null
+  antiRepeat?: string
+  trapInfo?: Record<string, { name: string; habit: string; escalate: string[]; mechanism: string; prose?: string; category: string; level: number }>
 }
 
 const RACES = new Set<Race>(['human', 'elf', 'tauren', 'fox', 'cat', 'machine', 'dragon', 'succubus'])
@@ -218,7 +241,7 @@ export function emptyKeep(): KeeperSave {
   return {
     dungeonName: '无名淫狱', dungeonDescription: '', floors: defaultFloors(3),
     traps: [], monsters: [], collection: [], recentNames: [], brief: null,
-    progress: emptyProgress(), roster: [], activeId: null, campaign: emptyCampaign(),
+    progress: emptyProgress(), roster: [], activeId: null, campaign: emptyCampaign(), history: [], phases: {},
   }
 }
 
@@ -299,22 +322,34 @@ function readFloors(value: unknown, depth: number, traps: KeeperTrap[], monsters
       ambience: text(row.ambience, 240) || base.ambience,
       trapIds: [...new Set(ids(row.trapIds))],
       monsterIds: [...new Set(ids(row.monsterIds))],
+      guardId: typeof row.guardId === 'string' ? row.guardId : undefined,
     }
   })
   const trapById = new Map(traps.map((trap) => [trap.id, trap]))
   const monsterById = new Map(monsters.map((monster) => [monster.id, monster]))
+  const seenTraps = new Set<string>()
+  const seenMonsters = new Set<string>()
+  const overflowTraps: string[] = []
+  const overflowMonsters: string[] = []
   for (const floor of floors) {
-    floor.trapIds = floor.trapIds.filter((id) => trapById.get(id)?.placed)
-    floor.monsterIds = floor.monsterIds.filter((id) => monsterById.get(id)?.placed)
+    const t = floor.trapIds.filter((id) => trapById.get(id)?.placed && !seenTraps.has(id))
+    const m = floor.monsterIds.filter((id) => monsterById.get(id)?.placed && !seenMonsters.has(id))
+    t.forEach((id) => seenTraps.add(id)); m.forEach((id) => seenMonsters.add(id))
+    // 旧档一层可能塞了很多件：超过每层上限的挪到下面有空位的层
+    floor.trapIds = t.slice(0, FLOOR_TRAP_CAP); overflowTraps.push(...t.slice(FLOOR_TRAP_CAP))
+    floor.monsterIds = m.slice(0, FLOOR_MONSTER_CAP); overflowMonsters.push(...m.slice(FLOOR_MONSTER_CAP))
   }
-  const assignedTraps = new Set(floors.flatMap((floor) => floor.trapIds))
-  const assignedMonsters = new Set(floors.flatMap((floor) => floor.monsterIds))
-  for (const trap of traps) {
-    if (trap.placed && !assignedTraps.has(trap.id)) floors[0]?.trapIds.push(trap.id)
+  for (const trap of traps) if (trap.placed && !seenTraps.has(trap.id)) overflowTraps.push(trap.id)
+  for (const monster of monsters) if (monster.placed && !seenMonsters.has(monster.id)) overflowMonsters.push(monster.id)
+  for (const id of overflowTraps) {
+    const room = floors.find((floor) => floor.trapIds.length < FLOOR_TRAP_CAP)
+    if (room) room.trapIds.push(id); else { const trap = trapById.get(id); if (trap) trap.placed = false }
   }
-  for (const monster of monsters) {
-    if (monster.placed && !assignedMonsters.has(monster.id)) floors[0]?.monsterIds.push(monster.id)
+  for (const id of overflowMonsters) {
+    const room = floors.find((floor) => floor.monsterIds.length < FLOOR_MONSTER_CAP)
+    if (room) room.monsterIds.push(id); else { const monster = monsterById.get(id); if (monster) monster.placed = false }
   }
+  for (const floor of floors) if (floor.guardId && !floor.monsterIds.includes(floor.guardId)) floor.guardId = undefined
   return floors
 }
 
@@ -346,6 +381,7 @@ export function normalizeKeep(value: unknown): KeeperSave {
       prose: text(row.prose, 800),
       placed: row.placed === true,
       source: row.source === 'preset' ? 'preset' as const : 'custom' as const,
+      ...migrateTrapFields(row, encounterId(text(row.id, 60) || name), name, mechanism),
     }]
   }) : []).slice(0, 40)
   const monsters = uniqueById(Array.isArray(raw.monsters) ? raw.monsters.flatMap((item) => {
@@ -404,12 +440,13 @@ export function normalizeKeep(value: unknown): KeeperSave {
     }]
   }) : []).slice(0, 3)
   const activeId = typeof raw.activeId === 'string' && roster.some((entry) => entry.id === raw.activeId) ? raw.activeId : null
-  const placedTraps = capPlaced(traps, progress.trapSlots)
-  const placedMonsters = capPlaced(monsters, progress.monsterSlots)
+  const placedTraps = capPlaced(traps, progress.trapSlots).map((trap) => ({ ...trap }))
+  const placedMonsters = capPlaced(monsters, progress.monsterSlots).map((monster) => ({ ...monster }))
+  const floors = readFloors(raw.floors, progress.depth, placedTraps, placedMonsters)
   return {
     dungeonName: text(raw.dungeonName, 24) || base.dungeonName,
     dungeonDescription: text(raw.dungeonDescription, 400),
-    floors: readFloors(raw.floors, progress.depth, placedTraps, placedMonsters),
+    floors,
     traps: placedTraps,
     monsters: placedMonsters,
     collection,
@@ -419,11 +456,47 @@ export function normalizeKeep(value: unknown): KeeperSave {
     roster,
     activeId,
     campaign: readCampaign(raw.campaign),
+    history: readHistory(raw.history),
+    phases: readPhases(raw.phases, roster.map((entry) => entry.id)),
   }
 }
 
+function migrateTrapFields(row: Partial<KeeperTrap>, id: string, name: string, mechanism: string): Pick<KeeperTrap, 'category' | 'status' | 'habit' | 'level' | 'hits'> {
+  const category = typeof row.category === 'string' && TRAP_CATEGORIES.includes(row.category) ? row.category : trapCategory({ id, name, mechanism })
+  const draft = { id, name, mechanism, category, status: typeof row.status === 'string' ? row.status : undefined }
+  return {
+    category,
+    status: trapStatusId(draft),
+    habit: text(row.habit, 80) || trapHabit({ ...draft, habit: '' }),
+    level: clampInt(row.level, 1, 3, 1),
+    hits: clampInt(row.hits, 0, 999, 0),
+  }
+}
+
+function readHistory(value: unknown): EncounterRecord[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const row = item as Partial<EncounterRecord>
+    const id = text(row.id, 60); const name = text(row.name, 40)
+    if (!id || !name) return []
+    return [{ id, name, kind: row.kind === 'monster' ? 'monster' as const : 'trap' as const, intruder: text(row.intruder, 40), floor: clampInt(row.floor, 1, 10, 1), at: typeof row.at === 'number' ? row.at : 0 }]
+  }).slice(0, 60)
+}
+
+function readPhases(value: unknown, rosterIds: string[]): Record<string, PhaseState> {
+  if (!value || typeof value !== 'object') return {}
+  const out: Record<string, PhaseState> = {}
+  for (const [key, row] of Object.entries(value as Record<string, Partial<PhaseState>>)) {
+    if (!rosterIds.includes(key) || !row || typeof row.id !== 'string') continue
+    out[key] = { id: row.id, phase: clampInt(row.phase, 0, PHASES.length - 1, 0) }
+  }
+  return out
+}
+
 export function trapFromPreset(preset: PresetTrap): KeeperTrap {
-  return { id: preset.id, name: preset.name, mechanism: preset.hint, prose: '', placed: false, source: 'preset' }
+  const base = { id: preset.id, name: preset.name, mechanism: preset.hint, category: preset.category }
+  return { ...base, prose: '', placed: false, source: 'preset', status: trapStatusId(base), habit: trapHabit(base), level: 1, hits: 0 }
 }
 
 export function monsterFromPreset(preset: Omit<KeeperMonster, 'placed' | 'source'>): KeeperMonster {
@@ -461,12 +534,114 @@ function floorViews(save: KeeperSave): KeeperFloorView[] {
     return {
       name: floor.name,
       ambience: floor.ambience,
-      defenses: all.filter((item) => ids.has(item.id)).map(({ name, kind, summary }) => ({ name, kind, summary })),
+      defenses: all.filter((item) => ids.has(item.id)).map(({ id, name, kind, summary }) => {
+        const trap = kind === 'trap' ? save.traps.find((t) => t.id === id) : undefined
+        const guard = kind === 'monster' && floor.guardId === id ? '它守在这一层，她在这层时它先出场。' : ''
+        return { id, name, kind, summary: trap ? `${summary.slice(0, 200)} ${trapPromptLine(trap)}` : `${summary}${guard ? ` ${guard}` : ''}`, parts: trap ? trapParts(trap) : [] }
+      }),
     }
   })
 }
 
-export function keeperPromptContext(save: KeeperSave): KeeperPromptContext {
+/** 当前层的接力顺序：陷阱先把人准备好，魔物接上；守层魔物排在魔物最前 */
+export function floorRelay(save: KeeperSave, floor: number): string {
+  const layer = save.floors?.[floor - 1]
+  if (!layer) return ''
+  const traps = layer.trapIds.map((id) => save.traps.find((t) => t.id === id)).filter((t): t is KeeperTrap => !!t)
+  const monsters = [...layer.monsterIds].sort((a, b) => (a === layer.guardId ? -1 : b === layer.guardId ? 1 : 0))
+    .map((id) => save.monsters.find((m) => m.id === id)).filter((m): m is KeeperMonster => !!m)
+  const order = [...traps.map((t) => ({ name: t.name, kind: 'trap' as const })), ...monsters.map((m) => ({ name: m.name, kind: 'monster' as const }))]
+  const combos = floorSynergies(save, floor)
+  const base = relayLine(order, combos.map((c) => c.name))
+  return base && combos.length ? `${base}${combos.map((c) => `「${c.name}」${c.note}`).join('')}` : base
+}
+
+/** 这一层的总加成：连携（上限 60%）加主题契合 10% */
+export function floorBonus(save: KeeperSave, floor: number): { synergy: number; theme: number; total: number } {
+  const synergy = synergyBonus(floorSynergies(save, floor))
+  const theme = floorThemed(save, floor).length ? THEME_BONUS : 0
+  return { synergy, theme, total: synergy + theme }
+}
+
+export function floorThemed(save: KeeperSave, floor: number): string[] {
+  const layer = save.floors?.[floor - 1]
+  if (!layer) return []
+  const texts = [
+    ...layer.trapIds.map((id) => save.traps.find((t) => t.id === id)).filter(Boolean).map((t) => `${t!.name} ${t!.mechanism}`),
+    ...layer.monsterIds.map((id) => save.monsters.find((m) => m.id === id)).filter(Boolean).map((m) => `${m!.name} ${m!.behavior}`),
+  ]
+  return themeMatch(`${layer.name} ${layer.ambience}`, texts)
+}
+
+export function triggerChance(save: KeeperSave, floor: number): number {
+  return floorThemed(save, floor).length ? THEME_TRIGGER : BASE_TRIGGER
+}
+
+/** 往里赶时撞上哪一件：守层魔物权重 3 */
+export function rollPlacedDefense(save: KeeperSave, floor: number, random: () => number = Math.random): { encounter: Encounter; statuses: StatusEffect[] } | null {
+  const placed = defensesOnFloor(save, floor)
+  if (!placed.length || random() >= triggerChance(save, floor)) return null
+  const guard = save.floors?.[floor - 1]?.guardId
+  const weights = placed.map((item) => (item.id === guard ? 3 : 1))
+  let roll = random() * weights.reduce((a, b) => a + b, 0)
+  let pick = placed[placed.length - 1]
+  for (let i = 0; i < placed.length; i++) { roll -= weights[i]; if (roll < 0) { pick = placed[i]; break } }
+  const trap = pick.kind === 'trap' ? save.traps.find((t) => t.id === pick.id) : undefined
+  return {
+    encounter: { id: encounterId(pick.id), name: pick.name, kind: pick.kind, summary: pick.summary.slice(0, 180), restraint: trapRestraint(trap) },
+    statuses: trap ? trapStatuses(trap) : [],
+  }
+}
+
+/** 撞上一次：陷阱 hits+1，记进图鉴，阶段从「触发」开始 */
+export function recordSprung(save: KeeperSave, encounter: { id: string; name: string; kind: 'trap' | 'monster' }, intruder: string, floor: number, rosterId?: string | null, at = Date.now()): KeeperSave {
+  const record: EncounterRecord = { id: encounter.id, name: encounter.name, kind: encounter.kind, intruder, floor, at }
+  const phases = { ...(save.phases ?? {}) }
+  if (rosterId) delete phases[rosterId]
+  return {
+    ...save,
+    traps: save.traps.map((trap) => trap.id === encounter.id ? { ...trap, hits: Math.min(999, (trap.hits ?? 0) + 1) } : trap),
+    history: [record, ...(save.history ?? [])].slice(0, 60),
+    phases,
+  }
+}
+
+/** 一回合结算后推进阶段：同一件遭遇持续就往下一阶段，换了就从「锁定」起（触发那一回合已经写过），没有遭遇就清掉 */
+export function advancePhase(save: KeeperSave, rosterId: string | null | undefined, encounter: { id: string } | null | undefined): KeeperSave {
+  if (!rosterId) return save
+  const phases = { ...(save.phases ?? {}) }
+  const now = phases[rosterId]
+  if (!encounter) delete phases[rosterId]
+  else phases[rosterId] = { id: encounter.id, phase: now && now.id === encounter.id ? Math.min(PHASES.length - 1, now.phase + 1) : 1 }
+  return { ...save, phases }
+}
+
+export function currentPhase(save: KeeperSave, rosterId: string | null | undefined, encounterIdNow: string | undefined): number {
+  if (!rosterId || !encounterIdNow) return 0
+  const now = save.phases?.[rosterId]
+  return now && now.id === encounterIdNow ? now.phase : 0
+}
+
+export function levelUpTrap(save: KeeperSave, id: string): KeeperSave {
+  const trap = save.traps.find((t) => t.id === id)
+  if (!trap || levelUpBlock(trap, save.progress.essence)) return save
+  const rule = nextLevelRule(trap)!
+  return {
+    ...save,
+    progress: { ...save.progress, essence: save.progress.essence - rule.cost },
+    traps: save.traps.map((t) => t.id === id ? { ...t, level: rule.level } : t),
+  }
+}
+
+export function setGuard(save: KeeperSave, floorIndex: number, monsterId: string | null): KeeperSave {
+  return { ...save, floors: save.floors.map((floor, index) => index !== floorIndex ? floor : { ...floor, guardId: monsterId && floor.monsterIds.includes(monsterId) ? monsterId : undefined }) }
+}
+
+export function keeperPromptContext(save: KeeperSave, recentAssistant: string[] = []): KeeperPromptContext {
+  const active = save.roster?.find((entry) => entry.id === save.activeId)
+  const floor = active?.character.floor ?? 1
+  const encounter = active?.character.encounter
+  const trap = encounter ? save.traps.find((t) => t.id === encounter.id) : undefined
   return {
     opening: save.brief?.opening ?? null,
     defenseName: save.brief?.defenseName,
@@ -478,7 +653,11 @@ export function keeperPromptContext(save: KeeperSave): KeeperPromptContext {
     dungeonName: save.dungeonName || '无名淫狱',
     dungeonDescription: save.dungeonDescription || '',
     floors: floorViews(save),
-    combos: synergyPromptLine(floorSynergies(save, save.roster?.find((entry) => entry.id === save.activeId)?.character.floor ?? 1)),
+    combos: floorRelay(save, floor),
+    phases: save.phases ?? {},
+    activeId: save.activeId,
+    antiRepeat: antiRepeatLine(recentAssistant, trap ? trapSheet(trap).escalate : undefined),
+    trapInfo: Object.fromEntries(save.traps.map((t) => [t.id, { name: t.name, habit: trapHabit(t), escalate: trapSheet(t).escalate, mechanism: t.mechanism, prose: t.prose, category: trapCategory(t), level: t.level ?? 1 }])),
     threat: threatPromptLine(save.campaign ?? emptyCampaign(), isRaidMember(save.roster?.find((entry) => entry.id === save.activeId)?.character.name ?? '')),
   }
 }
@@ -544,6 +723,16 @@ export function essenceFromPleasure(before: number, after: number): number {
   return rose >= 20 ? 2 : 1
 }
 
+/** 一回合的淫髓：快感涨幅折算，再乘这一层的连携和主题加成 */
+export function turnEssence(save: KeeperSave, before: number, after: number, floor: number): number {
+  return Math.round(essenceFromPleasure(before, after) * (1 + floorBonus(save, floor).total))
+}
+
+/** 结算留下/玩坏/放走的淫髓：她最后所在那一层的加成同样算进去 */
+export function fateEssence(save: KeeperSave, fate: IntruderFate, floor: number): number {
+  return Math.round(FATE_ESSENCE[fate] * (1 + floorBonus(save, floor).total))
+}
+
 export function grantEssence(save: KeeperSave, amount: number): KeeperSave {
   if (amount <= 0) return save
   return { ...save, progress: { ...save.progress, essence: Math.min(9999, save.progress.essence + amount) } }
@@ -571,7 +760,10 @@ export function stuffDefense(save: KeeperSave, floorIndex: number, kind: 'trap' 
   if (!target) return save
   const cap = kind === 'trap' ? save.progress.trapSlots : save.progress.monsterSlots
   if (!target.placed && list.filter((item) => item.placed).length >= cap) return save
-  const floors = save.floors.map((floor) => ({ ...floor, [key]: floor[key].filter((item) => item !== id) }))
+  const floorCap = kind === 'trap' ? FLOOR_TRAP_CAP : FLOOR_MONSTER_CAP
+  const there = save.floors[floorIndex][key]
+  if (!there.includes(id) && there.length >= floorCap) return save
+  const floors = save.floors.map((floor, index) => ({ ...floor, [key]: floor[key].filter((item) => item !== id), guardId: floor.guardId === id && index !== floorIndex ? undefined : floor.guardId }))
   floors[floorIndex] = { ...floors[floorIndex], [key]: [...floors[floorIndex][key], id] }
   if (kind === 'trap') return { ...save, floors, traps: save.traps.map((trap) => trap.id === id ? { ...trap, placed: true } : trap) }
   return { ...save, floors, monsters: save.monsters.map((monster) => monster.id === id ? { ...monster, placed: true } : monster) }
@@ -579,7 +771,7 @@ export function stuffDefense(save: KeeperSave, floorIndex: number, kind: 'trap' 
 
 export function unstuffDefense(save: KeeperSave, kind: 'trap' | 'monster', id: string): KeeperSave {
   const key = kind === 'trap' ? 'trapIds' as const : 'monsterIds' as const
-  const floors = (save.floors ?? []).map((floor) => ({ ...floor, [key]: floor[key].filter((item) => item !== id) }))
+  const floors = (save.floors ?? []).map((floor) => ({ ...floor, [key]: floor[key].filter((item) => item !== id), guardId: floor.guardId === id ? undefined : floor.guardId }))
   if (kind === 'monster' && save.monsters.some((monster) => monster.id === id && monster.temporary)) {
     return { ...save, floors, monsters: save.monsters.filter((monster) => monster.id !== id) }
   }

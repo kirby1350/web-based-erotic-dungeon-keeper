@@ -7,7 +7,7 @@ import type { AppSettings, Character, GameSession } from '@/lib/types'
 import { getKeep, getSession, saveGame, saveKeep } from '@/lib/storage'
 import { chatStream } from '@/lib/dzmm'
 import { buildStateRepairPrompt, buildSystemPrompt, withQualityPrefix } from '@/lib/prompts'
-import { advancePhase, grantEssence, keeperPromptContext, turnEssence } from '@/lib/keeper'
+import { advancePhase, grantEssence, keeperPresence, keeperPromptContext, turnEssence } from '@/lib/keeper'
 import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
 import { inspectReply, stripPlanLeak, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
@@ -194,19 +194,20 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     const before = commanded.character
     if (commanded.found) toast('她记住了新的叫法', { description: '可以在角色档案的「称呼」卡里撤销' })
     const duo = together(before) && before.partner ? before.partner : null
-    const termsNote0 = `\n\n${dkTermsLine(resolveTurnCharacter(before, result))}`
+    const presence = keeperPresence(keeperPromptContext(getKeep()))
+    const termsNote0 = `\n\n${dkTermsLine(resolveTurnCharacter(before, result), presence)}`
     const current = resolveTurnCharacter(before, result)
     const saved = sessionRef.current
     const dense = settings.proseStyle === 'dense'
     const bank = dense ? denseBankOpts(input, current, Date.now() % 100000, saved.recentBank ?? []) : null
     const span = bank ? denseLength(bank.stepIndex) : null
     const termsNote = termsNote0 + (duo
-      ? `\n${dkTermsLine(duo)}\n（${duo.name}也在场：她只占 1 到 2 个叙述段、至少 1 行台词，其余段落都写${current.name}。${span ? `两个人合计 ${span.min} 到 ${span.max} 字，不因为有两个人就写长；` : ''}台词行数也按整段合计。[DESC] 之后写 [PARTNER:{"name":"${duo.name}","hp":…,"pleasure":…,"desire":…}]。）`
+      ? `\n${dkTermsLine(duo, presence)}\n（${duo.name}也在场：她只占 1 到 2 个叙述段、至少 1 行台词，其余段落都写${current.name}。${span ? `两个人合计 ${span.min} 到 ${span.max} 字，不因为有两个人就写长；` : ''}台词行数也按整段合计。[DESC] 之后写 [PARTNER:{"name":"${duo.name}","hp":…,"pleasure":…,"desire":…}]。）`
       : '')
     const pending: PendingTurn = { id: crypto.randomUUID(), input, startedAt: Date.now(), before,
       result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '', guard: { dense, stepIndex: bank ? bank.stepIndex : null },
       requestMessages: [
-        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep(), saved.messages.filter((m) => m.role === 'assistant').slice(-2).map((m) => m.content))) + (current.partner ? `\n\n${partyPromptBlock(current)}` : '') + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
+        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep(), saved.messages.filter((m) => m.role === 'assistant').slice(-2).map((m) => m.content))) + (current.partner ? `\n\n${partyPromptBlock(current, presence)}` : '') + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
         ...saved.messages.map((message) => ({ role: message.role, content: message.content })),
         { role: 'user', content: (bank ? `${input}${denseTurnNote(bank.stepIndex)}${repeatNote(saved.messages.filter((m) => m.role === 'assistant').at(-1)?.content)}` : input) + termsNote },
       ],

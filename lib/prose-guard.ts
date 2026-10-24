@@ -45,6 +45,8 @@ export function checkReply(text: string, spec: GuardSpec): GuardResult {
   if (negations > NEGATION_MAX) { const f = `「不是X，是Y」句 ${negations} 处，最多 ${NEGATION_MAX} 处`; failures.push(f); clear.push(f); score += negations - NEGATION_MAX }
   const leaked = leakedLatinWords(text)
   if (leaked >= 4) { const f = `正文混进了 ${leaked} 个英文词（写作计划漏出来了）`; failures.push(f); clear.push(f); score += 10 }
+  const male = (proseBody(text).match(/屌肉/g) ?? []).length
+  if (male) { const f = `她身上用了男性词「屌肉」${male} 处，应写屄肉或穴肉`; failures.push(f); clear.push(f); score += 5 }
   if (!options) { failures.push('缺少 [OPTIONS] 选项块'); clear.push('缺少 [OPTIONS] 选项块'); score += 10 }
   return { failures, clear, score, length, dialogue, negations, options }
 }

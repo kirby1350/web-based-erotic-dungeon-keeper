@@ -2,13 +2,14 @@ import { denseLength, negationTurns } from '@/lib/prose-bank'
 
 /** 生成后的代码侧检查：字数档、台词行数（重油 4–7）、「不是X是Y」≤ 1、[OPTIONS] 存在。 */
 export interface GuardSpec { dense: boolean; stepIndex: number | null }
-/** failures 是严格限制下没过的项（统计用）；clear 是明显越界、值得重写的项（容差：字数超出档位 10% 以上、台词差 2 行以上）。 */
+/** failures 是严格限制下没过的项（统计用）；clear 是明显越界、值得重写的项（容差：字数超出档位 20% 以上、台词少于 2 行或多于 10 行）。 */
 export interface GuardResult { failures: string[]; clear: string[]; score: number; length: number; dialogue: number; negations: number; options: boolean }
 
 export const DENSE_DIALOGUE = { min: 4, max: 7 }
 export const NEGATION_MAX = 1
-export const LENGTH_TOLERANCE = 0.1
-export const DIALOGUE_TOLERANCE = 1
+export const LENGTH_TOLERANCE = 0.2
+/** 台词行数超出这个范围才算明显越界、触发重写。 */
+export const DIALOGUE_CLEAR = { min: 2, max: 10 }
 
 /** 只算正文：去掉注释、标记块和 *动作* 星号、空白。 */
 export function proseBody(text: string): string {
@@ -36,8 +37,8 @@ export function checkReply(text: string, spec: GuardSpec): GuardResult {
     else if (length < tier.min) { const f = `正文 ${length} 字，少于下限 ${tier.min}`; failures.push(f); if (length < tier.min * (1 - LENGTH_TOLERANCE)) clear.push(f); score += (tier.min - length) / 100 }
     // 只在完整档检查台词行数；短档 4 行下限不适用。
     if (tier.max >= 1500) {
-      if (dialogue > DENSE_DIALOGUE.max) { const f = `台词 ${dialogue} 行，超过 ${DENSE_DIALOGUE.max} 行`; failures.push(f); if (dialogue > DENSE_DIALOGUE.max + DIALOGUE_TOLERANCE) clear.push(f); score += dialogue - DENSE_DIALOGUE.max }
-      else if (dialogue < DENSE_DIALOGUE.min) { const f = `台词 ${dialogue} 行，少于 ${DENSE_DIALOGUE.min} 行`; failures.push(f); if (dialogue < DENSE_DIALOGUE.min - DIALOGUE_TOLERANCE) clear.push(f); score += DENSE_DIALOGUE.min - dialogue }
+      if (dialogue > DENSE_DIALOGUE.max) { const f = `台词 ${dialogue} 行，超过 ${DENSE_DIALOGUE.max} 行`; failures.push(f); if (dialogue > DIALOGUE_CLEAR.max) clear.push(f); score += dialogue - DENSE_DIALOGUE.max }
+      else if (dialogue < DENSE_DIALOGUE.min) { const f = `台词 ${dialogue} 行，少于 ${DENSE_DIALOGUE.min} 行`; failures.push(f); if (dialogue < DIALOGUE_CLEAR.min) clear.push(f); score += DENSE_DIALOGUE.min - dialogue }
     }
   }
   if (negations > NEGATION_MAX) { const f = `「不是X，是Y」句 ${negations} 处，最多 ${NEGATION_MAX} 处`; failures.push(f); clear.push(f); score += negations - NEGATION_MAX }

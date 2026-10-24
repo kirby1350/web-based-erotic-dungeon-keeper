@@ -1,5 +1,6 @@
 'use client'
 
+import { ReplyMarkdown } from '@/components/reply-markdown'
 import { useState, useRef, useEffect, type MutableRefObject } from 'react'
 import { Send, Loader2, BookOpen, Square, RotateCcw, Wrench, Zap, Sparkles, ShieldAlert, Unlock, HeartCrack } from 'lucide-react'
 import { Character, AppSettings, StatusEffect, Encounter, EXPLORE_GAIN, ENCOUNTER_CLEAR_GAIN, getFloorTheme } from '@/lib/types'
@@ -349,7 +350,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
                   <span className="ml-2 text-[10px] text-muted-foreground/60 tracking-normal" data-testid="guard-retried"
                     title={`第一版没过检查，已自动重写一次：${msg.guard.first.join('；')}${msg.guard.failures.length ? `\n保留较好的一版，仍有：${msg.guard.failures.join('；')}` : ''}`}>· 已自动重写</span>
                 )}</span>
-                <p className="text-foreground whitespace-pre-wrap">{cleanContent(msg.content)}</p>
+                <ReplyMarkdown text={cleanContent(msg.content)} />
                 {loading && i === messages.length - 1 && msg.content === '' && (
                   <div className="flex gap-1 mt-2">
                     <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0ms]" />

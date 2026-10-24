@@ -1,5 +1,5 @@
 import { leakedLatinWords } from '@/lib/chat-protocol'
-import { denseLength, negationTurns } from '@/lib/prose-bank'
+import { denseLength, negationTurns, textureWordsUsed } from '@/lib/prose-bank'
 
 /** 生成后的代码侧检查：字数档、台词行数（重油 4–7）、「不是X是Y」≤ 1、[OPTIONS] 存在。 */
 export interface GuardSpec { dense: boolean; stepIndex: number | null }
@@ -8,6 +8,7 @@ export interface GuardResult { failures: string[]; clear: string[]; score: numbe
 
 export const DENSE_DIALOGUE = { min: 4, max: 7 }
 export const NEGATION_MAX = 1
+export const TEXTURE_MIN = 6
 export const LENGTH_TOLERANCE = 0.2
 /** 台词行数超出这个范围才算明显越界、触发重写。 */
 export const DIALOGUE_CLEAR = { min: 2, max: 10 }
@@ -36,6 +37,8 @@ export function checkReply(text: string, spec: GuardSpec): GuardResult {
     const tier = denseLength(spec.stepIndex)
     if (length > tier.max) { const f = `正文 ${length} 字，超过上限 ${tier.max}`; failures.push(f); if (length > tier.max * (1 + LENGTH_TOLERANCE)) clear.push(f); score += (length - tier.max) / 100 }
     else if (length < tier.min) { const f = `正文 ${length} 字，少于下限 ${tier.min}`; failures.push(f); if (length < tier.min * (1 - LENGTH_TOLERANCE)) clear.push(f); score += (tier.min - length) / 100 }
+    // 叠词浓度只记录、不触发重写：完整档少于 6 个词库质地词就记一笔。
+    if (tier.max >= 1500) { const t = textureWordsUsed(proseBody(text)); if (t < TEXTURE_MIN) failures.push(`词库质地词只用了 ${t} 个，少于 ${TEXTURE_MIN}`) }
     // 只在完整档检查台词行数；短档 4 行下限不适用。
     if (tier.max >= 1500) {
       if (dialogue > DENSE_DIALOGUE.max) { const f = `台词 ${dialogue} 行，超过 ${DENSE_DIALOGUE.max} 行`; failures.push(f); if (dialogue > DIALOGUE_CLEAR.max) clear.push(f); score += dialogue - DENSE_DIALOGUE.max }
@@ -52,7 +55,7 @@ export function checkReply(text: string, spec: GuardSpec): GuardResult {
 /** 重生成时追加在最后一条用户消息后的短提示。 */
 export function retryNote(result: GuardResult, spec: GuardSpec): string {
   const tier = spec.dense && spec.stepIndex !== null ? denseLength(spec.stepIndex) : null
-  return `\n\n【重写：上一版没通过检查】${result.failures.join('；')}。按同样的命令重写这一回合${tier ? `，正文 ${tier.min}–${tier.max} 字` : ''}${tier && tier.max >= 1500 ? `，台词 ${DENSE_DIALOGUE.min}–${DENSE_DIALOGUE.max} 行（所有引号行都算）` : ''}，「不是X，是Y」最多一处，结尾带 [OPTIONS]。直接写正文，不要写计划、思考或英文。`
+  return `\n\n【重写：上一版没通过检查】${result.failures.join('；')}。按同样的命令重写这一回合${tier ? `，正文 ${tier.min}–${tier.max} 字` : ''}${tier && tier.max >= 1500 ? `，台词 ${DENSE_DIALOGUE.min}–${DENSE_DIALOGUE.max} 行（所有引号行都算）` : ''}，「不是X，是Y」最多一处，结尾带 [OPTIONS]。重写时保持叠加修饰的浓度：主部位前的叠词串至少三串，不要为了改问题把形容词删素。直接写正文，不要写计划、思考或英文。`
 }
 
 export function withRetryNote(messages: { role: string; content: string }[], note: string) {

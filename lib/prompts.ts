@@ -3,7 +3,7 @@ import { TERMS_RULE } from '@/lib/terms'
 import { buildTurnContext, buildProgramResultContext, REPLY_PROTOCOL_PROMPT, NARRATIVE_PROGRESS_PROMPT, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryContext, emptyMemory, type AdventureMemory } from '@/lib/adventure-memory'
 import type { KeeperPromptContext } from '@/lib/keeper'
-import { Character, INTERROGATION_METHODS, Race, RACE_INFO, getFloorTheme, ProseStyle, type ImagePromptFamily } from '@/lib/types'
+import { Character, INTERROGATION_METHODS, Race, RACE_INFO, getFloorTheme, IMAGE_TAG_PRESETS, ProseStyle, type ImagePromptFamily } from '@/lib/types'
 
 // 第一版重油：固定词库贴在部位前面。不抽词，不走三股和巡礼。
 const PROSE_STYLE_PROMPTS: Record<ProseStyle, string> = {
@@ -91,17 +91,43 @@ export function raceLabel(race: Race): string {
 
 export const IMAGE_PROMPT_PROFILES: Record<ImagePromptFamily, { qualityPrefix: string; negative: string }> = {
   illustrious: {
-    qualityPrefix: '',
-    negative: 'lowres, bad anatomy, bad hands, extra fingers, missing fingers, extra limbs, fused bodies, text, watermark, signature, child, loli, shota',
+    // WAI-NSFW-V16 作者推荐的正向质量词（文香审核 §2）
+    qualityPrefix: 'masterpiece, best quality, amazing quality',
+    negative: 'lowres, worst quality, low quality, normal quality, jpeg artifacts, blurry, bad anatomy, bad hands, extra fingers, missing fingers, extra digit, fewer digits, extra arms, extra legs, extra limbs, fused bodies, cropped, text, signature, watermark, username, artist name, patreon username, patreon logo, speech bubble, logo, multiple girls, child, loli, shota, petite, flat chest, small breasts, aged down',
   },
   sdxl: {
     qualityPrefix: 'highly detailed, sharp focus',
-    negative: 'lowres, bad anatomy, bad hands, extra digits, missing fingers, cropped, watermark, blurry, child, loli, shota',
+    negative: 'lowres, worst quality, low quality, bad anatomy, bad hands, extra digits, missing fingers, cropped, watermark, signature, username, patreon username, speech bubble, blurry, multiple girls, flat chest, petite, child, loli, shota',
   },
   flux: {
     qualityPrefix: '',
-    negative: 'child, loli, shota',
+    negative: 'watermark, signature, patreon username, speech bubble, child, loli, shota',
   },
+}
+
+/** Illustrious 出图时固定追加的身材串（文香审核 §2 + 主人偏好）。 */
+export const IMAGE_BODY_TAGS = 'gigantic breasts, wide hips, huge hips, huge ass, thick thighs, curvy'
+/** 新泽西按主人之前的反馈保留 large breasts，跳过公共身材串。 */
+const BODY_TAG_EXEMPT = /^new_jersey_\(azur_lane\)$/i
+
+type ImageCharacter = { name?: string; danbooruTags?: string; race?: string }
+
+const LACTATOR_TAG = /^(?:draph|cow girl|narmaya_\(granblue_fantasy\)|kashino_\(azur_lane\)|shinano_\(azur_lane\))$/i
+const LACTATOR_NAME = /娜露梅亚|樫野|信浓/
+
+/** 泌乳只给牛人族、德拉夫族、原作泌乳角色（娜露梅亚、樫野）和信浓。 */
+export function characterLactates(character?: ImageCharacter): boolean {
+  if (!character) return false
+  if (character.race === 'tauren') return true
+  if (character.name && LACTATOR_NAME.test(character.name)) return true
+  return (character.danbooruTags ?? '').split(',').some((tag) => LACTATOR_TAG.test(tag.trim()))
+}
+
+/** 玩家选的标签组；curvy 只在角色符合泌乳规则时追加 lactation。 */
+export function presetTagsFor(preset: string, character?: ImageCharacter): string {
+  const base = (IMAGE_TAG_PRESETS[preset as keyof typeof IMAGE_TAG_PRESETS] ?? IMAGE_TAG_PRESETS.none).tags
+  if (preset === 'curvy' && characterLactates(character)) return `${base}, lactation`
+  return base
 }
 
 /** 当前自建模型都是 Illustrious 系；服务端没收到负面词时用这一份。 */
@@ -164,7 +190,7 @@ function dedupeTags(tags: string[]): string[] {
 /** 图片 API 顺序：外观锚点，然后场景标签。SDXL 才在最前加质量前缀；Flux 改成一句英文。 */
 export function buildImagePrompt(options: {
   scene?: string
-  character?: { name?: string; danbooruTags?: string }
+  character?: ImageCharacter
   extraTags?: string[]
   family?: ImagePromptFamily
 }): { prompt: string; negative: string } {
@@ -177,9 +203,16 @@ export function buildImagePrompt(options: {
     const sceneClause = [scene, ...extras].filter(Boolean).join(', ')
     return { prompt: `${anchor}. ${sceneClause}.`, negative: profile.negative }
   }
+  // 质量前缀不经过 splitPromptTags，否则 masterpiece、best quality 会被当成模型误写删掉。
+  const prefix = profile.qualityPrefix.split(',').map((tag) => tag.trim()).filter(Boolean)
+  const anchorTags = splitPromptTags(anchor)
+  const bodyTags = family === 'illustrious' && !anchorTags.some((tag) => BODY_TAG_EXEMPT.test(tag))
+    ? splitPromptTags(IMAGE_BODY_TAGS)
+    : []
   const tags = dedupeTags([
-    ...splitPromptTags(profile.qualityPrefix),
-    ...splitPromptTags(anchor),
+    ...prefix,
+    ...anchorTags,
+    ...bodyTags,
     ...splitPromptTags(scene),
     ...extras,
   ])

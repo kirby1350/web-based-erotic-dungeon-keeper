@@ -376,10 +376,10 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     }
   },
   "勇者艾莉西亚": {
-    "style": "清亮坚定的勇者，开场用“伤处/要害”式战斗词回避，堕后极粗",
+    "style": "清亮坚定的勇者，开场用“伤处/破绽”式战斗词回避，堕后极粗",
     "lactation": false,
     "signature": [
-      "要害",
+      "破绽",
       "勇者的奶",
       "勇者的屄"
     ],
@@ -387,14 +387,14 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       "pure": {
         "breast": "胸前",
         "nipple": "……",
-        "pussy": "要害",
-        "line": "「我的要害，不是给魔物碰的！」"
+        "pussy": "破绽",
+        "line": "「我的破绽，不是给魔物碰的！」"
       },
       "shaken": {
-        "breast": "胸……不、要害",
+        "breast": "胸……不、破绽",
         "nipple": "这里……别弄",
-        "pussy": "下、下面……要害",
-        "line": "「下、下面……我是说要害！」"
+        "pussy": "下、下面……破绽",
+        "line": "「下、下面……我是说破绽！」"
       },
       "fallen": {
         "breast": "勇者的奶",

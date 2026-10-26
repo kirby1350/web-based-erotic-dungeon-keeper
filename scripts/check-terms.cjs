@@ -65,8 +65,9 @@ const names = Object.keys(BT.DK_BODY_TERMS)
 assert.equal(names.length, 26)
 const LACT = ['女骑士薇奥拉', '娜露梅亚', '阿妮拉', '樫野', '信浓']
 assert.deepEqual(names.filter((n) => BT.DK_BODY_TERMS[n].lactation).sort(), [...LACT].sort())
-const pool = [...types.CHARACTER_PRESETS]
+const pool = [...types.CHARACTER_PRESETS, ...load('@/lib/campaign').RAID_PARTY]
 const mk = (name) => {
+  assert.ok(pool.some((p) => p.name === name), `缺预设：${name}`)
   const preset = pool.find((p) => p.name === name)
   return preset ? K.characterFromPreset(preset) : { ...atago, id: `bt-${name}`, name, partner: undefined }
 }
@@ -89,15 +90,21 @@ for (const name of names) {
     else { assert.equal(b.terms.milk, undefined); assert.ok(!line.includes('乳汁叫'), `${name} 不该有乳汁`); assert.match(line, /她不泌乳/) }
     // 系统提示也带上同一行
     if (pool.some((p) => p.name === name) && stage === 'fallen') assert.ok(PR.buildSystemPrompt(ch).includes(D.dkBodyTermsLine(ch)))
-    lines[name][stage] = line // 注入的称呼行（系统提示里的同一行已在上面核对）
+    assert.ok(pool.some((p) => p.name === name), `${name} 没有预设，无法生成完整系统提示`)
+    lines[name][stage] = `${line}\n${PR.buildSystemPrompt(ch)}` // 注入行 + 该角色完整的系统提示
   }
 }
 assert.equal(BT.DK_BODY_TERMS['桑山千雪'].lactation, false)
 for (const s of BT.BODY_STAGES) assert.equal(BT.DK_BODY_TERMS['桑山千雪'].stages[s].milk, undefined)
+const leaks = []
 for (const owner of names) for (const word of BT.DK_BODY_TERMS[owner].signature) for (const other of names) {
   if (other === owner) continue
-  for (const stage of BT.BODY_STAGES) assert.ok(!lines[other][stage].includes(word), `「${word}」(${owner}) 串进了 ${other}/${stage}`)
+  const hit = BT.BODY_STAGES.filter((stage) => lines[other][stage].includes(word))
+  if (!hit.length) continue
+  const txt = lines[other][hit[0]], i = txt.indexOf(word)
+  leaks.push(`「${word}」(${owner}的专属词) 出现在 ${other} 的完整系统提示 [${hit.join('/')}]：…${txt.slice(Math.max(0, i - 30), i + word.length + 30).replace(/\n/g, '⏎')}…`)
 }
+assert.deepEqual(leaks, [], `专属词串用：\n${leaks.join('\n')}`)
 // 命令过的胸叫法仍以命令为准
 const kc = D.applyTermCommands(mk('樫野'), '把你的胸叫做「补给舱」').character
 assert.equal(D.dkBodyTerms(kc).terms.breast, '补给舱')

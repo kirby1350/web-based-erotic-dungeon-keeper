@@ -29,21 +29,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "只给你的奶",
-        "nipple": "大凤的乳尖",
-        "pussy": "大凤的所有物",
-        "line": "「这对只给你的奶……大凤的所有物，你要负责哦。」"
+        "nipple": "被你吸肿的奶头",
+        "pussy": "大凤的里面……湿透的骚屄",
+        "line": "「求你……大凤的里面已经湿透了，快用你的东西把它填满……只给你、只给你！」"
       },
       "broken": {
-        "breast": "只给你揉的骚奶",
-        "nipple": "发烫的奶头",
-        "pussy": "只准你射的骚穴",
-        "line": "「大凤的骚穴只准你射……别的女人碰都不准碰！」"
+        "breast": "只给你揉的肥奶",
+        "nipple": "发烫的贱奶头",
+        "pussy": "大凤的所有物骚屄",
+        "line": "「大凤是你一个人的肉便器……大凤的所有物骚屄，求你射到子宫里去❤」"
       },
       "climax": {
-        "breast": "大凤的骚奶",
+        "breast": "只给你的奶",
         "nipple": "奶头",
-        "pussy": "大凤的所有物骚穴",
-        "line": "「射进来……大凤的所有物、全部都是你的——！」"
+        "pussy": "大凤的所有物骚屄",
+        "line": "「齁噢噢❤ 射、射进来了——大凤的所有物，被你灌满了噢噢噢❤」"
       }
     }
   },
@@ -69,22 +69,22 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "line": "「呵呵……姐姐的秘密花园，可不是坏孩子能进的哟～」"
       },
       "fallen": {
-        "breast": "姐姐的大奶子",
+        "breast": "姐姐的大枕头",
         "nipple": "被吸肿的奶头",
-        "pussy": "姐姐湿湿的小穴",
-        "line": "「坏孩子把姐姐的奶头吸肿了……要负责哟～」"
+        "pussy": "姐姐湿漉漉的骚穴",
+        "line": "「坏孩子～姐姐的骚穴都在流水了哟……快点插进来嘛～」"
       },
       "broken": {
-        "breast": "姐姐下流的大奶子",
+        "breast": "姐姐下流的肥奶",
         "nipple": "姐姐的淫乱奶头",
-        "pussy": "姐姐的骚穴",
-        "line": "「吸、吸姐姐的淫乱奶头……姐姐求你了～」"
+        "pussy": "姐姐的秘密花园……骚屄",
+        "line": "「姐姐是只会发情的母猪哟～秘密花园随便你灌，求你了～❤」"
       },
       "climax": {
-        "breast": "姐姐的骚奶",
+        "breast": "姐姐的大枕头",
         "nipple": "奶头",
-        "pussy": "姐姐的骚屄",
-        "line": "「姐姐、要被吸着奶头去了哟——❤」"
+        "pussy": "姐姐的秘密花园",
+        "line": "「齁哦哦❤ 姐姐、被坏孩子干到去了哟——❤❤」"
       }
     }
   },
@@ -111,21 +111,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "这对不知羞的奶子",
-        "nipple": "奶头",
-        "pussy": "小穴",
-        "line": "「这对不知羞的奶子……是、是你教我这么叫的……」"
+        "nipple": "硬挺的奶头",
+        "pussy": "高雄湿透的骚屄",
+        "line": "「请、请用力……高雄的骚屄，已经握不住刀了……」"
       },
       "broken": {
-        "breast": "高雄下流的奶子",
-        "nipple": "硬挺的奶头",
-        "pussy": "高雄的骚屄",
-        "line": "「请、请把高雄的骚屄……干到不能拔刀为止！」"
+        "breast": "这对不知羞的肥奶",
+        "nipple": "被捏肿的贱奶头",
+        "pussy": "高雄的贞操……早就是骚屄了",
+        "line": "「高雄的贞操……早就给你了！高雄是你的肉便器，请、请射进来！」"
       },
       "climax": {
-        "breast": "骚奶",
+        "breast": "这对不知羞的奶",
         "nipple": "奶头",
         "pussy": "高雄的骚屄",
-        "line": "「不、不要看……高雄的骚屄在喷——！」"
+        "line": "「咿、咿噢噢❤ 高雄的骚屄……喷、喷出来了——❤」"
       }
     }
   },
@@ -153,20 +153,20 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       "fallen": {
         "breast": "光辉的大奶子",
         "nipple": "被看硬的乳头",
-        "pussy": "光辉湿透的小穴",
-        "line": "「您想看光辉湿透的小穴吗……我、我会张开的。」"
+        "pussy": "光辉湿透的骚穴",
+        "line": "「请……再用力些揉淑女的胸怀，光辉的骚穴已经忍不住了……」"
       },
       "broken": {
-        "breast": "光辉下流的奶子",
+        "breast": "淑女的胸怀……下流的肥奶",
         "nipple": "光辉的淫乱乳头",
-        "pussy": "光辉的骚穴",
-        "line": "「请看着……光辉的骚穴，已经不是淑女的东西了……」"
+        "pussy": "光辉的花园……发情的骚屄",
+        "line": "「光辉的花园……已经是精液的肉便器了，请、请把它灌满……❤」"
       },
       "climax": {
-        "breast": "光辉的骚奶",
-        "nipple": "乳头",
-        "pussy": "光辉的骚屄",
-        "line": "「请看着光辉去吧……骚屄、要去了——❤」"
+        "breast": "淑女的胸怀",
+        "nipple": "蔷薇蕾",
+        "pussy": "光辉的花园",
+        "line": "「噢噢噢❤ 蔷薇蕾、被拧着……光辉、去了——❤」"
       }
     }
   },
@@ -192,22 +192,22 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "line": "「女仆的私处并非侍奉范围……请您自重。」"
       },
       "fallen": {
-        "breast": "侍奉用的胸",
-        "nipple": "女仆的乳头",
-        "pussy": "侍奉用的小穴",
-        "line": "「这是……侍奉用的小穴。请您随意使用，主人。」"
+        "breast": "侍奉用的奶子",
+        "nipple": "女仆发硬的乳头",
+        "pussy": "侍奉用的骚穴",
+        "line": "「侍奉用的骚穴已准备完毕……请主人尽情使用，越粗暴越好。」"
       },
       "broken": {
-        "breast": "女仆下流的奶子",
-        "nipple": "女仆发情的乳头",
-        "pussy": "女仆发情的穴",
-        "line": "「请允许女仆发情的穴……为您侍奉到最后一滴。」"
+        "breast": "女仆下流的肥奶",
+        "nipple": "女仆的贱乳头",
+        "pussy": "女仆的私处……骚屄",
+        "line": "「女仆是主人专属的肉便器……请把精液灌进女仆的私处，一滴不剩。」"
       },
       "climax": {
-        "breast": "女仆的骚奶",
+        "breast": "女仆的胸前",
         "nipple": "乳头",
-        "pussy": "女仆发情的穴",
-        "line": "「女仆……失礼了，要、要去了——！」"
+        "pussy": "侍奉用的骚屄",
+        "line": "「齁、齁噢噢❤ 女仆……失礼地、去了——❤」"
       }
     }
   },
@@ -235,20 +235,20 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       "fallen": {
         "breast": "赤城的狐乳",
         "nipple": "发情的乳头",
-        "pussy": "赤城的狐穴",
-        "line": "「握着尾根……再插赤城的狐穴，呵呵……好过分呢。」"
+        "pussy": "赤城湿透的狐穴",
+        "line": "「呵呵……赤城的狐穴在吸你呢，求你别拔出来……」"
       },
       "broken": {
-        "breast": "发情的狐乳",
-        "nipple": "狐奶头",
-        "pussy": "发情母狐的骚穴",
-        "line": "「发情母狐的骚穴……只给你用、只给你一个人——」"
+        "breast": "发情母狐的肥奶",
+        "nipple": "赤城的贱奶头",
+        "pussy": "赤城的狐穴……发情母狐的骚屄",
+        "line": "「赤城是你的发情母猪……握紧尾根，把狐穴射满、射到怀上为止——❤」"
       },
       "climax": {
-        "breast": "赤城的狐乳",
+        "breast": "狐乳",
         "nipple": "奶头",
-        "pussy": "赤城的狐穴",
-        "line": "「尾根、狐穴、一起……赤城、要坏掉了——！」"
+        "pussy": "狐穴",
+        "line": "「齁噢噢噢❤ 尾根、狐穴、一起……赤城、坏掉了——❤」"
       }
     }
   },
@@ -275,21 +275,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "药香的胸",
-        "nipple": "乳尖",
-        "pussy": "天城的宫",
-        "line": "「主上……请再磨一磨天城的宫，咳……」"
+        "nipple": "肿起的乳尖",
+        "pussy": "天城湿透的宫",
+        "line": "「咳……主上，求您再深些，天城的宫……在要您。」"
       },
       "broken": {
         "breast": "天城淫贱的奶子",
-        "nipple": "肿起的乳尖",
+        "nipple": "天城的贱乳尖",
         "pussy": "天城的骚宫",
-        "line": "「天城的骚宫……想被主上慢慢灌满……」"
+        "line": "「天城不过是主上的肉便器……咳、请把天城的骚宫灌满……」"
       },
       "climax": {
-        "breast": "天城的奶子",
+        "breast": "药香的胸",
         "nipple": "乳尖",
         "pussy": "天城的宫口",
-        "line": "「咳、宫口……被顶开了……天城、要……」"
+        "line": "「咳、咿噢噢❤ 宫口被顶开……天城、去了——」"
       }
     }
   },
@@ -315,22 +315,22 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "line": "「守、守护之处……我没说下面！」"
       },
       "fallen": {
-        "breast": "骑士的乳",
-        "nipple": "我的乳头",
-        "pussy": "骑士的小穴",
-        "line": "「你教的……骑士的小穴……我会这么说的。」"
+        "breast": "骑士的乳……下流的奶子",
+        "nipple": "我发硬的乳头",
+        "pussy": "守护之处……湿透的小穴",
+        "line": "「骑士的守护之处……已经湿透了，求、求你快点插进来……」"
       },
       "broken": {
-        "breast": "骑士的骚奶",
-        "nipple": "骑士发硬的乳头",
-        "pussy": "骑士的骚屄",
-        "line": "「就这样从后面……干穿骑士的骚屄！」"
+        "breast": "骑士下流的肥奶",
+        "nipple": "骑士的贱乳头",
+        "pussy": "圣铠之内……母猪骑士的骚屄",
+        "line": "「我、我是母猪骑士……圣铠之内的骚屄，请随便灌满吧！」"
       },
       "climax": {
         "breast": "骑士的乳",
         "nipple": "乳头",
-        "pussy": "骑士的骚屄",
-        "line": "「我已经不是骑士了——去、去了！」"
+        "pussy": "守护之处……骚屄",
+        "line": "「齁噢噢噢❤ 骑士的守护之处、喷了——我已经不是骑士了——！」"
       }
     }
   },
@@ -356,22 +356,22 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "line": "「啊啦啊啦，梓刚才说了奇怪的话呢～」"
       },
       "fallen": {
-        "breast": "梓的奶子",
-        "nipple": "奶头",
-        "pussy": "梓的花瓣",
-        "line": "「亲爱的……梓的花瓣，被你亲开了呢～」"
+        "breast": "梓的大奶子",
+        "nipple": "梓的奶头",
+        "pussy": "梓湿掉的花瓣",
+        "line": "「亲爱的……梓的花瓣湿成这样了，快点、快点进来嘛～」"
       },
       "broken": {
-        "breast": "梓淫乱的奶子",
-        "nipple": "梓的奶头",
-        "pussy": "梓的骚穴",
-        "line": "「亲爱的，梓的骚穴……一直在等命中注定的人哦❤」"
+        "breast": "梓淫乱的肥奶",
+        "nipple": "梓的贱奶头",
+        "pussy": "梓的秘密……发情的骚屄",
+        "line": "「啊啦……梓是亲爱的专用肉便器呢，秘密的骚屄要灌满哦❤」"
       },
       "climax": {
         "breast": "梓的奶子",
         "nipple": "奶头",
         "pussy": "梓的花瓣",
-        "line": "「啊啦……亲着、就要……去了呢——」"
+        "line": "「啊啦、啊啦啦——噢噢噢❤ 梓、去了呢——❤」"
       }
     }
   },
@@ -398,21 +398,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "勇者的奶",
-        "nipple": "勇者的奶头",
-        "pussy": "勇者的小穴",
-        "line": "「勇者的小穴……被你操开了……」"
+        "nipple": "勇者发硬的奶头",
+        "pussy": "勇者湿透的屄",
+        "line": "「勇者的屄……被你操开了，求你再狠一点……」"
       },
       "broken": {
-        "breast": "勇者母猪的奶",
+        "breast": "勇者母猪的肥奶",
         "nipple": "勇者的贱奶头",
-        "pussy": "勇者的骚屄",
-        "line": "「请操烂勇者的骚屄……大家看不见就好……」"
+        "pussy": "勇者母猪的骚屄",
+        "line": "「勇者什么的已经无所谓了……我是母猪，请操烂勇者的骚屄！」"
       },
       "climax": {
         "breast": "勇者的奶",
         "nipple": "奶头",
         "pussy": "勇者的屄",
-        "line": "「勇者的屄、要去了——同伴什么的，已经……」"
+        "line": "「齁噢噢噢❤ 勇者的屄、喷了——破绽全部露出来了——❤」"
       }
     }
   },
@@ -440,20 +440,20 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       "fallen": {
         "breast": "不洁的乳",
         "nipple": "不洁的乳尖",
-        "pussy": "圣女的小穴",
-        "line": "「圣女的小穴……已经不洁了，请您……净化它。」"
+        "pussy": "圣女湿透的小穴",
+        "line": "「主啊……圣女的小穴在流不洁的水，求您……再给我更多。」"
       },
       "broken": {
-        "breast": "圣女淫乱的奶子",
-        "nipple": "圣女发情的乳尖",
-        "pussy": "圣女的骚穴",
-        "line": "「请把圣女的骚穴……当作精液的圣杯……」"
+        "breast": "圣女淫乱的肥奶",
+        "nipple": "圣女的贱乳尖",
+        "pussy": "圣女的秘所……雌畜的骚屄",
+        "line": "「圣女只是雌畜……请把精液灌满圣女的秘所，当作新的圣杯……」"
       },
       "climax": {
-        "breast": "圣女的奶子",
+        "breast": "不洁的乳",
         "nipple": "乳尖",
-        "pussy": "圣女的骚屄",
-        "line": "「圣光……不、圣女的骚屄、要去了——！」"
+        "pussy": "圣洁之处……骚屄",
+        "line": "「圣光——不、齁噢噢❤ 圣洁之处、去了——！」"
       }
     }
   },
@@ -482,23 +482,23 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "本骑士的奶桶",
-        "nipple": "喷奶的奶头",
-        "pussy": "本骑士的小穴",
-        "line": "「挤吧……本骑士的奶桶都是你的……」",
+        "nipple": "喷奶的大奶头",
+        "pussy": "本骑士湿透的骚屄",
+        "line": "「挤、挤啊！本骑士的奶桶胀得要死……骚屄也一起操！」",
         "milk": "骑士奶"
       },
       "broken": {
-        "breast": "奶牛骑士的骚奶",
-        "nipple": "奶牛奶头",
-        "pussy": "本骑士的骚屄",
-        "line": "「挤我！把奶牛骑士的奶全挤出来！」",
+        "breast": "奶牛骑士的肥奶",
+        "nipple": "奶牛骑士的贱奶头",
+        "pussy": "奶牛骑士的骚屄",
+        "line": "「本骑士就是头奶牛母猪！挤奶！操屄！全都给我灌满！」",
         "milk": "奶牛骑士的奶"
       },
       "climax": {
         "breast": "奶桶",
         "nipple": "奶头",
         "pussy": "骚屄",
-        "line": "「喷、喷奶了——本骑士、去了啊啊！」",
+        "line": "「齁噢噢噢❤ 骑士奶、喷出来了——本骑士、去了啊啊！」",
         "milk": "骑士奶"
       }
     }
@@ -528,24 +528,24 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "喂你的地方",
-        "nipple": "姐姐的奶头",
-        "pussy": "姐姐的蝶穴",
-        "line": "「乖，喝姐姐的奶水……一边夸姐姐好不好？」",
+        "nipple": "姐姐漏奶的奶头",
+        "pussy": "姐姐湿透的蝶穴",
+        "line": "「乖～一边喝姐姐的奶水，一边插姐姐的蝶穴好不好……求你了～」",
         "milk": "姐姐的奶水"
       },
       "broken": {
-        "breast": "姐姐发情的骚奶",
-        "nipple": "姐姐漏奶的奶头",
+        "breast": "姐姐发情的肥奶",
+        "nipple": "姐姐的贱奶头",
         "pussy": "姐姐的骚蝶穴",
-        "line": "「再挤……姐姐是好姐姐对吧？奶水全给你——」",
+        "line": "「姐姐是你的奶牛母猪哦～奶水和骚蝶穴，全部都给你灌满——❤」",
         "milk": "姐姐的奶水"
       },
       "climax": {
-        "breast": "姐姐的骚奶",
+        "breast": "喂你的地方",
         "nipple": "奶头",
         "pussy": "姐姐的蝶穴",
-        "line": "「被夸着挤奶……姐姐、要去了啦——❤」",
-        "milk": "奶水"
+        "line": "「齁哦哦❤ 姐姐的奶水、喷出来了……姐姐、去了啦——❤」",
+        "milk": "姐姐的奶水"
       }
     }
   },
@@ -571,22 +571,22 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "line": "「阴道黏膜分泌量……等等，这个数据不准记！」"
       },
       "fallen": {
-        "breast": "志希的奶子",
+        "breast": "志希的乳腺组织……奶子",
         "nipple": "敏感的乳头",
-        "pussy": "志希的小穴",
-        "line": "「志希的小穴……嗯，你教的叫法，样本量+1♪」"
+        "pussy": "志希湿透的阴道黏膜",
+        "line": "「阴道黏膜分泌量突破上限～快点插进来做实验嘛♪」"
       },
       "broken": {
-        "breast": "志希实验用的骚奶",
-        "nipple": "实验母猪的奶头",
-        "pussy": "志希的样本骚穴",
-        "line": "「请往志希的样本骚穴里……注射你的东西～」"
+        "breast": "志希实验用的肥奶",
+        "nipple": "实验母猪的贱奶头",
+        "pussy": "志希的样本骚屄",
+        "line": "「志希是实验用的母猪样本～请往样本骚屄里注射精液，越多越好❤」"
       },
       "climax": {
-        "breast": "乳腺……奶子",
+        "breast": "乳腺组织",
         "nipple": "乳头",
-        "pussy": "志希的小穴",
-        "line": "「记录……写不了了——志希酱、去了——！」"
+        "pussy": "志希的样本",
+        "line": "「齁噢❤ 数据、记录不了——志希的样本、去了——！」"
       }
     }
   },
@@ -613,21 +613,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "妈妈的奶子",
-        "nipple": "妈妈的乳头",
-        "pussy": "妈妈的小穴",
-        "line": "「乖孩子……想摸妈妈的奶子吗？」"
+        "nipple": "妈妈发硬的乳头",
+        "pussy": "妈妈湿透的小穴",
+        "line": "「乖孩子……妈妈的小穴湿成这样了，快进来好不好？」"
       },
       "broken": {
         "breast": "妈妈的骚奶",
-        "nipple": "妈妈硬起来的乳头",
-        "pussy": "妈妈湿透的小穴",
-        "line": "「妈妈湿透的小穴……乖孩子，全部射给妈妈吧。」"
+        "nipple": "妈妈的贱乳头",
+        "pussy": "千雪的里面……妈妈的骚穴",
+        "line": "「对不起、妈妈好下流……千雪的里面，请全部射给妈妈……」"
       },
       "climax": {
         "breast": "妈妈的骚奶",
         "nipple": "乳头",
-        "pussy": "妈妈的小穴",
-        "line": "「乖孩子……妈妈、要去了哦——」"
+        "pussy": "千雪的里面",
+        "line": "「咿、噢噢❤ 乖孩子……妈妈、去了哦——」"
       }
     }
   },
@@ -653,22 +653,22 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "line": "「蜜壶……书上的词……我、我没有……」"
       },
       "fallen": {
-        "breast": "下流的奶子",
-        "nipple": "乳蕾",
-        "pussy": "文香的蜜壶",
-        "line": "「主人教的叫法……文香的蜜壶，已经……」"
+        "breast": "文香下流的奶子",
+        "nipple": "发硬的乳蕾",
+        "pussy": "文香湿透的蜜壶",
+        "line": "「请……再翻开文香的蜜壶一些，求您……读到最深处。」"
       },
       "broken": {
-        "breast": "文香下流的骚奶",
-        "nipple": "文香的乳蕾",
-        "pussy": "文香的书页……骚屄",
-        "line": "「请把文香的骚屄……像书页一样翻开读……」"
+        "breast": "文香下流的玉乳",
+        "nipple": "文香的贱乳蕾",
+        "pussy": "文香的书页……肉便器的骚屄",
+        "line": "「文香是……只为主人摊开的肉便器……请把骚屄写满主人的精液……」"
       },
       "climax": {
-        "breast": "骚奶",
+        "breast": "玉乳",
         "nipple": "乳蕾",
-        "pussy": "文香的骚屄",
-        "line": "「请、读出声……文香、要去了……」"
+        "pussy": "文香的蜜壶",
+        "line": "「咿、噢噢噢❤ 蜜壶、溢出来了……文香、去了……」"
       }
     }
   },
@@ -696,24 +696,24 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "milk": "神乳……不，是梦话"
       },
       "fallen": {
-        "breast": "供奉的乳",
-        "nipple": "信浓的乳头",
-        "pussy": "信浓的小穴",
-        "line": "「信浓还有用吗……那就喝信浓的神乳吧……」",
+        "breast": "信浓的供奉之奶",
+        "nipple": "漏乳的乳头",
+        "pussy": "信浓湿透的骚穴",
+        "line": "「若非梦……就请喝下信浓的神乳，再插进信浓的骚穴……」",
         "milk": "信浓的神乳"
       },
       "broken": {
-        "breast": "信浓发情的奶",
-        "nipple": "漏乳的乳头",
-        "pussy": "信浓的骚穴",
-        "line": "「请把信浓的骚穴……当作供奉的祭坛……」",
+        "breast": "信浓发情的肥奶",
+        "nipple": "信浓的贱乳头",
+        "pussy": "梦里的那处……肉便器的骚屄",
+        "line": "「信浓只是供奉给你的肉便器……梦里的那处，请全部灌满……」",
         "milk": "信浓的神乳"
       },
       "climax": {
         "breast": "供奉的乳",
         "nipple": "乳头",
-        "pussy": "信浓的骚穴",
-        "line": "「梦……不是梦——信浓、喷着神乳去了……」",
+        "pussy": "梦里的那处",
+        "line": "「齁噢噢❤ 不是梦——信浓、喷着神乳去了——」",
         "milk": "神乳"
       }
     }
@@ -743,23 +743,23 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "樫野的大奶子",
-        "nipple": "樫野的奶头",
-        "pussy": "樫野的小穴",
-        "line": "「主人，樫野的补给……请全部喝掉吧。」",
+        "nipple": "樫野喷奶的奶头",
+        "pussy": "樫野湿透的骚屄",
+        "line": "「主人，求您一边喝樫野的补给，一边插进樫野湿透的骚屄……」",
         "milk": "樫野的补给"
       },
       "broken": {
-        "breast": "樫野的骚奶",
-        "nipple": "喷奶的奶头",
-        "pussy": "樫野的骚屄",
-        "line": "「请挤樫野的骚奶……运输舰的奶全部送给主人……」",
+        "breast": "樫野下流的肥奶",
+        "nipple": "运输舰的贱奶头",
+        "pussy": "运输舰母猪的骚屄",
+        "line": "「樫野是主人专用的奶牛母猪……运输舰的奶和骚屄，全部请主人用坏吧……」",
         "milk": "运输舰的奶"
       },
       "climax": {
-        "breast": "樫野的骚奶",
+        "breast": "樫野的补给奶子",
         "nipple": "奶头",
         "pussy": "樫野的骚屄",
-        "line": "「补给、送到了——樫野喷着奶去了……」",
+        "line": "「齁噢噢噢❤ 补给奶、喷出来了——樫野、被主人干到去了——❤」",
         "milk": "补给奶"
       }
     }
@@ -786,22 +786,22 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "line": "「索米的接口……报告撤回！请忘记！」"
       },
       "fallen": {
-        "breast": "索米的奶子",
-        "nipple": "受体……乳头",
-        "pussy": "索米的小穴",
-        "line": "「报告：索米的小穴……感度超过阈值。」"
+        "breast": "索米的传感部……奶子",
+        "nipple": "受体……发硬的乳头",
+        "pussy": "索米湿透的接口",
+        "line": "「报告：索米的接口浸水……请求立即插入，主人！」"
       },
       "broken": {
-        "breast": "索米淫乱的奶子",
-        "nipple": "索米发情的乳头",
-        "pussy": "索米的骚穴接口",
-        "line": "「请对索米的骚穴接口……持续输出，指挥……主人！」"
+        "breast": "索米淫乱的肥奶",
+        "nipple": "索米的贱乳头",
+        "pussy": "索米的骚屄接口",
+        "line": "「报告：索米已改装为肉便器……请向骚屄接口持续灌注！」"
       },
       "climax": {
-        "breast": "奶子",
-        "nipple": "乳头",
-        "pussy": "索米的小穴",
-        "line": "「警告……索米、要去……报告不了了——」"
+        "breast": "传感部",
+        "nipple": "受体",
+        "pussy": "索米的接口",
+        "line": "「警告、警告——齁噢噢❤ 索米、去了——报告不能——」"
       }
     }
   },
@@ -828,21 +828,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "本龙的龙乳",
-        "nipple": "逆鳞……乳头",
-        "pussy": "本龙的龙穴",
-        "line": "「哼……你教的，本龙的龙穴……就这么叫吧。」"
+        "nipple": "逆鳞……硬起的奶头",
+        "pussy": "本龙湿透的龙穴",
+        "line": "「哼……本龙的龙穴湿了又如何！还不快插进来！」"
       },
       "broken": {
-        "breast": "发情的龙乳",
-        "nipple": "龙的骚奶头",
-        "pussy": "本龙发情的骚龙穴",
-        "line": "「命令你……干烂本龙的骚龙穴！快！」"
+        "breast": "发情的肥龙乳",
+        "nipple": "龙的贱奶头",
+        "pussy": "本龙的龙穴……母龙的骚屄",
+        "line": "「本、本龙是……发情的母猪龙……命令你，把龙穴灌满！」"
       },
       "climax": {
         "breast": "龙乳",
         "nipple": "逆鳞",
-        "pussy": "龙穴",
-        "line": "「逆鳞、被……本龙、去了啊啊——！」"
+        "pussy": "本龙的龙穴",
+        "line": "「齁噢噢噢❤ 逆鳞、龙穴、一起——本龙、去了啊啊——！」"
       }
     }
   },
@@ -870,20 +870,20 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       "fallen": {
         "breast": "姐姐被玩坏的淫乳",
         "nipple": "发肿的奶尖",
-        "pussy": "姐姐的淫穴",
-        "line": "「好吧……姐姐的淫穴，归你了。」"
+        "pussy": "姐姐流蜜的淫穴",
+        "line": "「呼……姐姐的淫穴在流魔女的蜜，乖孩子，求你快点～」"
       },
       "broken": {
-        "breast": "姐姐的骚淫乳",
+        "breast": "姐姐的肥淫乳",
         "nipple": "姐姐的贱奶尖",
         "pussy": "姐姐的骚淫穴",
-        "line": "「姐姐的骚淫穴……请当肉便器用吧，乖孩子……」"
+        "line": "「魔女什么的……姐姐只是你的肉便器母猪，骚淫穴随便灌哟❤」"
       },
       "climax": {
         "breast": "淫乳",
         "nipple": "奶尖",
         "pussy": "淫穴",
-        "line": "「魔女的蜜……喷、喷出来了——❤」"
+        "line": "「齁噢噢❤ 魔女的蜜、喷、喷出来了——❤」"
       }
     }
   },
@@ -910,21 +910,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "柴郡的猫咪奶",
-        "nipple": "柴郡的奶头",
-        "pussy": "柴郡的小猫穴",
-        "line": "「亲爱的，柴郡的小猫穴……揉一揉嘛～」"
+        "nipple": "柴郡发硬的奶头",
+        "pussy": "柴郡湿透的小猫穴",
+        "line": "「亲爱的～柴郡的小猫穴湿透了嘛，快点进来啦～」"
       },
       "broken": {
-        "breast": "柴郡发情的猫咪奶",
-        "nipple": "柴郡的骚奶头",
-        "pussy": "柴郡发情的猫穴",
-        "line": "「喵❤ 柴郡发情的猫穴……亲爱的快点进来啦——」"
+        "breast": "柴郡发情的肥猫咪奶",
+        "nipple": "柴郡的贱奶头",
+        "pussy": "柴郡发情的小猫穴",
+        "line": "「喵❤ 柴郡是亲爱的发情母猪啦～小猫穴要灌得满满的嘛——」"
       },
       "climax": {
         "breast": "猫咪奶",
         "nipple": "奶头",
         "pussy": "小猫穴",
-        "line": "「喵、喵——！柴郡、去了啦——！」"
+        "line": "「喵、齁噢噢❤ 柴郡、去了啦——肉球都抓不住了——」"
       }
     }
   },
@@ -950,22 +950,22 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "line": "「计划外的地方……啊，对不起，我刚刚在想事情……」"
       },
       "fallen": {
-        "breast": "能代的奶子",
-        "nipple": "能代的乳头",
-        "pussy": "能代的小穴",
-        "line": "「那就……先揉能代的奶子，再……如何？」"
+        "breast": "能代的胸前……奶子",
+        "nipple": "能代发情的乳头",
+        "pussy": "能代湿透的私处",
+        "line": "「计划外的地方湿透了……能代请求、立刻插进来。」"
       },
       "broken": {
-        "breast": "能代下流的奶子",
-        "nipple": "能代发情的乳头",
-        "pussy": "能代不知廉耻的骚穴",
-        "line": "「计划全没了……请直接插进能代的骚穴吧……」"
+        "breast": "能代下流的肥奶",
+        "nipple": "能代的贱乳头",
+        "pussy": "能代的私处……肉便器骚屄",
+        "line": "「能代的新计划：成为您的肉便器……请把私处的骚屄灌满。」"
       },
       "climax": {
-        "breast": "奶子",
+        "breast": "能代的胸前",
         "nipple": "乳头",
-        "pussy": "能代的骚穴",
-        "line": "「已经没法冷静思考……能代、去了……」"
+        "pussy": "计划外的地方",
+        "line": "「齁噢噢❤ 计划外的地方……能代、去了……」"
       }
     }
   },
@@ -992,21 +992,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "Big J的奶",
-        "nipple": "新泽西的奶头",
-        "pussy": "Honey专用的小穴",
-        "line": "「Honey专用的小穴……被动的居然是我……」"
+        "nipple": "被捻硬的奶头",
+        "pussy": "Honey专用的湿穴",
+        "line": "「Honey～Big J的奶随便你揉，快点干Honey专用的小穴嘛♪」"
       },
       "broken": {
-        "breast": "Big J的骚奶",
-        "nipple": "被捻肿的奶头",
-        "pussy": "新泽西的骚屄",
-        "line": "「Honey……干新泽西的骚屄，最大最强地干♪」"
+        "breast": "Big J的肥骚奶",
+        "nipple": "新泽西的贱奶头",
+        "pussy": "Honey专用的母猪骚屄",
+        "line": "「Big J是Honey的肉便器母猪♪ 骚屄要灌到满出来——❤」"
       },
       "climax": {
-        "breast": "奶",
-        "nipple": "奶头",
-        "pussy": "骚屄",
-        "line": "「被动的、是我——Big J、去了啊——！」"
+        "breast": "Big J的奶",
+        "nipple": "主炮",
+        "pussy": "Honey专用",
+        "line": "「Oh——齁噢噢❤ 主炮、被捏着……Big J、去了啊——！」"
       }
     }
   },
@@ -1034,24 +1034,24 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
         "milk": "羊乳……不！谁说是羊了！"
       },
       "fallen": {
-        "breast": "阿妮拉的奶子",
-        "nipple": "阿妮拉的乳头",
-        "pussy": "阿妮拉的小穴",
-        "line": "「甚好……便赐汝神将之乳罢了。」",
+        "breast": "神将之乳",
+        "nipple": "阿妮拉漏乳的乳头",
+        "pussy": "阿妮拉湿透的小穴",
+        "line": "「喀……汝便吸着神将之乳，插进阿妮拉的小穴罢……求汝了。」",
         "milk": "神将之乳"
       },
       "broken": {
-        "breast": "阿妮拉发情的骚奶",
-        "nipple": "漏乳的乳头",
-        "pussy": "阿妮拉的骚屄",
-        "line": "「再宠一下嘛……阿妮拉的羊乳全给汝……」",
+        "breast": "阿妮拉发情的肥奶",
+        "nipple": "阿妮拉的贱乳头",
+        "pussy": "南南西的……母羊骚屄",
+        "line": "「阿妮拉就是汝的母羊肉便器罢了……羊乳和骚屄、全都灌满……」",
         "milk": "羊乳"
       },
       "climax": {
         "breast": "神将之乳",
         "nipple": "乳头",
         "pussy": "骚屄",
-        "line": "「喀呵……喷乳了……神将、端不住了——」",
+        "line": "「喀呵、齁噢噢❤ 羊乳喷了……神将、端不住了——」",
         "milk": "羊乳"
       }
     }
@@ -1079,21 +1079,21 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
       },
       "fallen": {
         "breast": "咱跳舞的奶",
-        "nipple": "咱的铃铛",
-        "pussy": "咱的狐狸窝",
-        "line": "「揉着尾巴……咱的狐狸窝都化掉了嘛……」"
+        "nipple": "咱发硬的铃铛",
+        "pussy": "咱湿透的狐狸窝",
+        "line": "「咱的狐狸窝湿透了嘛……快点进来的说～」"
       },
       "broken": {
-        "breast": "咱发情的奶",
-        "nipple": "咱的骚铃铛",
+        "breast": "咱发情的肥奶",
+        "nipple": "咱的贱铃铛",
         "pussy": "咱的骚狐狸窝",
-        "line": "「咱的骚狐狸窝……只给你一个人跳了的说！」"
+        "line": "「咱是你的发情母猪狐狸了啦～骚狐狸窝要灌满的说❤」"
       },
       "climax": {
-        "breast": "奶",
+        "breast": "跳舞的奶",
         "nipple": "铃铛",
         "pussy": "狐狸窝",
-        "line": "「こ～ん……咱、去了啦——！」"
+        "line": "「こ～ん……齁噢噢❤ 咱、去了啦——！」"
       }
     }
   }

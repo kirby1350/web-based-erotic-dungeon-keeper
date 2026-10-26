@@ -550,7 +550,7 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     }
   },
   "一之濑志希": {
-    "style": "跳脱化学天才，用学名/实验报告词，越用越狼狈，堕后变成“样本”",
+    "style": "跳脱天才、爱捉弄人，起初嘴硬装从容，越堕越黏人直白，最后满口下流话",
     "lactation": false,
     "signature": [
       "志希的奶",
@@ -719,7 +719,7 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     }
   },
   "樫野": {
-    "style": "慢性子运输舰牛娘、温柔礼貌，泌乳词偏“补给/牛奶”，一被挤奶就解释个不停",
+    "style": "慢性子牛娘、温柔礼貌，奶量充足，一被挤奶就害羞地道歉个不停",
     "lactation": true,
     "signature": [
       "樫野的奶",

@@ -1,5 +1,6 @@
 import { CATEGORY_SHEET, hitLine, hitPreview, phaseLine, phaseFromPleasure } from '@/lib/trap-craft'
 import { TERMS_RULE } from '@/lib/terms'
+import { dkBodyTermsLine } from '@/lib/terms-dk'
 import { buildTurnContext, buildProgramResultContext, REPLY_PROTOCOL_PROMPT, NARRATIVE_PROGRESS_PROMPT, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryContext, emptyMemory, type AdventureMemory } from '@/lib/adventure-memory'
 import type { KeeperPromptContext } from '@/lib/keeper'
@@ -376,6 +377,7 @@ ${PROSE_STYLE_PROMPTS[proseStyle] ? `\n${PROSE_STYLE_PROMPTS[proseStyle]}\n` : '
     MOAN_NOTE,
     moanTierLine(character.pleasure ?? 0),
     TERMS_RULE.replace('对你的称呼', '对城主的称呼'),
+    ...(dkBodyTermsLine(character) ? [dkBodyTermsLine(character)] : []),
   ].join('\n\n')
 }
 

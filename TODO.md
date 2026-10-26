@@ -1,6 +1,8 @@
 # TODO
 
-## 通关 / 失败(胜负结局)机制 — 设计建议(未实现)
+## 通关 / 失败(胜负结局)机制 — 设计建议(已被取代)
+
+> **状态(2026-10-26):** 已按另一套方案落地:`lib/campaign.ts` 用恶名 → 威胁档位 → 勇者讨伐队终局,讨伐队有人被放走即失败,三人全部留下或玩坏即胜利(`campaign-card.tsx` 显示结局)。下面的 `[ENDING]` 标记方案没有采用,留作历史参考。
 
 **现状:** 目前完全没有胜负判定。HP 能 clamp 到 0 但无任何后果;第 10 层 Boss「魔王核心·淫狱王座」只写在 `lib/prompts.ts` 提示词里,代码从不检测"到达 / 击败"。所有数值变化汇集到 `chat-panel.tsx` 的 `onCharacterUpdate(updates)`——这是挂胜负判定的天然入口。
 
@@ -32,7 +34,9 @@
 
 **建议落地顺序:** 先做失败线(HP 兜底 + 崩坏结局)——范围最小、最贴主题;通关线随后加。
 
-## 提示词审查 — 改进方向(未实现)
+## 提示词审查 — 改进方向(大部分已落地)
+
+> **状态(2026-10-26):** 1–4、6–8 已落地:按命令分密度(`NARRATIVE_PROGRESS_PROMPT`)、新格式示例、STATS 白名单与程序判定照抄、记忆加 `situation` 类、`ROLLING_SUMMARY_PROMPT` 已删、`[SCENE]` 配方、档案标为「仅作资料」并以最近正文的服装为准、陷阱生成器改为工坊提示词。5(重油)按主人偏好保留并改写成词库抽词,没有删。后续问题见文末「2026-10 审查」。
 
 审查范围:`lib/prompts.ts`、`lib/adventure-context.ts`、`lib/adventure-memory.ts`,以及它们在 `hooks/use-adventure-session.ts`、`lib/chat-protocol.ts`、`components/image-panel.tsx`、`components/trap-generator.tsx` 里的用法。协议骨架可用,问题集中在规则互相打架、示例带偏、记忆洗掉连续性。
 
@@ -70,3 +74,68 @@
 
 8. **陷阱生成器是另一套更短的提示。** `buildRandomTrapPrompt` 没有种族特性、没有 `lewdVoiceRules`、没有最近用过的陷阱名单,却写着「不可重复最近用过的」。部位表还少了尿道。
    - 若要和主 DM 接上:传入种族特性、当前异常状态原文、最近三次陷阱名,并额外要一个机械摘要(名称、束缚等级、建议状态),方便丢回主循环时不用让 DM 重新发明规则。
+
+## 2026-10 审查 — 计划与建议(未实现)
+
+审查范围:`lib/prompts.ts`、`lib/adventure-context.ts`、`lib/keeper.ts`、`lib/campaign.ts`、`lib/prose-guard.ts`、`hooks/use-adventure-session.ts`。
+
+### 建议落地顺序
+
+1. **STATS 只写增量**(提示词 P1)——减少截断和修复回合最多,token 也省得最多。
+2. **系统提示词合并一遍**(提示词 P2)+ **静态在前、动态在后**(P3)。
+3. **失败记录可导出 + 真实失败样本进 `eval:prompts`**(提示词 P6),之后每次改提示词都能量化对比。
+4. 玩法:**闯入者抗性/弱点标签**(玩法 G1)+ **闯入前侦察**(G2)。
+5. 玩法:**城主侧的风险**(G3)、**俘虏转魔物**(G4)。
+6. 工程:存档迁到 IndexedDB(E1)。
+
+### 提示词
+
+**P1. STATS 只写模型决定的东西。** 现在 `REPLY_PROTOCOL_PROMPT` 要求模型照抄 `bodyDevelopment` / `exp`、`measurements` 和完整的 `statusEffects` 数组,DESC 每回合五个键全写。照抄的部分模型改不了,却最容易抄错、被截断,是 `buildStateRepairPrompt` 修复回合的主要来源。
+- 改成增量:`[STATS:{"hp":-5,"pleasure":+18,"desire":+6,"restraint":1,"addStatus":[...],"removeStatus":["id"]}]`(数值用带符号整数,解析时兼容全角)。
+- `bodyDevelopment`、`floor`、`measurements`、`maxHp`、`explorationProgress` 全由程序合并,`enforceTurnResult` 已经是这个思路,顺着扩展。
+- DESC 只写本回合有变化的部位,缺的键沿用旧描述。
+- 要同时改:`adventure-context.ts`(协议+示例)、`chat-protocol.ts`(`inspectReply`、`salvageStateMetadata`、zod schema)、`turn-engine.ts`(合并)、`scripts/check-*.cjs`、`scripts/fixtures`。升 `PROMPT_VERSION`。
+
+**P2. 合并互相覆盖的规则。** `buildSystemPrompt` 里有多处「本段覆盖……」「以这里为准,上面……不压过这一段」;篇幅在 `REPLY_PROTOCOL_PROMPT`(250–500)和重油硬性要求(1100–1500)之间打架;`MOAN_NOTE` 里还写着项目历史(「前面几回合叫得少,是旧规则留下的」)。规则冲突时,较弱的模型会随机选一边。
+- 每条规则只放一处,删掉「以这里为准」式指针。
+- 开头写一次优先级:程序判定 > 本回合硬性要求 > 文风 > 一般规则。
+- 删掉讲项目历史的句子。
+- 已经由 `prose-guard.ts` 在代码里检查的规则,提示词里只留一句。
+
+**P3. 静态在前,动态在后。** 现在每层的布置、档案、烙印排在大段静态规则(文风禁令、词库、协议)前面,前缀缓存用不上,每回合变化的指令也被夹在中间。
+- 顺序:静态规则 → 词库 → 输出协议 → 地下城与闯入者 → 记忆与快照 → 本回合指令(程序判定、淫叫档、防重复、接力)。
+- 收益:支持缓存的服务商更便宜更快;本回合指令离生成位置最近,服从度更高。
+
+**P4. 少列禁用词。** 套话黑名单、「屌肉」、吊钟/奶山等长列表会把这些词放进上下文,反而引导模型写出来。禁用交给 `prose-guard.ts` 检查和重写;提示词里改成短的正面要求(「写具体部位的具体动作」)。
+
+**P5. 角色特例搬进数据。** `prompts.ts` 里的 `BODY_TAG_EXEMPT`(新泽西)和 `LACTATOR_NAME` / `LACTATOR_TAG` 正则会随角色变多而膨胀。改成角色预设字段,例如 `lactates: true`、`bodyTags: 'large breasts'`。
+
+**P6. 用真实失败做评估。** 每个回合已经记录 `PROMPT_VERSION` 和 guard 的 `failures`/`clear`。
+- 设置页加「导出回合记录」(只导 `TurnRecord` + guard 结果,不含 API key)。
+- 把失败样本放进 `scripts/fixtures`,`eval:prompts` 按版本统计失败率,改提示词前后对比,而不是靠几局手感。
+
+### 玩法
+
+**G1. 威胁档位要有机制,不只是一句提示词。** `scaleIntruder` 只提高 HP、压低开场快感和欲望;档位说明里的「护符和解咒药」在代码里不存在。
+- 给闯入者加抗性/弱点标签,对应陷阱类别(`trap-craft.ts` 的类别):如神官抗催眠、圣骑士带一次驱散、盗贼能拆一件机关陷阱。
+- 高档位闯入者多带标签。这样楼层怎么排才是真正的解谜,也是地下城经营的核心乐趣。
+
+**G2. 闯入前侦察。** 在 `IntruderGate` 显示档案(职业、弱点、抗性),允许在她进门前调整一次布置。先规划,后看结果。
+
+**G3. 城主侧要有风险。** 现在单局里闯入者几乎伤不到城主。可选:
+- 闯入者走到最深层或逃出去,偷走一部分淫髓;
+- 逃走的人让恶名涨得更快(或者带回情报,下一个闯入者抗性 +1);
+- 地下城核心有耐久,讨伐队可以打掉。
+讨伐队终局已有,单局小风险让每一场都有张力。
+
+**G4. 俘虏闭环。** 留下或玩坏的俘虏可以转成魔物或诱饵——地下城经营的经典循环。被玩坏的前冒险者放在某层当诱饵,可以引来她原来的队友,正好接上双人闯入(`party.ts`)。
+
+**G5. 节奏。** 「驱赶」「观察」这类回合也要一整次 LLM 调用。加一个快进:没有布置的楼层用短模板文字带过,LLM 预算留给玩家真正想看的场面。
+
+### 工程
+
+**E1. 存档迁到 IndexedDB。** 存档、名册、回合记录、记忆全在 localStorage(约 5 MB 上限),长战役迟早写满(`storage.ts` 已经有「storage may be full」的兜底)。迁移时给存档加版本号和迁移函数。
+
+**E2. 备用模型和用量显示。** 服务商报错或连续两次解析失败时切到备用模型;设置页显示每回合 token / 费用。
+
+**E3. 保持 CLAUDE.md 同步。** 新增 `lib/` 模块、协议字段或存档键时同步更新 CLAUDE.md 的 `lib/` 地图和协议段。

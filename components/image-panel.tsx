@@ -2,10 +2,10 @@
 
 import { useState, useCallback } from 'react'
 import { Image as ImageIcon, Loader2, RefreshCw, Wand2, ChevronDown, ChevronUp } from 'lucide-react'
-import { AppSettings, IMAGE_MODELS, IMAGE_STYLES, IMAGE_TAG_PRESETS, TENSORART_MODELS, Character, type ImagePromptFamily } from '@/lib/types'
+import { AppSettings, IMAGE_MODELS, IMAGE_STYLES, TENSORART_MODELS, Character, type ImagePromptFamily } from '@/lib/types'
 import { getKeep } from '@/lib/storage'
 import { keeperPromptContext, sceneChrome } from '@/lib/keeper'
-import { buildImagePrompt, DEFAULT_SCENE_PROMPT, resolveImagePromptFamily } from '@/lib/prompts'
+import { buildImagePrompt, DEFAULT_SCENE_PROMPT, presetTagsFor, resolveImagePromptFamily } from '@/lib/prompts'
 import { dzmmReady, dzmmDraw } from '@/lib/dzmm'
 
 interface ImagePanelProps {
@@ -76,7 +76,7 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
     setError(null)
     try {
       const styleTags = (IMAGE_STYLES[settings.imageStyle] ?? IMAGE_STYLES['none']).tags
-      const presetTags = (IMAGE_TAG_PRESETS[settings.imageTagPreset] ?? IMAGE_TAG_PRESETS['none']).tags
+      const presetTags = presetTagsFor(settings.imageTagPreset, character)
       const customTags = settings.imageStyleCustom?.trim() ?? ''
       const provider = settings.imageProvider ?? 'pixai'
       const onPlatform = await dzmmReady()

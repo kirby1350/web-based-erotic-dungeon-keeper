@@ -297,19 +297,19 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     "style": "正直骑士、端正口吻，害羞结巴；用铠甲/守护作喻",
     "lactation": false,
     "signature": [
-      "甲下",
+      "圣铠之内",
       "骑士的乳",
       "守护之处"
     ],
     "stages": {
       "pure": {
-        "breast": "甲下",
-        "nipple": "……甲下的那里",
+        "breast": "圣铠之内",
+        "nipple": "……圣铠之内的那里",
         "pussy": "守护之处",
-        "line": "「休想碰我甲下的地方！」"
+        "line": "「休想碰我圣铠之内的地方！」"
       },
       "shaken": {
-        "breast": "胸、胸部……甲下",
+        "breast": "胸、胸部……圣铠之内",
         "nipple": "那、那个……尖",
         "pussy": "守护之处……下面",
         "line": "「守、守护之处……我没说下面！」"
@@ -893,14 +893,14 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     "signature": [
       "猫咪奶",
       "柴郡的小猫穴",
-      "喵"
+      "肉球"
     ],
     "stages": {
       "pure": {
         "breast": "胸胸～",
         "nipple": "这里～",
         "pussy": "秘密～",
-        "line": "「嗯哼？亲爱的想看柴郡的秘密～？不给～」"
+        "line": "「嗯哼？想看柴郡的秘密～？先让肉球按一按亲爱的～」"
       },
       "shaken": {
         "breast": "猫……胸胸啦！",

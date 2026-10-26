@@ -58,4 +58,47 @@ const rep = '她的腰猛地弓起来，肥臀猛地夹紧。「肥臀猛地夹�
 assert.deepEqual(B.repeatedClauses(rep), ['肥臀猛地夹紧'])
 assert.equal(B.repeatNote('一句不重复的话。'), '')
 assert.ok(D.dkTermsLine(atago).includes('器官叫法一段回复里最多点两三次'))
+
+// 每个角色的部位叫法：阶段对得上、专属词不串、非泌乳角色没有乳汁
+const BT = load('@/lib/body-terms-dk')
+const names = Object.keys(BT.DK_BODY_TERMS)
+assert.equal(names.length, 26)
+const LACT = ['女骑士薇奥拉', '娜露梅亚', '阿妮拉', '樫野', '信浓']
+assert.deepEqual(names.filter((n) => BT.DK_BODY_TERMS[n].lactation).sort(), [...LACT].sort())
+const pool = [...types.CHARACTER_PRESETS]
+const mk = (name) => {
+  const preset = pool.find((p) => p.name === name)
+  return preset ? K.characterFromPreset(preset) : { ...atago, id: `bt-${name}`, name, partner: undefined }
+}
+const dev = (n) => ({ breast: n, clitoris: n, urethra: n, vagina: n, anus: n })
+// 堕落分 = 开发等级合计×6；四档 + 快感 95 为高潮
+const STAGE_SETUPS = { pure: { pleasure: 0, bodyDevelopment: dev(0) }, shaken: { pleasure: 0, bodyDevelopment: dev(1) }, fallen: { pleasure: 0, bodyDevelopment: dev(2) }, broken: { pleasure: 0, bodyDevelopment: dev(4) }, climax: { pleasure: 99, bodyDevelopment: dev(2) } }
+const lines = {}
+for (const name of names) {
+  const prof = BT.DK_BODY_TERMS[name]
+  lines[name] = {}
+  for (const stage of BT.BODY_STAGES) {
+    const ch = { ...mk(name), ...STAGE_SETUPS[stage], brands: [], terms: undefined, statusEffects: [], encounter: undefined }
+    const b = D.dkBodyTerms(ch)
+    assert.equal(b.stage, stage, `${name} 阶段`)
+    const want = prof.stages[stage]
+    assert.equal(b.terms.breast, want.breast); assert.equal(b.terms.nipple, want.nipple); assert.equal(b.terms.pussy, want.pussy)
+    const line = D.dkTermsLine(ch)
+    for (const v of [want.breast, want.nipple, want.pussy]) assert.ok(line.includes(`「${v}」`), `${name}/${stage} 缺 ${v}`)
+    if (prof.lactation) { assert.ok(want.milk && line.includes(`乳汁叫「${want.milk}」`), `${name}/${stage} 缺乳汁`) }
+    else { assert.equal(b.terms.milk, undefined); assert.ok(!line.includes('乳汁叫'), `${name} 不该有乳汁`); assert.match(line, /她不泌乳/) }
+    // 系统提示也带上同一行
+    if (pool.some((p) => p.name === name) && stage === 'fallen') assert.ok(PR.buildSystemPrompt(ch).includes(D.dkBodyTermsLine(ch)))
+    lines[name][stage] = line // 注入的称呼行（系统提示里的同一行已在上面核对）
+  }
+}
+assert.equal(BT.DK_BODY_TERMS['桑山千雪'].lactation, false)
+for (const s of BT.BODY_STAGES) assert.equal(BT.DK_BODY_TERMS['桑山千雪'].stages[s].milk, undefined)
+for (const owner of names) for (const word of BT.DK_BODY_TERMS[owner].signature) for (const other of names) {
+  if (other === owner) continue
+  for (const stage of BT.BODY_STAGES) assert.ok(!lines[other][stage].includes(word), `「${word}」(${owner}) 串进了 ${other}/${stage}`)
+}
+// 命令过的胸叫法仍以命令为准
+const kc = D.applyTermCommands(mk('樫野'), '把你的胸叫做「补给舱」').character
+assert.equal(D.dkBodyTerms(kc).terms.breast, '补给舱')
 console.log('terms ok')

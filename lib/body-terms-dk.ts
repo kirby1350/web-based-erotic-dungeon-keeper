@@ -253,7 +253,7 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     }
   },
   "天城": {
-    "style": "温婉古雅、军师，委婉且带药/病弱意象，轻咳",
+    "style": "温婉古雅、军师，说话委婉、轻咳，堕后温柔地说出下流话",
     "lactation": false,
     "signature": [
       "天城的宫",
@@ -294,7 +294,7 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     }
   },
   "卡塔莉娜": {
-    "style": "正直骑士、端正口吻，害羞结巴；用铠甲/守护作喻",
+    "style": "正直骑士、端正口吻，害羞结巴，越堕越直白",
     "lactation": false,
     "signature": [
       "卡塔莉娜的奶",
@@ -765,7 +765,7 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     }
   },
   "索米": {
-    "style": "认真拘谨的战术人形，用战术/传感器报告词",
+    "style": "认真拘谨的战术人形，说话一板一眼，害羞时语无伦次",
     "lactation": false,
     "signature": [
       "索米的奶",
@@ -970,7 +970,7 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     }
   },
   "新泽西": {
-    "style": "自信白鹰战列舰，夹英语与♪，用“Big/弹药”式夸张词",
+    "style": "自信张扬的大姐，夹英语与♪，用词夸张直白",
     "lactation": false,
     "signature": [
       "Big J的奶",
@@ -1057,7 +1057,7 @@ export const DK_BODY_TERMS: Record<string, BodyTermProfile> = {
     }
   },
   "尤艾尔": {
-    "style": "关西腔活泼舞姬，“嘛/啦/的说”，用舞蹈/铃铛/鱼的俏皮词",
+    "style": "关西腔活泼舞姬，“嘛/啦/的说”，俏皮直白",
     "lactation": false,
     "signature": [
       "咱的奶子",

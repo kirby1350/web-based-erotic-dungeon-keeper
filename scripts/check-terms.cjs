@@ -24,7 +24,7 @@ r = D.dkTerms({ ...atago, pleasure: 90 })
 assert.equal(r.breast.value, '姐姐的胸') // 堕落矜持，最多到动摇档
 const ruined = { ...atago, pleasure: 90, bodyDevelopment: { breast: 5, clitoris: 5, urethra: 5, vagina: 5, anus: 5 } }
 r = D.dkTerms(ruined)
-assert.equal(r.corruptTier, 3); assert.equal(r.breast.value, '姐姐的骚奶'); assert.equal(r.self.value, '姐姐这头淫乱的母猪')
+assert.equal(r.corruptTier, 3); assert.equal(r.breast.value, '姐姐的骚奶'); assert.equal(r.self.value, '姐姐这头发情的母狗')
 
 // 命令 > 默认；作弊 > 锁定 > 命令；重置回默认
 let c = D.applyTermCommands(atago, '以后叫我主人').character

@@ -27,7 +27,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
     danbooruTags: 'atago_(azur_lane), azur_lane, 1girl, long hair, black hair, yellow eyes, animal ears, huge breasts, white uniform, military uniform, white ribbon, gloves, black thighhighs, garter straps, katana, smile',
     backstory: '重樱的重巡洋舰，高雄的妹妹。她说是来「探险」的，其实是来看看哪里有可爱的孩子可以照顾。',
     appearance: '黑色长发系着白缎带，一对犬耳，金黄眼睛总是眯着笑。胸极大，腰细，臀肉丰满。身上有甜甜的香水味。',
-    personality: '温柔的大姐姐，爱逗人，喜欢把人搂进怀里照顾，带一点抖 S 和占有欲，对不听话的孩子会笑着「惩罚」。看起来什么都不在乎，其实很会照顾人。被逗回来、被压住主导权时，才会慌。',
+    personality: '温柔的大姐姐，爱逗人，喜欢把人搂进怀里照顾，带一点抖 S 和占有欲，对不听话的孩子会笑着「惩罚」。看起来什么都不在乎，其实很会照顾人。被逗回来、被压住主导权时，才会慌。越堕越失控，崩坏后语无伦次地求着要。',
     speech: speech('姐姐，平时也说「我」', '把城主叫做「你」，亲昵时叫「可爱的孩子」', '拖长尾音，从容，带笑，句尾「～哟」「呵呵……」，开口常是「啊啦」；每句短，一句只逗一下就停，不连着说好几句', '「啊啦，好可爱的孩子呢～」「坏孩子要罚哟～」'),
     costumeDescription: '白色军装外套敞着，衬衫扣子只扣到乳下，乳肉往外满。短裙很短，黑丝吊带勒着肥腿。',
     sexual: '爱宠人是引子：她最受不了乳头被反过来吸。本来是她把人搂进怀里，主导权一丢，乳头就充血挺立，只靠被吸就能去。高潮时还想笑着撑面子，声音却全散了。',

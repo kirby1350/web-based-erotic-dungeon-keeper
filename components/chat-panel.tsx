@@ -2,7 +2,7 @@
 
 import { ReplyMarkdown } from '@/components/reply-markdown'
 import { useState, useRef, useEffect, type MutableRefObject } from 'react'
-import { Send, Loader2, BookOpen, Square, RotateCcw, Wrench, Zap, Sparkles, ShieldAlert, Unlock, HeartCrack } from 'lucide-react'
+import { Send, Loader2, BookOpen, Square, RotateCcw, RefreshCw, Wrench, Zap, Sparkles, ShieldAlert, Unlock, HeartCrack } from 'lucide-react'
 import { Character, AppSettings, StatusEffect, Encounter, EXPLORE_GAIN, ENCOUNTER_CLEAR_GAIN, getFloorTheme } from '@/lib/types'
 import { statusForTrap, type ProgramTurnResult } from '@/lib/adventure-context'
 import { getKeep, saveKeep } from '@/lib/storage'
@@ -31,8 +31,8 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ character, settings, onRequestImage, onCharacterUpdate, onTurnCommit, onBusyChange, exploreActionsRef }: ChatPanelProps) {
-  const { messages, summary, memory, summarising, loading, started, latestOptions, statsError, setStatsError,
-    pending, beginTurn, retryPending, discardPending, stop } = useAdventureSession({ character, settings, onRequestImage, onTurnCommit, onBusyChange })
+  const { messages, summary, memory, summarising, loading, loadingStage, started, latestOptions, statsError, setStatsError,
+    pending, canRewind, beginTurn, retryPending, discardPending, undoLastTurn, rerollLastTurn, stop } = useAdventureSession({ character, settings, onRequestImage, onTurnCommit, onBusyChange })
   const [input, setInput] = useState('')
   const [showToolMenu, setShowToolMenu] = useState(false)
   const [showInterrogation, setShowInterrogation] = useState(false)
@@ -181,10 +181,17 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
           character={character}
           settings={settings}
           place={chrome.mode === 'train' ? chrome.placeLabel : `地下城第 ${character.floor ?? 1} 层`}
+          keep={getKeep()}
+          memory={memory}
+          recentMessages={messages}
           onConfirm={(text) => {
             setShowInterrogation(false)
             setInput(text)
             textareaRef.current?.focus()
+          }}
+          onExecute={(text) => {
+            setShowInterrogation(false)
+            sendMessage(text)
           }}
           onClose={() => setShowInterrogation(false)}
         />
@@ -209,7 +216,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] uppercase tracking-widest text-rose-400/70">
-                  {character.encounter.kind === 'monster' ? '魔物在执行' : '陷阱在生效'}
+                  {character.encounter.kind === 'monster' ? '魔物缠缚中' : '机关拘束中'}
                 </span>
                 <span className="text-sm font-bold text-rose-200">{character.encounter.name}</span>
                 <span className="text-[10px] text-rose-300/80 bg-rose-500/15 px-1.5 py-0.5 rounded-full">
@@ -226,20 +233,20 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
               <button
                 onClick={attemptEscape}
                 disabled={loading || summarising || !!pending}
-                title="把束缚放松一档，看她能挣到哪一步"
+                title="把束缚放松一档，欣赏她徒劳挣扎或寸止空虚的反应"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-400/50 bg-rose-500/15 text-rose-200 text-xs font-bold hover:bg-rose-500/25 hover:border-rose-300 transition-all disabled:opacity-40"
               >
                 <Unlock className="w-3.5 h-3.5" />
-                看她挣
+                松一档看她挣
               </button>
               <button
                 onClick={acceptBroken}
                 disabled={loading || summarising || !!pending}
-                title="下令把她玩到崩坏，然后丢在一旁"
+                title="下令装置全力运转把她榨到崩坏脱力，随后解除当前遭遇"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-purple-400/40 bg-purple-500/15 text-purple-200 text-xs font-bold hover:bg-purple-500/25 hover:border-purple-300 transition-all disabled:opacity-40"
               >
                 <HeartCrack className="w-3.5 h-3.5" />
-                玩到丢掉
+                榨到崩坏
               </button>
             </div>
           </div>
@@ -249,7 +256,7 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
       {/* Active status effects — click a chip to attempt dispelling it in-fiction */}
       {character.statusEffects && character.statusEffects.length > 0 && (
         <div className="px-4 py-2 border-b border-yellow-500/20 bg-yellow-500/5 flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] tracking-widest text-yellow-400/60 mr-0.5">异常状态 · 点一下尝试抹掉（成功率 {dispelChance(character)}%）</span>
+          <span className="text-[10px] tracking-widest text-yellow-400/60 mr-0.5">附着状态 · 点击可尝试驱散（成功率 {dispelChance(character)}%）</span>
           {character.statusEffects.map((e) => (
             <button
               key={e.id}
@@ -267,7 +274,18 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
 
       {pending && (
         <div className="px-4 py-3 border-b border-amber-500/30 bg-amber-500/10 text-xs space-y-2" role="status">
-          <p>{loading ? '正在生成本回合，她的身体会在完成后一起结算。' : '有一个待完成回合，她的身体还没改。刷新后也可继续。'}</p>
+          <p className="flex items-center gap-1.5">
+            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300 flex-shrink-0" />}
+            <span>
+              {loading
+                ? loadingStage === 'polishing'
+                  ? '正在润色细节描写（自动收束篇幅与句式）…'
+                  : loadingStage === 'repairing'
+                    ? '正文已完成，正在同步身体与状态数据…'
+                    : '正在推演本回合剧情，身体与数值将在结算后同步更新…'
+                : '上一回合尚未完成结算，刷新页面后仍可继续。'}
+            </span>
+          </p>
           {!loading && <div className="flex gap-3">
             <button onClick={retryPending} className="text-primary underline">{pending.phase === 'ready' ? '重试保存' : pending.phase === 'repair' ? '重试状态修复' : '继续生成'}</button>
             <button onClick={discardPending} className="text-muted-foreground underline">放弃本回合</button>
@@ -346,6 +364,35 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
                     title={`第一版没过检查，已自动重写一次：${msg.guard.first.join('；')}${msg.guard.failures.length ? `\n保留较好的一版，仍有：${msg.guard.failures.join('；')}` : ''}`}>· 已自动重写</span>
                 )}</span>
                 <ReplyMarkdown text={cleanContent(msg.content)} />
+                {i === messages.length - 1 && canRewind && !loading && !summarising && !pending && (
+                  <div className="mt-2.5 pt-2 border-t border-border/50 flex items-center gap-3 text-[11px] text-muted-foreground">
+                    <button
+                      type="button"
+                      data-testid="reroll-turn"
+                      onClick={() => rerollLastTurn()}
+                      title="丢弃本轮回复，按同一道命令重新推演一次"
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      <RefreshCw className="w-3 h-3" />重写本轮
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="undo-turn"
+                      onClick={() => {
+                        const wasFollowUp = messages.length > 2
+                        const prev = undoLastTurn()
+                        if (prev && wasFollowUp) {
+                          setInput(prev)
+                          textareaRef.current?.focus()
+                        }
+                      }}
+                      title="回退到上一轮结算前的身体与数值状态，并把刚才的命令填回输入框"
+                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      <RotateCcw className="w-3 h-3" />撤回重选
+                    </button>
+                  </div>
+                )}
                 {loading && i === messages.length - 1 && msg.content === '' && (
                   <div className="flex gap-1 mt-2">
                     <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0ms]" />

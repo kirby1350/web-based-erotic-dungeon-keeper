@@ -6,11 +6,14 @@ import { BODY_STAGES, DK_BODY_TERMS, type BodyStage, type BodyStageTerms } from 
 
 export const CREST_ITEM = { label: '改口淫纹', cost: 12, turns: 8 }
 
-/** 长期堕落 0–100：身体开发等级 ×6 + 烙印 ×18 + 回合里的高潮积累 */
+/** 长期堕落 0–100：身体开发等级 ×6 + 未升满的开发经验折算 + 烙印 ×18 + 回合里的高潮/情欲积累 */
 export function corruptionOf(c: Pick<Character, 'bodyDevelopment' | 'brands' | 'terms'>): number {
   const d = c.bodyDevelopment
   const dev = d ? (d.breast ?? 0) + (d.clitoris ?? 0) + (d.urethra ?? 0) + (d.vagina ?? 0) + (d.anus ?? 0) : 0
-  return Math.max(0, Math.min(100, dev * 6 + (c.brands?.length ?? 0) * 18 + (c.terms?.corruptionBonus ?? 0)))
+  const expObj = d?.exp ?? {}
+  const expSum = (expObj.breast ?? 0) + (expObj.clitoris ?? 0) + (expObj.urethra ?? 0) + (expObj.vagina ?? 0) + (expObj.anus ?? 0)
+  const expScore = Math.floor(expSum * 0.06)
+  return Math.max(0, Math.min(100, dev * 6 + expScore + (c.brands?.length ?? 0) * 18 + (c.terms?.corruptionBonus ?? 0)))
 }
 
 /** 陷阱「淫纹拘束」或身上带淫纹状态时，也算淫纹（不占道具时长） */
@@ -22,9 +25,9 @@ export function dkTerms(c: Character): ResolvedTerms {
   return resolveTerms(dkProfile(c), c.terms, { corruption: corruptionOf(c), pleasure: c.pleasure ?? 0, now: c.turnCount ?? 0, boost: crestFromScene(c) })
 }
 
-/** 部位叫法的位置：胸、乳头、私处、后穴，泌乳角色另有乳汁 */
-export type BodySlot = 'breast' | 'nipple' | 'pussy' | 'anus' | 'milk'
-export const BODY_SLOT_LABEL: Record<BodySlot, string> = { breast: '胸', nipple: '乳头', pussy: '私处', anus: '后穴', milk: '乳汁' }
+/** 部位叫法的位置：胸、乳头、阴蒂、私处、后庭，泌乳角色另有乳汁 */
+export type BodySlot = 'breast' | 'nipple' | 'clitoris' | 'pussy' | 'anus' | 'milk'
+export const BODY_SLOT_LABEL: Record<BodySlot, string> = { breast: '胸', nipple: '乳头', clitoris: '阴蒂', pussy: '私处', anus: '后庭', milk: '乳汁' }
 
 /** 阶段：快感到「高潮」档就是 climax，否则按堕落四档（淫纹 +1 档） */
 export function bodyStageOf(r: ResolvedTerms): BodyStage {
@@ -32,9 +35,9 @@ export function bodyStageOf(r: ResolvedTerms): BodyStage {
   return BODY_STAGES[Math.min(3, r.corruptTier + (r.boosted ? 1 : 0))]
 }
 
-export interface DkBodyTerms { stage: BodyStage; style: string; terms: Partial<Record<BodySlot, string>>; line: string; lactation: boolean }
+export interface DkBodyTerms { stage: BodyStage; style: string; terms: Partial<Record<BodySlot, string>>; alts?: string[]; line: string; lactation: boolean }
 
-/** 角色当前阶段的部位叫法；没登记的角色返回 null，照旧只用通用称呼。玩家命令/锁定/作弊过的胸和私处以那边为准。 */
+/** 角色当前阶段的部位叫法；没登记的角色返回 null，照旧只用通用称呼。玩家命令/锁定/作弊过的胸、私处与后庭以那边为准。 */
 export function dkBodyTerms(c: Character, r: ResolvedTerms = dkTerms(c)): DkBodyTerms | null {
   const p = DK_BODY_TERMS[c.name]
   if (!p) return null
@@ -43,11 +46,12 @@ export function dkBodyTerms(c: Character, r: ResolvedTerms = dkTerms(c)): DkBody
   const terms: Partial<Record<BodySlot, string>> = {
     breast: r.breast.source === 'default' || r.breast.source === 'item' ? s.breast : r.breast.value,
     nipple: s.nipple,
+    ...(s.clitoris ? { clitoris: s.clitoris } : {}),
     pussy: r.pussy.source === 'default' || r.pussy.source === 'item' ? s.pussy : r.pussy.value,
-    anus: r.anus.value,
+    anus: r.anus.source === 'default' || r.anus.source === 'item' ? (s.anus ?? r.anus.value) : r.anus.value,
   }
   if (p.lactation && s.milk) terms.milk = s.milk
-  return { stage, style: p.style, terms, line: s.line, lactation: p.lactation }
+  return { stage, style: p.style, terms, alts: s.alts, line: s.line, lactation: p.lactation }
 }
 
 const STAGE_LABEL: Record<BodyStage, string> = { pure: '矜持', shaken: '动摇', fallen: '沦陷', broken: '崩坏', climax: '高潮' }
@@ -57,16 +61,29 @@ export function dkBodyTermsLine(c: Character, r: ResolvedTerms = dkTerms(c)): st
   if (!b) return ''
   const slots = (Object.keys(BODY_SLOT_LABEL) as BodySlot[]).filter((k) => b.terms[k])
   const list = slots.map((k) => `${BODY_SLOT_LABEL[k]}叫「${b.terms[k]}」`).join('｜')
+  const altText = b.alts?.length ? `同阶段可穿插轮换的口语指代：${b.alts.map((w) => `「${w}」`).join('、')}（避免多句台词死板复读同一个词）。` : ''
   const milk = b.lactation ? '' : '她不泌乳，不要写乳汁、产奶或喷奶。'
-  return `【部位叫法·${c.name}·${STAGE_LABEL[b.stage]}】说话风格：${b.style}。此刻${list}。示例口吻：${b.line}（只学口吻，不要照抄）。${milk}这些是${c.name}自己的专属说法，别的角色不要借用。`
+  return `【部位叫法·${c.name}·${STAGE_LABEL[b.stage]}】说话风格：${b.style}。此刻${list}。${altText}示例口吻：${b.line}（只学口吻，不要照抄）。${milk}这些是${c.name}自己的专属说法，别的角色不要借用。`
+}
+
+export function dkShortTermsLine(c: Character, presence: KeeperPresence = 'present'): string {
+  const r = dkTerms(c)
+  const b = dkBodyTerms(c, r)
+  if (!b) return termsLine(c.name, r, presence)
+  const merged: ResolvedTerms = {
+    ...r,
+    breast: { ...r.breast, value: b.terms.breast ?? r.breast.value },
+    pussy: { ...r.pussy, value: b.terms.pussy ?? r.pussy.value },
+    anus: { ...r.anus, value: b.terms.anus ?? r.anus.value },
+  }
+  return termsLine(c.name, merged, presence)
 }
 
 export function dkTermsLine(c: Character, presence: KeeperPresence = 'present'): string {
   const r = dkTerms(c)
   const b = dkBodyTerms(c, r)
   if (!b) return termsLine(c.name, r, presence)
-  const merged: ResolvedTerms = { ...r, breast: { ...r.breast, value: b.terms.breast ?? r.breast.value }, pussy: { ...r.pussy, value: b.terms.pussy ?? r.pussy.value } }
-  return `${termsLine(c.name, merged, presence)}\n${dkBodyTermsLine(c, r)}`
+  return `${dkShortTermsLine(c, presence)}\n${dkBodyTermsLine(c, r)}`
 }
 
 /** 回合开始前：把玩家输入里的改称呼命令写进角色 */
@@ -76,12 +93,34 @@ export function applyTermCommands(c: Character, input: string, source: 'command'
   return { character: { ...c, terms: addOverrides(c.terms, cmds, source) }, found: cmds.length }
 }
 
-/** 回合结算后：计回合数，高潮回合积累堕落 */
-export function tickTerms(c: Character): Character {
+/** 单回合快感与欲望对应的堕落增益（供实时结算与旧档历史补算共用） */
+export function turnCorruptionGain(c: Pick<Character, 'pleasure' | 'desire'>): number {
   const p = c.pleasure ?? 0
-  const gain = p >= 80 ? 9 : p >= 60 ? 4 : p >= 40 ? 2 : 0
-  const terms: TermsState = { ...(c.terms ?? {}), corruptionBonus: Math.min(80, (c.terms?.corruptionBonus ?? 0) + gain) }
+  const d = c.desire ?? 0
+  const pGain = p >= 80 ? 14 : p >= 60 ? 8 : p >= 40 ? 4 : p >= 25 ? 2 : 0
+  const dGain = d >= 80 ? 5 : d >= 60 ? 3 : d >= 45 ? 1 : 0
+  return pGain + dGain
+}
+
+/** 回合结算后：计回合数，按本回合快感与欲望强度共同推进堕落度 */
+export function tickTerms(c: Character): Character {
+  const gain = turnCorruptionGain(c)
+  const terms: TermsState = { ...(c.terms ?? {}), corruptionBonus: Math.min(90, (c.terms?.corruptionBonus ?? 0) + gain) }
   return { ...c, turnCount: (c.turnCount ?? 0) + 1, terms }
+}
+
+/** 旧档迁移补算：根据已完成的回合记录与当前快感/欲望，把之前少算的堕落度补齐，刷新页面即可看到最新档位。 */
+export function backfillCorruptionFromTurns(c: Character, turns?: { after: Pick<Character, 'pleasure' | 'desire'> }[]): Character {
+  const fromHistory = Array.isArray(turns) && turns.length > 0
+    ? turns.reduce((sum, t) => sum + turnCorruptionGain(t.after ?? {}), 0)
+    : 0
+  const fromCurrent = !turns?.length && ((c.pleasure ?? 0) >= 35 || (c.desire ?? 0) >= 45)
+    ? turnCorruptionGain(c) * Math.max(1, c.turnCount ?? 1)
+    : 0
+  const target = Math.min(90, Math.max(fromHistory, fromCurrent))
+  const existing = c.terms?.corruptionBonus ?? 0
+  if (target <= existing) return c
+  return { ...c, terms: { ...(c.terms ?? {}), corruptionBonus: target } }
 }
 
 export function applyCrest(c: Character): Character {
@@ -105,6 +144,7 @@ export function sourceWork(p: { name: string; danbooruTags?: string; source?: st
   if (/girls'_frontline/.test(t)) return '少女前线'
   if (/lost_sword/.test(t)) return 'Lost Sword'
   if (/brown_dust/.test(t)) return '棕色尘埃'
+  if (/blue_archive/.test(t)) return '蔚蓝档案'
   if (/^(勇者|圣女|女骑士)/.test(p.name)) return '原创 · 勇者讨伐队'
   return '原创'
 }

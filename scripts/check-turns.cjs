@@ -187,9 +187,10 @@ assert.equal(prompt.includes('【角色外观锚点，每回合原样前置】')
 assert.equal(prompt.includes('masterpiece, best quality'), false)
 assert.equal(prompt.includes('【本回合词库'), false)
 assert.equal(prompt.includes('似是专为'), false)
-assert.equal(prompt.includes('【文风：重油堆叠】'), false)
+assert.equal(prompt.includes('【重油部位与体液边界】'), false)
 const densePrompt = buildSystemPrompt(character, memory.summary, 'dense', null, memory.memory)
-assert.ok(densePrompt.includes('【文风：重油堆叠】'))
+assert.ok(densePrompt.includes('【重油部位与体液边界】'))
+assert.equal(densePrompt.includes('【文风：重油堆叠】'), false)
 assert.ok(densePrompt.includes('两到四个'))
 assert.ok(!densePrompt.includes('600 至 1000 字') && densePrompt.includes('字数以本回合硬性要求'))
 assert.ok(densePrompt.includes('馒头」只许写阴道'))
@@ -203,16 +204,19 @@ assert.equal(densePrompt.includes('拆成三股'), false)
 assert.equal(densePrompt.includes('【★重油文风'), false)
 assert.equal(densePrompt.includes('【本回合词库'), false)
 assert.equal(densePrompt.includes('原样贴在名词前'), false)
-const { buildInterrogationPrompt, buildImagePrompt, buildAppearanceAnchor, withQualityPrefix } = load('@/lib/prompts')
-const method = buildInterrogationPrompt({ ...character, costumeDescription: '旅行斗篷' }, ['只用绳子压住已经敏感的地方'], '机械牢笼', 'dense', ['胸部/乳头'])
+const { buildInterrogationPrompt, buildMonsterPrompt, buildImagePrompt, buildAppearanceAnchor, withQualityPrefix } = load('@/lib/prompts')
+const method = buildInterrogationPrompt({ ...character, costumeDescription: '旅行斗篷', speech: '自称：本骑士', sexual: '死穴是耳尖' }, ['只用绳子压住已经敏感的地方'], '机械牢笼', 'dense', ['胸部/乳头'])
 assert.equal(method.includes('逃脱成功率'), false)
 assert.equal(method.includes('未输入逃脱'), false)
 assert.ok(method.includes('旅行斗篷'))
+assert.ok(method.includes('【角色人设与称呼'))
+assert.ok(method.includes('本骑士') && method.includes('耳尖'))
 assert.ok(method.includes('【部位特化】'))
 assert.ok(method.includes('150 至 220'))
 assert.ok(method.includes('可到 500 字'))
-assert.ok(method.includes('两到四个质地原词'))
-assert.ok(method.includes('【乳与奶头词库】'))
+assert.ok(method.includes('两到四个质地词'))
+assert.ok(method.includes('【本次重油词库'))
+assert.equal(method.includes('【乳与奶头词库】'), false)
 assert.equal(method.includes('【★重油文风'), false)
 assert.equal(method.includes('【本回合词库'), false)
 assert.ok(method.includes('【拷问名称】'))
@@ -224,8 +228,10 @@ assert.equal(method.includes('【陷阱名称】'), false)
 assert.equal(method.includes('似是专为'), false)
 assert.ok(method.includes('禁止把「吊钟、奶山、肉山'))
 assert.equal(method.includes('最多 700'), false)
+const monsterDraftPrompt = buildMonsterPrompt('dense', '缠腿', ['胸部/乳头'])
+assert.ok(monsterDraftPrompt.includes('【习性】') && monsterDraftPrompt.includes('胸部/乳头') && monsterDraftPrompt.includes('【本次重油词库'))
 const openMethod = buildInterrogationPrompt(character, undefined, '地下城第 1 层', 'standard')
-assert.equal(openMethod.includes('【文风：重油堆叠】'), false)
+assert.equal(openMethod.includes('【重油部位与体液边界】'), false)
 assert.equal(openMethod.includes('【★重油文风'), false)
 assert.ok(openMethod.includes('绳缚'))
 assert.ok(openMethod.includes('痛与快'))
@@ -245,6 +251,34 @@ for (const tag of ['worst quality', 'low quality', 'username', 'patreon username
 assert.equal(new Set(illustrated.negative.split(', ')).size, illustrated.negative.split(', ').length)
 const nj = buildImagePrompt({ scene: 'cave', character: { danbooruTags: 'new_jersey_(azur_lane), large breasts' }, family: 'illustrious' })
 assert.equal(nj.prompt.includes('gigantic breasts'), false)
+// 出图服装战损自动同步：根据处境记忆与快感状态自适应切换破损/全裸标签
+{
+  const runtimeChar = {
+    name: 'Narmaya',
+    pleasure: 65,
+    desire: 50,
+    danbooruTags: 'narmaya_(granblue_fantasy), long hair, dress, pantyhose, bra',
+    bodyDevelopment: { breast: 1, clitoris: 0, urethra: 0, vagina: 0, anus: 0 },
+  }
+  const tornImg = buildImagePrompt({
+    scene: 'dungeon, chains',
+    character: runtimeChar,
+    family: 'illustrious',
+    memory: { version: 1, entries: [{ id: 'm1', category: 'situation', status: 'active', text: '连裤袜被撕开，裙摆被扯裂', evidence: '', sourceTurnIds: ['t1'] }] },
+  })
+  assert.equal(tornImg.prompt.includes('torn clothes'), true)
+  assert.equal(tornImg.prompt.split(', ').includes('torn pantyhose'), true)
+  assert.equal(tornImg.prompt.split(', ').includes('pantyhose'), false)
+  const nudeImg = buildImagePrompt({
+    scene: 'slime, tentacles',
+    character: runtimeChar,
+    family: 'illustrious',
+    memory: { version: 1, entries: [{ id: 'm2', category: 'situation', status: 'active', text: '衣料被史莱姆彻底融化，全身赤裸不着寸缕', evidence: '', sourceTurnIds: ['t2'] }] },
+  })
+  assert.equal(nudeImg.prompt.includes('completely nude'), true)
+  assert.equal(nudeImg.prompt.includes('dress'), false)
+  assert.equal(nudeImg.prompt.includes('bra'), false)
+}
 {
   const { presetTagsFor, characterLactates } = load('@/lib/prompts')
   const { IMAGE_TAG_PRESETS } = load('@/lib/types')
@@ -517,4 +551,77 @@ assert.ok(discardLine.includes('被传送回城市'))
 assert.equal(discardLine.includes('[STATS'), false)
 console.log('Turn checks passed: strict validation, repair, atomic commit/retry, evidence memory, migration and storage failure.')
 assert.ok(prompt.includes('齁哦哦哦') && prompt.includes('≥ 80 或本回合高潮'))
-assert.ok(require('./load-ts.cjs').createLoader()('@/lib/prompts').moanTierLine(85).includes('≥ 80 档'))
+const PR = require('./load-ts.cjs').createLoader()('@/lib/prompts')
+const PB = require('./load-ts.cjs').createLoader()('@/lib/prose-bank')
+const CP = require('./load-ts.cjs').createLoader()('@/lib/chat-protocol')
+const TD = require('./load-ts.cjs').createLoader()('@/lib/terms-dk')
+const BT = require('./load-ts.cjs').createLoader()('@/lib/body-terms-dk')
+assert.ok(PR.moanTierLine(85).includes('≥ 80 档'))
+assert.ok(PR.moanTierLine(85, true).includes('非接触步骤') && !PR.moanTierLine(85, true).includes('≥ 80 档'))
+assert.ok(buildSystemPrompt({ ...character, pleasure: 90 }, '', 'dense', { kind: 'advance', floor: 2 }).includes('非接触步骤'))
+assert.ok(buildSystemPrompt({ ...character, pleasure: 90 }, '', 'dense', { kind: 'explore', explorationProgress: 60, encounter: null }).includes('非接触步骤'))
+assert.ok(buildSystemPrompt({ ...character, pleasure: 90 }, '', 'dense', null, emptyMemory(), null, true).includes('非接触步骤'))
+// PROSE_BANK: no male genital words and no character signature leaks
+const allBankWords = Object.values(PB.PROSE_BANK).flatMap((cat) => cat.words.map((x) => x.w)).join(' ')
+for (const banned of ['肉棒', '龟头', '柱身', '马眼', '囊袋', '白浊', '精浆']) assert.equal(allBankWords.includes(banned), false, `词库残留男性词：${banned}`)
+for (const [owner, prof] of Object.entries(BT.DK_BODY_TERMS)) for (const sig of prof.signature) assert.equal(allBankWords.includes(sig), false, `词库混入 ${owner} 专属词：${sig}`)
+// inferDenseStep & isNonContactTurn
+assert.equal(PB.inferDenseStep('问她还敢不敢嘴硬', { pleasure: 65, encounter }), 1)
+assert.equal(PB.inferDenseStep('城主把「石门」的束缚放松一档，看林能挣到哪一步。', { pleasure: 70, encounter }), 1)
+assert.equal(PB.isNonContactTurn('先不碰她，只盯着她喘', null), true)
+assert.equal(PB.isNonContactTurn('揉她的乳尖', null), false)
+// compactHistoryMessages strips older markers while keeping latest assistant turn intact
+const hist = [
+  { role: 'user', content: '一' },
+  { role: 'assistant', content: '第一轮正文。\n[OPTIONS]\n1. a\n[/OPTIONS]\n[STATS:{"hp":90}]' },
+  { role: 'user', content: '二' },
+  { role: 'assistant', content: '第二轮正文。\n[OPTIONS]\n1. b\n[/OPTIONS]\n[STATS:{"hp":80}]' },
+]
+const compacted = CP.compactHistoryMessages(hist)
+assert.equal(compacted[1].content, '第一轮正文。')
+assert.ok(compacted[3].content.includes('[STATS:{"hp":80}]'))
+// dkShortTermsLine omits body-stage detail block to prevent double injection
+const atagoChar = keeper.characterFromPreset(CHARACTER_PRESETS.find((p) => p.name === '爱宕'))
+assert.ok(TD.dkShortTermsLine(atagoChar).includes('【本回合称呼·爱宕】'))
+assert.equal(TD.dkShortTermsLine(atagoChar).includes('【部位叫法·爱宕'), false)
+// Monster habit preserved through normalizeKeep and placedDefenses
+const keepWithMonsterHabit = keeper.normalizeKeep({ monsters: [{ id: 'm1', name: '影虫', appearance: '黑影', behavior: '缠踝', habit: '怕光贪热', placed: true }] })
+assert.equal(keepWithMonsterHabit.monsters[0].habit, '怕光贪热')
+assert.ok(keeper.placedDefenses(keepWithMonsterHabit)[0].summary.includes('习性：怕光贪热'))
+// 台词与快感/欲望/堕落实时联动标尺 + 现场感知随机拷问
+assert.match(PR.dialogueStateLine({ name: '高雄', pleasure: 20, desire: 45, bodyDevelopment: { breast: 1, clitoris: 1, urethra: 0, vagina: 1, anus: 0 }, brands: ['烙印A'] }), /口嫌体正直/)
+assert.match(PR.dialogueStateLine({ name: '高雄', pleasure: 85, desire: 88, bodyDevelopment: { breast: 4, clitoris: 4, urethra: 3, vagina: 4, anus: 3 } }), /发情渴求/)
+assert.match(PR.dialogueTurnHint({ pleasure: 65, desire: 72, bodyDevelopment: { breast: 2, clitoris: 2, urethra: 0, vagina: 2, anus: 0 } }), /【台词刻度锚点】/)
+assert.equal(keeper.keeperPresence({ opening: 'trap' }, '城主亲自走近捏住她的下巴'), 'present')
+assert.equal(keeper.keeperPresence({ opening: 'trap' }, '让触手再收紧一档'), 'absent')
+let trapSave = keeper.emptyKeep()
+trapSave.brief = { opening: 'trap', defenseName: '触手深渊' }
+trapSave.traps = [keeper.trapFromPreset(load('@/lib/types').PRESET_TRAPS.find((t) => t.id === 'tentacle_pit'))]
+trapSave.traps[0].placed = true
+trapSave.floors[0].trapIds = ['tentacle_pit']
+const trappedChar = { ...character, encounter: { id: 'tentacle_pit', name: '触手深渊', kind: 'trap', summary: '触手缠绕四肢', restraint: 3 } }
+const sceneAbsent = keeper.buildInterrogationScene(trapSave, trappedChar, { version: 1, entries: [{ id: 's1', category: 'situation', text: '外衣已被扯破，双腕悬吊在半空', status: 'active', sourceTurnIds: ['t1'], evidence: '悬吊' }] }, ['吸盘正贴着她的小腹。\n[STATS:{}]'], false)
+assert.equal(sceneAbsent.presence, 'absent')
+assert.equal(sceneAbsent.keeperStepsIn, false)
+assert.ok(sceneAbsent.encounterTrap && sceneAbsent.encounterTrap.escalate.length >= 3)
+const scenePrompt = PR.buildInterrogationPrompt(trappedChar, undefined, '地下城第 1 层', 'standard', ['胸部/乳头'], 7, sceneAbsent)
+assert.match(scenePrompt, /生效中的陷阱：「触手深渊」/)
+assert.match(scenePrompt, /严禁写成城主本人瞬移伸手触碰她/)
+assert.match(scenePrompt, /外衣已被扯破/)
+const extracted = PR.extractInterrogationCommand('【拷问名称】触手双乳抽吸\n【这一手怎么做】\n两根分叉触须吸住乳尖反复拉扯。\n\n【她立刻的反应】\n她咬住下唇闷哼。')
+assert.equal(extracted, '【触手双乳抽吸】两根分叉触须吸住乳尖反复拉扯。')
+assert.equal(extracted.includes('她咬住下唇'), false)
+// 幕后停手放置（如阿妮拉刚被榨过吸盘退开）：禁止对着通道硬气叫阵，旧档自动补齐堕落与预设字段
+const T_MOD = load('@/lib/terms')
+const fallenAbsent = T_MOD.termsLine('阿妮拉', { self: { value: '阿妮拉' }, player: { value: '汝' }, breast: { value: '神将之乳' }, pussy: { value: '蜜穴' }, anus: { value: '后庭' }, corruptTier: 2, arousalTier: 2 }, 'absent')
+assert.match(fallenAbsent, /严禁对着空通道逞强叫阵/)
+assert.equal(fallenAbsent.includes('骂这座地城'), false)
+assert.match(PR.moanTierLine(65, true), /放置余韵/)
+const staleAnila = { name: '阿妮拉', race: 'tauren', hp: 90, maxHp: 100, pleasure: 68, desire: 64, measurements: { bust: '94', waist: '58', hip: '90' }, backstory: '', costumeDescription: '', otherDescription: '', avatarUrl: null, bodyDevelopment: { breast: 0, clitoris: 0, urethra: 0, vagina: 0, anus: 0 }, statusEffects: [], terms: { corruptionBonus: 6 } }
+const migratedAnila = TD.backfillCorruptionFromTurns(keeper.hydrateCharacterPreset(staleAnila), [
+  { after: { pleasure: 48, desire: 46 } },
+  { after: { pleasure: 72, desire: 62 } },
+  { after: { pleasure: 86, desire: 78 } },
+])
+assert.ok(migratedAnila.weakParts && migratedAnila.weakParts.includes('breast'))
+assert.ok(TD.corruptionOf(migratedAnila) >= 25, `旧档补算后应升入动摇/沦陷，实际=${TD.corruptionOf(migratedAnila)}`)

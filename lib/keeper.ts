@@ -1,6 +1,7 @@
 import { normalizeParty } from '@/lib/party'
 import {
   CHARACTER_PRESETS,
+  PRESET_TRAPS,
   getFloorTheme,
   rollFloorThemes,
   type Character,
@@ -13,10 +14,12 @@ import {
   type StatusEffect,
 } from '@/lib/types'
 import { emptyMemory, readMemory, type AdventureMemory } from '@/lib/adventure-memory'
+import { unlockedDevTraits } from '@/lib/body-development'
 import { cleanContent } from '@/lib/chat-protocol'
 import { floorSynergies, synergyBonus } from '@/lib/synergy'
-import { BASE_TRIGGER, FLOOR_MONSTER_CAP, FLOOR_TRAP_CAP, PHASES, THEME_BONUS, THEME_TRIGGER, TRAP_CATEGORIES, antiRepeatLine, nextLevelRule, levelUpBlock, relayLine, themeMatch, trapCategory, trapHabit, trapParts, trapPromptLine, trapRestraint, trapSheet, trapStatusId, trapStatuses, textureSample } from '@/lib/trap-craft'
-import { emptyCampaign, isRaidMember, readCampaign, threatPromptLine, type Campaign } from '@/lib/campaign'
+import { BASE_TRIGGER, FLOOR_MONSTER_CAP, FLOOR_TRAP_CAP, MONSTER_MUTATIONS, PHASES, THEME_BONUS, THEME_TRIGGER, TRAP_CATEGORIES, antiRepeatLine, monsterLevelUpBlock, monsterNextLevelRule, monsterParts, nextLevelRule, levelUpBlock, relayLine, themeMatch, trapCategory, trapHabit, trapParts, trapPromptLine, trapRestraint, trapSheet, trapStatusId, trapStatuses } from '@/lib/trap-craft'
+import { emptyCampaign, isRaidMember, RAID_PARTY, readCampaign, threatPromptLine, type Campaign } from '@/lib/campaign'
+import { backfillCorruptionFromTurns } from '@/lib/terms-dk'
 
 export type OpeningKind = 'personal' | 'trap' | 'monster' | 'corridor'
 export type IntruderFate = 'kept' | 'broken' | 'defeated'
@@ -91,6 +94,10 @@ export interface KeeperMonster {
   name: string
   appearance: string
   behavior: string
+  habit?: string
+  level?: number
+  hits?: number
+  mutations?: string[]
   placed: boolean
   source: 'preset' | 'custom'
   temporary?: boolean
@@ -110,6 +117,8 @@ export interface CaptiveRecord {
   memory: AdventureMemory
   cage?: CageKind
   ledger?: string
+  /** 若派驻到迷宫某一层（1..depth）充当活体肉饵/展示架 */
+  lureFloor?: number
 }
 
 export interface DungeonFloor {
@@ -163,6 +172,8 @@ export interface KeeperSave {
   history?: EncounterRecord[]
   /** 每个在狱的人当前遭遇进行到哪个阶段 */
   phases?: Record<string, PhaseState>
+  /** 收藏室后台囚笼产髓与动态日志（最近几条） */
+  recentFeed?: string[]
 }
 
 export interface KeeperFloorView {
@@ -183,6 +194,8 @@ export interface KeeperPromptContext {
   dungeonDescription: string
   floors: KeeperFloorView[]
   threat?: string
+  bondNote?: string
+  lureNote?: string
   combos?: string
   phases?: Record<string, PhaseState>
   activeId?: string | null
@@ -208,24 +221,28 @@ export const PRESET_MONSTERS: Omit<KeeperMonster, 'placed' | 'source'>[] = [
     name: '廊道触手看守',
     appearance: '壁龛里一丛湿亮的触手，末端是吸盘，平时缩在石缝中，只在城主允许时伸出来。',
     behavior: '缠住闯入者的手腕、大腿和衣物开口。城主可以命令它收紧、松开，或只钻一个孔。它不离开被指定的那段廊道。',
+    habit: '听令守规矩，没下令只缠不插，一下令就死死箍住不放',
   },
   {
     id: 'slime_pet',
     name: '暖巢史莱姆',
     appearance: '半透明的暖色史莱姆，能摊开包住一个人，体内有缓慢的震动核。',
     behavior: '按命令包裹闯入者，溶解她身上松动的布料，用震动核磨她被点名的部位。城主不下令时，它只把人托住，不继续深入。',
+    habit: '温吞黏人，喜欢慢慢溶掉衣服再用震动核贴着敏感处磨',
   },
   {
     id: 'milking_construct',
     name: '挤奶构装',
     appearance: '一具矮小的金属构装，手臂换成温热的吸杯和托槽，关节里有奶渍。',
     behavior: '把闯入者固定成方便挤压的姿势，吸杯罩住乳房。只有她已经在泌乳，或城主命令它把奶挤出来时，才持续抽吸。',
+    habit: '执拗刻板，罩上乳房就按固定节拍抽吸，不理会讨饶',
   },
   {
     id: 'foxfire_wisp',
     name: '狐火小妖',
     appearance: '一簇会说话的淡紫狐火，没有固定身体，能贴在皮肤上发烫。',
     behavior: '贴着耳、尾根、小腹或城主点名的皮肤游走，用热度把人逼到腿软。它不独自插入，插入要等城主改命令。',
+    habit: '爱挑逗，专挑耳尖和尾根吹热气，看她腿软还要嘴硬',
   },
 ]
 
@@ -391,11 +408,19 @@ export function normalizeKeep(value: unknown): KeeperSave {
     const name = text(row.name, 40)
     const behavior = text(row.behavior, 400)
     if (!name || !behavior) return []
+    const validMutIds = new Set(MONSTER_MUTATIONS.map((m) => m.id))
+    const mutations = Array.isArray(row.mutations)
+      ? [...new Set(row.mutations.filter((m): m is string => typeof m === 'string' && validMutIds.has(m)))].slice(0, 2)
+      : []
     return [{
       id: encounterId(text(row.id, 60) || name),
       name,
       appearance: text(row.appearance, 240),
       behavior,
+      ...(text(row.habit, 80) ? { habit: text(row.habit, 80) } : {}),
+      level: clampInt(row.level, 1, 3, 1),
+      hits: clampInt(row.hits, 0, 999, 0),
+      ...(mutations.length ? { mutations } : {}),
       placed: row.placed === true,
       source: row.source === 'preset' ? 'preset' as const : 'custom' as const,
       temporary: row.temporary === true,
@@ -408,6 +433,9 @@ export function normalizeKeep(value: unknown): KeeperSave {
     const character = row.character
     if (!character || typeof character !== 'object' || typeof character.name !== 'string' || !character.name.trim()) return []
     if (!row.fate || !fates.has(row.fate)) return []
+    const lureFloor = row.fate !== 'defeated' && typeof row.lureFloor === 'number' && row.lureFloor >= 1 && row.lureFloor <= progress.depth
+      ? Math.floor(row.lureFloor)
+      : undefined
     return [{
       id: text(row.id, 80) || encounterId(character.name),
       name: character.name,
@@ -422,6 +450,7 @@ export function normalizeKeep(value: unknown): KeeperSave {
       memory: readMemory(row.memory),
       cage: cageKind(row.cage, row.fate),
       ledger: text(row.ledger, 800),
+      ...(lureFloor ? { lureFloor } : {}),
     }]
   }) : []).slice(0, 40)
   const roster = (Array.isArray(raw.roster) ? raw.roster.flatMap((item) => {
@@ -431,11 +460,13 @@ export function normalizeKeep(value: unknown): KeeperSave {
     if (!character || typeof character !== 'object' || typeof character.name !== 'string' || !character.name.trim()) return []
     if (!RACES.has(character.race)) return []
     const brief = readBrief(row.brief) ?? { opening: 'personal' as const }
+    const session = readSession(row.session)
+    const hydrated = backfillCorruptionFromTurns(hydrateCharacterPreset(normalizeParty(character)), session?.turns)
     return [{
       id: text(row.id, 80) || encounterId(character.name),
       station: text(row.station, 40) || '在狱里',
-      character: normalizeParty(character),
-      session: readSession(row.session),
+      character: hydrated,
+      session,
       conversationId: text(row.conversationId, 80) || encounterId(character.name),
       brief,
     }]
@@ -459,6 +490,7 @@ export function normalizeKeep(value: unknown): KeeperSave {
     campaign: readCampaign(raw.campaign),
     history: readHistory(raw.history),
     phases: readPhases(raw.phases, roster.map((entry) => entry.id)),
+    recentFeed: Array.isArray(raw.recentFeed) ? raw.recentFeed.filter((s): s is string => typeof s === 'string' && s.trim().length > 0).slice(0, 8) : [],
   }
 }
 
@@ -501,11 +533,19 @@ export function trapFromPreset(preset: PresetTrap): KeeperTrap {
 }
 
 export function monsterFromPreset(preset: Omit<KeeperMonster, 'placed' | 'source'>): KeeperMonster {
-  return { ...preset, placed: false, source: 'preset' }
+  return { ...preset, level: 1, hits: 0, placed: false, source: 'preset' }
 }
 
 export function trapSummary(trap: Pick<KeeperTrap, 'mechanism' | 'prose'>): string {
   return [trap.mechanism, trap.prose].filter(Boolean).join(' ').slice(0, 500)
+}
+
+export function monsterMutationSummary(monster: Pick<KeeperMonster, 'level' | 'mutations'>): string {
+  const muts = (monster.mutations ?? [])
+    .map((id) => MONSTER_MUTATIONS.find((m) => m.id === id))
+    .filter((m): m is NonNullable<typeof m> => !!m)
+  if (!muts.length) return ''
+  return `变异进化（Lv${monster.level ?? 1}）：${muts.map((m) => `「${m.label}」${m.effect}`).join('；')}。`
 }
 
 export function placedDefenses(save: KeeperSave): { id: string; name: string; kind: 'trap' | 'monster'; summary: string }[] {
@@ -515,7 +555,7 @@ export function placedDefenses(save: KeeperSave): { id: string; name: string; ki
       id: monster.id,
       name: monster.name,
       kind: 'monster' as const,
-      summary: [monster.appearance, monster.behavior].filter(Boolean).join(' '),
+      summary: [monster.appearance, monster.behavior, monster.habit ? `习性：${monster.habit}。` : '', monsterMutationSummary(monster)].filter(Boolean).join(' '),
     })),
   ]
 }
@@ -544,12 +584,6 @@ function floorViews(save: KeeperSave): KeeperFloorView[] {
   })
 }
 
-/** 当前层的接力顺序：陷阱先把人准备好，魔物接上；守层魔物排在魔物最前 */
-function floorParts(save: KeeperSave, floor: number): BodyPart[] {
-  const layer = save.floors?.[floor - 1]
-  return (layer?.trapIds ?? []).flatMap((id) => { const t = save.traps.find((x) => x.id === id); return t ? trapParts(t) : [] })
-}
-
 export function floorRelay(save: KeeperSave, floor: number): string {
   const layer = save.floors?.[floor - 1]
   if (!layer) return ''
@@ -563,11 +597,18 @@ export function floorRelay(save: KeeperSave, floor: number): string {
   return base && combos.length ? `${base}${combos.map((c) => `「${c.name}」${c.note}`).join('')}` : base
 }
 
-/** 这一层的总加成：连携（上限 60%）加主题契合 10% */
-export function floorBonus(save: KeeperSave, floor: number): { synergy: number; theme: number; total: number } {
+export function lureOnFloor(save: KeeperSave, floor: number): CaptiveRecord | undefined {
+  return (save.collection ?? []).find((rec) => rec.fate !== 'defeated' && rec.lureFloor === floor)
+}
+
+export const LURE_BONUS = 0.15
+
+/** 这一层的总加成：连携（上限 60%）+ 主题契合 10% + 活体肉饵驻层 15% */
+export function floorBonus(save: KeeperSave, floor: number): { synergy: number; theme: number; lure: number; total: number } {
   const synergy = synergyBonus(floorSynergies(save, floor))
   const theme = floorThemed(save, floor).length ? THEME_BONUS : 0
-  return { synergy, theme, total: synergy + theme }
+  const lure = lureOnFloor(save, floor) ? LURE_BONUS : 0
+  return { synergy, theme, lure, total: synergy + theme + lure }
 }
 
 export function floorThemed(save: KeeperSave, floor: number): string[] {
@@ -594,13 +635,15 @@ export function rollPlacedDefense(save: KeeperSave, floor: number, random: () =>
   let pick = placed[placed.length - 1]
   for (let i = 0; i < placed.length; i++) { roll -= weights[i]; if (roll < 0) { pick = placed[i]; break } }
   const trap = pick.kind === 'trap' ? save.traps.find((t) => t.id === pick.id) : undefined
+  const monster = pick.kind === 'monster' ? save.monsters.find((m) => m.id === pick.id) : undefined
+  const restraint = trap ? trapRestraint(trap) : (monster && ((monster.level ?? 1) >= 3 || monster.mutations?.includes('bind_tendril')) ? 3 : 2)
   return {
-    encounter: { id: encounterId(pick.id), name: pick.name, kind: pick.kind, summary: pick.summary.slice(0, 180), restraint: trapRestraint(trap) },
+    encounter: { id: encounterId(pick.id), name: pick.name, kind: pick.kind, summary: pick.summary.slice(0, 180), restraint },
     statuses: trap ? trapStatuses(trap) : [],
   }
 }
 
-/** 撞上一次：陷阱 hits+1，记进图鉴，阶段从「触发」开始 */
+/** 撞上一次：陷阱或魔物 hits+1，记进图鉴，阶段从「触发」开始 */
 export function recordSprung(save: KeeperSave, encounter: { id: string; name: string; kind: 'trap' | 'monster' }, intruder: string, floor: number, rosterId?: string | null, at = Date.now()): KeeperSave {
   const record: EncounterRecord = { id: encounter.id, name: encounter.name, kind: encounter.kind, intruder, floor, at }
   const phases = { ...(save.phases ?? {}) }
@@ -608,6 +651,7 @@ export function recordSprung(save: KeeperSave, encounter: { id: string; name: st
   return {
     ...save,
     traps: save.traps.map((trap) => trap.id === encounter.id ? { ...trap, hits: Math.min(999, (trap.hits ?? 0) + 1) } : trap),
+    monsters: save.monsters.map((m) => m.id === encounter.id ? { ...m, hits: Math.min(999, (m.hits ?? 0) + 1) } : m),
     history: [record, ...(save.history ?? [])].slice(0, 60),
     phases,
   }
@@ -640,8 +684,122 @@ export function levelUpTrap(save: KeeperSave, id: string): KeeperSave {
   }
 }
 
+export function levelUpMonster(save: KeeperSave, id: string, mutationId: string): KeeperSave {
+  const monster = save.monsters.find((m) => m.id === id)
+  if (!monster || monsterLevelUpBlock(monster, save.progress.essence)) return save
+  if (!MONSTER_MUTATIONS.some((m) => m.id === mutationId) || (monster.mutations ?? []).includes(mutationId)) return save
+  const rule = monsterNextLevelRule(monster)!
+  return {
+    ...save,
+    progress: { ...save.progress, essence: save.progress.essence - rule.cost },
+    monsters: save.monsters.map((m) => m.id === id ? { ...m, level: rule.level, mutations: [...(m.mutations ?? []), mutationId] } : m),
+  }
+}
+
+/** 将收藏室里的俘虏挂到某一层当活体展示肉饵（每层最多 1 人；传 undefined 收回收藏室）。 */
+export function setCaptiveLureFloor(save: KeeperSave, recordId: string, floor?: number): KeeperSave {
+  if (floor != null && (floor < 1 || floor > save.progress.depth)) return save
+  return {
+    ...save,
+    collection: save.collection.map((rec) => {
+      if (rec.id === recordId && rec.fate !== 'defeated') {
+        const next = { ...rec }
+        if (floor) next.lureFloor = floor
+        else delete next.lureFloor
+        return next
+      }
+      if (floor && rec.lureFloor === floor) {
+        const { lureFloor: _drop, ...rest } = rec
+        return rest
+      }
+      return rec
+    }),
+  }
+}
+
+export function lurePromptLine(save: KeeperSave, floor: number, activeName?: string): string {
+  const lure = lureOnFloor(save, floor)
+  if (!lure || lure.name === activeName) return ''
+  const state = lure.fate === 'broken' ? '已被彻底玩坏、眼神失焦地淌着体液' : '已被驯服收押、羞耻地敞着身体'
+  return `【本层活体肉饵·${lure.name}】这一层显眼处公开悬挂展示着早先陷落的「${lure.name}」（${state}），诱引魔物与机关气味。写出闯入者路过或受困时亲眼目睹${lure.name}惨状的心理震动、兔死狐悲或羞耻动摇（不写${lure.name}喧宾夺主抢走本回合主戏份）。`
+}
+
+/** 迷宫每推进 1 回合，收藏室特殊囚笼中的俘虏在后台自动产出被动淫髓并记下动态。 */
+export function tickCollectionPassive(save: KeeperSave): { save: KeeperSave; gained: number; notes: string[] } {
+  let gained = 0
+  const notes: string[] = []
+  for (const rec of save.collection ?? []) {
+    if (rec.fate !== 'kept' && rec.fate !== 'broken') continue
+    if (rec.lureFloor) {
+      gained += 1
+      notes.push(`第${rec.lureFloor}层肉饵「${rec.name}」散发催情气息（淫髓 +1）`)
+      continue
+    }
+    const cage = rec.cage ?? 'cell'
+    if (cage === 'cell') continue
+    const breastLv = rec.character.bodyDevelopment?.breast ?? 0
+    const isCow = rec.race === 'tauren' || breastLv >= 2
+    const yieldAmt = cage === 'breeding' ? 2 : cage === 'ranch' ? (isCow ? 2 : 1) : 1
+    gained += yieldAmt
+    const line = cage === 'ranch'
+      ? `牧场里的「${rec.name}」又被榨乳架抽出一罐温奶（淫髓 +${yieldAmt}）`
+      : cage === 'machine'
+        ? `机械牢笼的活塞仍在匀速折磨「${rec.name}」（淫髓 +${yieldAmt}）`
+        : cage === 'tentacle'
+          ? `触手牢笼缠着「${rec.name}」在笼心吞吐灌喂（淫髓 +${yieldAmt}）`
+          : `兽人配种场里「${rec.name}」还在承欢受孕（淫髓 +${yieldAmt}）`
+    notes.push(line)
+  }
+  if (gained <= 0) return { save, gained: 0, notes: [] }
+  const feed = [...notes.slice(0, 3), ...(save.recentFeed ?? [])].slice(0, 8)
+  return { save: { ...grantEssence(save, gained), recentFeed: feed }, gained, notes }
+}
+
+/** 空城一键布防：将「催情花园」与「廊道触手看守」免费配入第 1 层并激活「催情触手」同层连携。 */
+export function quickStarterSetup(save: KeeperSave): KeeperSave {
+  let next = save
+  const pollenPreset = PRESET_TRAPS.find((t) => t.id === 'pollen_garden') ?? PRESET_TRAPS[0]
+  const wardenPreset = PRESET_MONSTERS.find((m) => m.id === 'tentacle_warden') ?? PRESET_MONSTERS[0]
+  if (pollenPreset && !next.traps.some((t) => t.id === pollenPreset.id)) {
+    next = { ...next, traps: [...next.traps, trapFromPreset(pollenPreset)] }
+  }
+  if (wardenPreset && !next.monsters.some((m) => m.id === wardenPreset.id)) {
+    next = { ...next, monsters: [...next.monsters, monsterFromPreset(wardenPreset)] }
+  }
+  if (pollenPreset) next = stuffDefense(next, 0, 'trap', pollenPreset.id)
+  if (wardenPreset) {
+    next = stuffDefense(next, 0, 'monster', wardenPreset.id)
+    next = setGuard(next, 0, wardenPreset.id)
+  }
+  return next
+}
+
 export function setGuard(save: KeeperSave, floorIndex: number, monsterId: string | null): KeeperSave {
   return { ...save, floors: save.floors.map((floor, index) => index !== floorIndex ? floor : { ...floor, guardId: monsterId && floor.monsterIds.includes(monsterId) ? monsterId : undefined }) }
+}
+
+export function bondPromptLine(save: KeeperSave, character: Character | undefined): string {
+  if (!character?.bonds?.length) return ''
+  const bonds = character.bonds
+  const lines: string[] = []
+  for (const bond of bonds) {
+    if (character.partner?.name === bond.name && !character.party?.split) {
+      lines.push(`【羁绊同场·${bond.name}（${bond.relation}）】${bond.togetherLine}`)
+      continue
+    }
+    const inCollection = (save.collection ?? []).find((rec) => rec.name === bond.name && (rec.fate === 'kept' || rec.fate === 'broken'))
+    const inRoster = (save.roster ?? []).some((entry) => entry.id !== save.activeId && (entry.character.name === bond.name || entry.character.partner?.name === bond.name))
+    const splitPartner = character.partner?.name === bond.name && character.party?.split
+    if (inCollection || inRoster || splitPartner) {
+      const state = inCollection?.fate === 'broken'
+        ? '已被玩坏收进收藏室'
+        : inCollection
+          ? '已被留在收藏室'
+          : '此刻也困在这座地下城里'
+      lines.push(`【羁绊在狱·${bond.name}（${bond.relation}，${state}）】${bond.captiveLine}`)
+    }
+  }
+  return lines.join('\n')
 }
 
 export function keeperPromptContext(save: KeeperSave, recentAssistant: string[] = []): KeeperPromptContext {
@@ -663,9 +821,11 @@ export function keeperPromptContext(save: KeeperSave, recentAssistant: string[] 
     combos: floorRelay(save, floor),
     phases: save.phases ?? {},
     activeId: save.activeId,
-    antiRepeat: [antiRepeatLine(recentAssistant, trap ? trapSheet(trap).escalate : undefined), textureSample(floorParts(save, floor), recentAssistant, recentAssistant.join('').length)].filter(Boolean).join('\n'),
+    antiRepeat: antiRepeatLine(recentAssistant, trap ? trapSheet(trap).escalate : undefined),
     trapInfo: Object.fromEntries(save.traps.map((t) => [t.id, { name: t.name, habit: trapHabit(t), escalate: trapSheet(t).escalate, mechanism: t.mechanism, prose: t.prose, category: trapCategory(t), level: t.level ?? 1 }])),
-    threat: threatPromptLine(save.campaign ?? emptyCampaign(), isRaidMember(save.roster?.find((entry) => entry.id === save.activeId)?.character.name ?? '')),
+    threat: threatPromptLine(save.campaign ?? emptyCampaign(), isRaidMember(active?.character.name ?? '')),
+    bondNote: bondPromptLine(save, active?.character),
+    lureNote: lurePromptLine(save, floor, active?.character.name),
   }
 }
 
@@ -730,9 +890,10 @@ export function essenceFromPleasure(before: number, after: number): number {
   return rose >= 20 ? 2 : 1
 }
 
-/** 一回合的淫髓：快感涨幅折算，再乘这一层的连携和主题加成 */
-export function turnEssence(save: KeeperSave, before: number, after: number, floor: number): number {
-  return Math.round(essenceFromPleasure(before, after) * (1 + floorBonus(save, floor).total))
+/** 一回合的淫髓：快感涨幅折算，再乘这一层的连携/主题/肉饵加成与猎物已觉醒的敏感体质倍率 */
+export function turnEssence(save: KeeperSave, before: number, after: number, floor: number, character?: Pick<Character, 'bodyDevelopment'>): number {
+  const traitMult = character ? Math.min(0.4, unlockedDevTraits(character.bodyDevelopment).length * 0.08) : 0
+  return Math.round(essenceFromPleasure(before, after) * (1 + floorBonus(save, floor).total + traitMult))
 }
 
 /** 结算留下/玩坏/放走的淫髓：她最后所在那一层的加成同样算进去 */
@@ -874,6 +1035,41 @@ export function pickIntruder(avoid: string[]): CharacterPreset {
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
+/** 结伴闯入优先匹配有姐妹/情敌羁绊的同行者（65% 概率），没有时退回角色库随机。 */
+export function pickCompanion(primary: CharacterPreset, avoid: string[], random: () => number = Math.random): CharacterPreset {
+  const blocked = new Set([...avoid, primary.name])
+  const bondedNames = new Set((primary.bonds ?? []).map((b) => b.name))
+  const bondedPool = CHARACTER_PRESETS.filter((preset) => bondedNames.has(preset.name) && !blocked.has(preset.name))
+  if (bondedPool.length > 0 && random() < 0.65) {
+    return bondedPool[Math.floor(random() * bondedPool.length)]
+  }
+  return pickIntruder([...blocked])
+}
+
+/** 旧存档热补齐：若存档角色属于预设角色库/讨伐队，自动同步最新死穴、标签、种族特性、羁绊与润色后的人设文本，保留当前数值与状态。 */
+export function hydrateCharacterPreset(character: Character): Character {
+  const pool = [...CHARACTER_PRESETS, ...RAID_PARTY]
+  const preset = pool.find((p) => p.name === character.name)
+  const next: Character = preset
+    ? {
+        ...character,
+        appearance: preset.appearance ?? character.appearance,
+        personality: preset.personality ?? character.personality,
+        speech: preset.speech ?? character.speech,
+        sexual: preset.sexual ?? character.sexual,
+        collapseLine: preset.collapseLine ?? character.collapseLine,
+        ...(preset.weakParts?.length ? { weakParts: [...preset.weakParts] } : {}),
+        ...(preset.weakTags?.length ? { weakTags: [...preset.weakTags] } : {}),
+        ...(preset.raceTrait ? { raceTrait: preset.raceTrait } : {}),
+        ...(preset.bonds?.length ? { bonds: preset.bonds.map((b) => ({ ...b })) } : {}),
+      }
+    : character
+  if (next.partner) {
+    return { ...next, partner: hydrateCharacterPreset(next.partner) }
+  }
+  return next
+}
+
 export function characterFromPreset(preset: CharacterPreset): Character {
   return {
     name: preset.name,
@@ -887,6 +1083,10 @@ export function characterFromPreset(preset: CharacterPreset): Character {
     speech: preset.speech,
     sexual: preset.sexual,
     collapseLine: preset.collapseLine,
+    ...(preset.weakParts?.length ? { weakParts: [...preset.weakParts] } : {}),
+    ...(preset.weakTags?.length ? { weakTags: [...preset.weakTags] } : {}),
+    ...(preset.raceTrait ? { raceTrait: preset.raceTrait } : {}),
+    ...(preset.bonds?.length ? { bonds: preset.bonds.map((b) => ({ ...b })) } : {}),
     danbooruTags: preset.danbooruTags,
     avatarUrl: preset.avatarUrl ?? null,
     hp: 100,
@@ -1086,10 +1286,89 @@ export function collectionActions(fate: IntruderFate): CollectionAction[] {
   return COLLECTION_ACTIONS[fate]
 }
 
-/** 这一场城主在不在她面前：调教和亲自迎上是面对面；被抓过又回来的认得城主但看不见；其余她不知道有城主。 */
-export function keeperPresence(ctx: Pick<KeeperPromptContext, 'opening' | 'return'> | null): 'present' | 'known' | 'absent' {
+const PERSONAL_STEP_IN = /(?:城主(?:亲自|现身|走近|走上|走进|伸手|捏住|按住|含住|舔)|我(?:亲自|走近|走过去|捏住|按住|含住|舔))/
+
+/** 这一场城主在不在她面前：调教和亲自迎上是面对面；若本回合指令明确写城主亲自现身插手也升级为面对面；被抓过又回来的认得城主但看不见；其余她不知道有城主。 */
+export function keeperPresence(ctx: Pick<KeeperPromptContext, 'opening' | 'return'> | null, input?: string): 'present' | 'known' | 'absent' {
+  if (input && PERSONAL_STEP_IN.test(input)) return 'present'
   if (!ctx) return 'absent'
   if (ctx.return === 'train' || ctx.opening === 'personal') return 'present'
   if (ctx.return === 'recall' || ctx.return === 'reexplore' || ctx.return === 'pretend') return 'known'
   return 'absent'
+}
+
+export interface InterrogationSceneContext {
+  presence: 'present' | 'known' | 'absent'
+  keeperStepsIn: boolean
+  mode: SceneMode
+  cageHolds?: string
+  encounterTrap?: { name: string; category: string; mechanism: string; habit: string; escalate: string[]; ban: string; restraint: number } | null
+  encounterMonster?: { name: string; appearance: string; behavior: string; habit?: string; restraint: number } | null
+  floorDefenses?: { name: string; kind: 'trap' | 'monster'; summary: string }[]
+  situation?: string
+  recentExcerpt?: string
+}
+
+/** 组装「随机拷问 / 现场加码」所需的实时现场上下文：当前陷阱/魔物机制与加码项、同层布置、牢笼设施、衣物处境记忆与上一轮末尾摘录。 */
+export function buildInterrogationScene(
+  save: KeeperSave | null | undefined,
+  character: Character,
+  memory: AdventureMemory = emptyMemory(),
+  recentAssistant: string[] = [],
+  keeperStepsIn = false,
+): InterrogationSceneContext {
+  const safe = save ?? emptyKeep()
+  const ctx = keeperPromptContext(safe)
+  const presence = keeperPresence(ctx)
+  const chrome = sceneChrome(ctx, character.floor ?? 1)
+  const cageKey = safe.brief?.cage
+  const cageHolds = chrome.mode === 'train' && cageKey && CAGES[cageKey] ? CAGES[cageKey].holds : chrome.mode === 'train' ? CAGES.cell.holds : undefined
+  const enc = character.encounter
+  let encounterTrap: InterrogationSceneContext['encounterTrap'] = null
+  let encounterMonster: InterrogationSceneContext['encounterMonster'] = null
+  if (enc && (enc.restraint ?? 1) > 0) {
+    if (enc.kind === 'trap') {
+      const found = safe.traps.find((t) => encounterId(t.id) === enc.id || t.name === enc.name)
+      const draft = found ?? { id: enc.id, name: enc.name, mechanism: enc.summary || enc.name }
+      const sheet = trapSheet(draft)
+      encounterTrap = {
+        name: enc.name,
+        category: trapCategory(draft),
+        mechanism: found?.mechanism || enc.summary || sheet.mechanic,
+        habit: trapHabit(draft),
+        escalate: sheet.escalate,
+        ban: sheet.ban,
+        restraint: enc.restraint,
+      }
+    } else {
+      const found = safe.monsters.find((m) => encounterId(m.id) === enc.id || m.name === enc.name)
+      encounterMonster = {
+        name: enc.name,
+        appearance: found?.appearance || '',
+        behavior: found?.behavior || enc.summary || '',
+        habit: found?.habit,
+        restraint: enc.restraint,
+      }
+    }
+  }
+  const floor = character.floor ?? 1
+  const floorDefenses = chrome.mode === 'explore'
+    ? defensesOnFloor(safe, floor)
+      .filter((d) => !enc || d.name !== enc.name)
+      .map(({ name, kind, summary }) => ({ name, kind, summary: summary.slice(0, 140) }))
+    : []
+  const situation = activeSituation(memory)
+  const lastRaw = recentAssistant.at(-1)
+  const recentExcerpt = lastRaw ? cleanContent(lastRaw).replace(/\s+/g, ' ').trim().slice(-200) : ''
+  return {
+    presence,
+    keeperStepsIn: presence === 'present' ? true : keeperStepsIn,
+    mode: chrome.mode,
+    cageHolds,
+    encounterTrap,
+    encounterMonster,
+    floorDefenses,
+    situation: situation || undefined,
+    recentExcerpt: recentExcerpt || undefined,
+  }
 }

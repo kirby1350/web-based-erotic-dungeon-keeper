@@ -26,6 +26,15 @@ assert.ok(B.developmentAwards(sp.partner, 0, 30).vagina && !B.developmentAwards(
 let d = { breast: 0, clitoris: 0, urethra: 0, vagina: 0, anus: 0, exp: {} }
 for (let i = 0; i < 4; i++) d = B.settleBodyDevelopment(d, '城主的手指揉捏她的乳头。', 10, 15)
 assert.equal(d.breast, 1)
+// 部位开发里程碑体质词条：Lv3 与 Lv5 解锁、UI 合并同部位高阶词条、提示词注入
+assert.equal(B.DEV_TRAITS.length, 10)
+const dBefore = { breast: 2, clitoris: 0, urethra: 0, vagina: 3, anus: 0, exp: {} }
+const dAfter = { breast: 3, clitoris: 0, urethra: 0, vagina: 5, anus: 0, exp: {} }
+assert.equal(B.unlockedDevTraits(dAfter).length, 3)
+assert.deepEqual(B.visibleDevTraits(dAfter).map((t) => t.title), ['乳尖敏化', '宫口吸附'])
+assert.deepEqual(B.newlyUnlockedDevTraits(dBefore, dAfter).map((t) => t.title), ['乳尖敏化', '宫口吸附'])
+assert.match(B.devTraitsPromptLine(dAfter), /【已觉醒敏感体质】/)
+assert.match(B.devTraitsPromptLine(dAfter), /宫口吸附/)
 console.log('body development checks passed')
 const P = createLoader()('@/lib/prose-bank')
 assert.equal(P.negationTurns('不是哭，是被揉出来的。不是风声，不是水滴——是脚步。这不是待客之道呀。').length, 2)

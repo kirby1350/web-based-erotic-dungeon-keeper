@@ -18,7 +18,7 @@ export function CampaignCard({ campaign }: { campaign?: Campaign }) {
       {c.raid && (
         <div className="rounded-lg border border-amber-400/50 bg-amber-500/10 p-2 text-xs text-amber-100">
           <p className="font-bold">勇者讨伐队来袭</p>
-          <p className="mt-1">接下来的闯入者都是讨伐队成员。全部留下或玩坏即胜利；放走任何一人，地下城就会陷落。</p>
+          <p className="mt-1">接下来的闯入者都是讨伐队成员。全部留下或玩坏即胜利；贸然放走未受制者会导致地下城陷落（若先在档案刻上淫纹再故意放归，可化作发情诱饵乱其军心）。</p>
           <p className="mt-1">{RAID_PARTY.map((m) => `${m.name}：${c.raidFates[m.name] ? FATE_LABEL[c.raidFates[m.name]] : '未到'}`).join(' · ')}</p>
         </div>
       )}

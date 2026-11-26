@@ -22,16 +22,16 @@ export function DossierSection({ title, text }: { title: string; text?: string }
 export function IntruderDossier({ person, hideCollapse = false }: { person: DossierPerson; hideCollapse?: boolean }) {
   return (
     <div className="space-y-4">
-      <DossierSection title="外貌" text={person.appearance} />
-      <DossierSection title="她为什么进来" text={person.backstory} />
-      <DossierSection title="性格" text={person.personality} />
-      <DossierSection title="口癖" text={person.speech} />
-      <DossierSection title="现在这身" text={person.costumeDescription} />
-      <DossierSection title="色色设定" text={person.sexual} />
-      <DossierSection title="开场她怎么抵抗" text={person.otherDescription} />
+      <DossierSection title="体态与外貌" text={person.appearance} />
+      <DossierSection title="闯入动机" text={person.backstory} />
+      <DossierSection title="表里性格" text={person.personality} />
+      <DossierSection title="言谈口癖" text={person.speech} />
+      <DossierSection title="初始装束" text={person.costumeDescription} />
+      <DossierSection title="敏感死穴与发情癖好" text={person.sexual} />
+      <DossierSection title="防线与抵抗方式" text={person.otherDescription} />
       {hideCollapse
-        ? <DossierSection title="崩溃之后才会说的话" text="她还没进过这座狱，这句话先折着。" />
-        : <DossierSection title="崩溃之后才会说的话" text={person.collapseLine} />}
+        ? <DossierSection title="破防崩溃台词" text="尚未攻陷此猎物，破防后的失态台词暂未解锁。" />
+        : <DossierSection title="破防崩溃台词" text={person.collapseLine} />}
     </div>
   )
 }

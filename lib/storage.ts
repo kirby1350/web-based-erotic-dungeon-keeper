@@ -2,7 +2,8 @@ import { AppSettings, GameSession, Character, IMAGE_STYLES, IMAGE_MODELS, IMAGE_
 import { normalizeParty } from '@/lib/party'
 import { readMemory } from '@/lib/adventure-memory'
 import { readRecentBank } from '@/lib/prose-bank'
-import { emptyKeep, normalizeKeep, type KeeperSave } from '@/lib/keeper'
+import { emptyKeep, hydrateCharacterPreset, normalizeKeep, type KeeperSave } from '@/lib/keeper'
+import { backfillCorruptionFromTurns } from '@/lib/terms-dk'
 
 const SETTINGS_KEY = 'dungeon_settings'
 const CHARACTER_KEY = 'dungeon_character'
@@ -53,7 +54,7 @@ export function getSettings(): AppSettings {
     const merged = { ...getDefaultSettings(), ...parsed }
     // Sanitise enum values that may be stale from a previous build
     if (!VALID_IMAGE_STYLES.includes(merged.imageStyle)) merged.imageStyle = 'none'
-    if (!VALID_IMAGE_MODELS.includes(merged.imageModel)) merged.imageModel = 'tsubaki_v2'
+    if (!VALID_IMAGE_MODELS.includes(merged.imageModel)) merged.imageModel = 'tsubaki_v3'
     if (!VALID_IMAGE_TAG_PRESETS.includes(merged.imageTagPreset)) merged.imageTagPreset = 'none'
     if (!VALID_PROSE_STYLES.includes(merged.proseStyle)) merged.proseStyle = 'standard'
     if (!VALID_TENSORART_MODELS.includes(merged.tensorartModel)) merged.tensorartModel = 'wai_nsfw_v16'
@@ -75,7 +76,7 @@ export function saveSettings(settings: AppSettings): void {
 export function getDefaultSettings(): AppSettings {
   return {
     chatModel: 'x-apex-surge-0505-16k',
-    imageModel: 'tsubaki_v2',
+    imageModel: 'tsubaki_v3',
     imageStyle: 'none',
     imageStyleCustom: '',
     imageTagPreset: 'none',
@@ -93,7 +94,10 @@ export function getDefaultSettings(): AppSettings {
 export function getCharacter() {
   if (typeof window === 'undefined') return null
   try {
-    return normalizeParty(readGame().character as Character | null)
+    const game = readGame()
+    const base = normalizeParty(game.character as Character | null)
+    if (!base) return null
+    return backfillCorruptionFromTurns(hydrateCharacterPreset(base), game.session?.turns)
   } catch {
     return null
   }

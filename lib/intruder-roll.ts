@@ -1,4 +1,5 @@
-import type { CharacterPreset, Race } from '@/lib/types'
+import type { BodyPart, CharacterPreset, Race } from '@/lib/types'
+import type { DefenseTag } from '@/lib/synergy'
 
 const RACES: Race[] = ['human', 'elf', 'tauren', 'fox', 'cat', 'machine', 'dragon', 'succubus']
 
@@ -241,15 +242,82 @@ function waistWord(waist: number): string {
   return '腰有肉'
 }
 
+const ARCHETYPES: {
+  title: string
+  outfit: string
+  errand: string
+  hold: string
+  tag: string
+  weakParts: BodyPart[]
+  weakTags: DefenseTag[]
+}[] = [
+  {
+    title: '见习修女',
+    outfit: '修女袍下摆被石刺钩开一道长口，胸口被银十字圣徽压出饱满乳沟，白丝长袜深深勒进大腿软肉',
+    errand: '她奉边陲修道院之命来查封外溢的邪瘴',
+    hold: '祈祷圣典还抱在胸前',
+    tag: 'nun, habit, cross necklace, thighhighs',
+    weakParts: ['breast', 'vagina'],
+    weakTags: ['aphro', 'hypno'],
+  },
+  {
+    title: '高傲女魔导师',
+    outfit: '深色魔导长袍领口敞得极低，束腰把丰满胸脯往上托起，高开衩下露出黑丝吊带长腿',
+    errand: '她盯上了地底深处的古代魔力回路，独自下来勘测',
+    hold: '镶晶法杖捏得很紧',
+    tag: 'witch, robe, cleavage, thighhighs',
+    weakParts: ['clitoris', 'breast'],
+    weakTags: ['bind', 'aphro'],
+  },
+  {
+    title: '重装女剑士',
+    outfit: '轻型胸甲只托住乳下，汗湿的贴身内衬紧裹鼓胀胸脯，战裙下大腿护带深深陷进腿肉',
+    errand: '她接下公会的高危清剿委托，顺着石阶一路搜查下来',
+    hold: '长剑还在手里',
+    tag: 'armor, breastplate, cape, sword',
+    weakParts: ['clitoris', 'vagina'],
+    weakTags: ['bind', 'slime'],
+  },
+  {
+    title: '巡林女游侠',
+    outfit: '贴身皮甲的胸扣已经崩开一颗，露出一截雪白乳沟和半边乳晕，短裤下皮靴裹紧修长双腿',
+    errand: '她顺着失踪同伴留下的路标一路追进了入口',
+    hold: '猎弓还背在肩上',
+    tag: 'archer, leather armor, shorts, boots',
+    weakParts: ['breast', 'anus'],
+    weakTags: ['tentacle', 'bind'],
+  },
+  {
+    title: '炼金术学徒',
+    outfit: '炼金短马甲被胸脯撑得绷紧，腰带挂满空药瓶，百褶短裙下过膝袜勒出一圈白嫩软肉',
+    errand: '她把这座地下城当成采集稀有黏液与魔物样本的宝地',
+    hold: '取样工具包挎在腰上',
+    tag: 'vest, plaid skirt, belt pouch, thighhighs',
+    weakParts: ['clitoris', 'vagina'],
+    weakTags: ['aphro', 'slime'],
+  },
+  {
+    title: '赏金女盗贼',
+    outfit: '漆黑紧身夜行衣把丰乳肥臀的轮廓勒得毕露，胸前拉链滑下一半，腿根绑着开锁皮套',
+    errand: '她听闻地底藏着无人认领的秘宝，趁夜摸进了第一层石门',
+    hold: '旧羊皮地图捏出了褶',
+    tag: 'bodysuit, fingerless gloves, thigh strap',
+    weakParts: ['clitoris', 'anus'],
+    weakTags: ['bind', 'shock'],
+  },
+]
+
 function dossier(race: Race, name: string, measures: { bust: string; waist: string; hip: string }, random: () => number) {
   const hair = pick(HAIR, random)
   const eyes = pick(EYES, random)
-  const outfit = pick(OUTFITS, random)
+  const archetype = pick(ARCHETYPES, random)
+  const useArchetypeOutfit = random() < 0.7
+  const outfit = useArchetypeOutfit ? { zh: archetype.outfit, tag: archetype.tag } : pick(OUTFITS, random)
   const bust = Number(measures.bust)
   const waist = Number(measures.waist)
   return {
     text: {
-      backstory: `${name}自己闯进来。${pick(ERRANDS, random)}。${pick(HOLDS, random)}，还没认谁做主。`,
+      backstory: `${name}是一名${archetype.title}，自己闯了进来。${archetype.errand}。${archetype.hold}，还没认谁做主。`,
       appearance: `${hair.zh}，${eyes.zh}，${pick(BODY[race], random)}。${chestWord(bust)}，${waistWord(waist)}。身上有${pick(SCENT[race], random)}。`,
       personality: pick(HABIT[race], random),
       speech: pick(SPEECH[race], random),
@@ -258,9 +326,11 @@ function dossier(race: Race, name: string, measures: { bust: string; waist: stri
       otherDescription: pick(RESIST[race], random),
       collapseLine: pick(COLLAPSE[race], random),
     },
+    weakParts: archetype.weakParts,
+    weakTags: archetype.weakTags,
     hair: hair.tag,
     eyes: eyes.tag,
-    outfit: outfit.tag,
+    outfit: useArchetypeOutfit ? archetype.tag : `${archetype.tag}, ${outfit.tag}`,
   }
 }
 
@@ -281,6 +351,8 @@ export function rollIntruder(avoid: string[] = [], random: () => number = Math.r
     race,
     measurements: measures,
     ...rolled.text,
+    weakParts: rolled.weakParts,
+    weakTags: rolled.weakTags,
     danbooruTags: `${LOOK[race]}, ${rolled.hair}, ${rolled.eyes}, ${rolled.outfit}`,
   }
 }

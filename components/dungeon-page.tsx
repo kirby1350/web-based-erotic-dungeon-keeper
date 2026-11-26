@@ -8,13 +8,13 @@ import { PRESET_TRAPS, TRAP_GROUPS, trapGroup, type AppSettings, type Character 
 import { chatStream } from '@/lib/dzmm'
 import { buildMonsterPrompt, buildWorkshopTrapPrompt } from '@/lib/prompts'
 import {
-  PRESET_MONSTERS, TEMP_MONSTER_COST, encounterId, floorBonus, floorThemed, levelUpTrap, monsterFromPreset, pinchMonster, setGuard,
+  PRESET_MONSTERS, TEMP_MONSTER_COST, encounterId, floorBonus, floorThemed, levelUpMonster, levelUpTrap, lureOnFloor, monsterFromPreset, monsterMutationSummary, pinchMonster, setGuard,
   stuffDefense, trapFromPreset, triggerChance, unstuffDefense, type KeeperMonster, type KeeperSave, type KeeperTrap,
 } from '@/lib/keeper'
 import { CUSTOM_LIMITS, customBlock, customCost, floorSynergies } from '@/lib/synergy'
 import {
-  CATEGORY_SHEET, FLOOR_MONSTER_CAP, FLOOR_TRAP_CAP, LEVEL_RULES, TRAP_CATEGORIES, groupIcon, guessCategory, hitPreview, levelUpBlock,
-  nextLevelRule, statusById, trapCategory, trapHabit, trapStatusId, type HitPreview,
+  CATEGORY_SHEET, FLOOR_MONSTER_CAP, FLOOR_TRAP_CAP, LEVEL_RULES, MONSTER_MUTATIONS, TRAP_CATEGORIES, groupIcon, guessCategory, hitPreview, levelUpBlock,
+  monsterHitPreview, monsterLevelUpBlock, monsterNextLevelRule, nextLevelRule, statusById, trapCategory, trapHabit, trapStatusId, type HitPreview,
 } from '@/lib/trap-craft'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -68,6 +68,7 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
     return entry?.character ?? null
   }, [keep.roster, keep.activeId, previewId])
   const hitOf = (trap: KeeperTrap): HitPreview | null => (target ? hitPreview(trap, target) : null)
+  const monsterHitOf = (monster: KeeperMonster): HitPreview | null => (target ? monsterHitPreview(monster, target) : null)
 
   const placedTraps = keep.traps.filter((trap) => trap.placed).length
   const placedMonsters = keep.monsters.filter((monster) => monster.placed).length
@@ -135,7 +136,7 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
         className={cn('flex-shrink-0 lg:w-full flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-left text-xs', active ? 'border-primary bg-primary/15 text-primary' : 'border-border bg-card')}>
         <span aria-hidden>{trap ? groupIcon(trapCategory(trap)) : '👾'}</span>
         <span className="font-bold truncate max-w-[9rem]">{item.name}</span>
-        {trap && (trap.level ?? 1) > 1 && <span className="text-[10px] text-amber-300">Lv{trap.level}</span>}
+        {(item.level ?? 1) > 1 && <span className="text-[10px] text-amber-300">Lv{item.level}</span>}
         <span className="text-[10px] text-muted-foreground ml-auto pl-1">{floor >= 0 ? `第${floor + 1}层` : '库中'}</span>
       </button>
     )
@@ -153,8 +154,8 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
             </div>
           ) : (
             <div className="flex items-start gap-2">
-              <div className="min-w-0 flex-1"><p className="font-bold">{keep.dungeonName}</p><p className="text-[11px] text-muted-foreground line-clamp-1">{keep.dungeonDescription || '还没写这座狱的脾气。'}</p></div>
-              <button type="button" aria-label="编辑地城名字和脾气" onClick={() => setEditTemper(true)} className="p-1 text-muted-foreground"><Pencil className="w-3.5 h-3.5" /></button>
+              <div className="min-w-0 flex-1"><p className="font-bold">{keep.dungeonName}</p><p className="text-[11px] text-muted-foreground line-clamp-1">{keep.dungeonDescription || '点击右侧铅笔，设定这座深渊的气味、温度与环境癖好…'}</p></div>
+              <button type="button" aria-label="编辑地城名字和脾气" onClick={() => setEditTemper(true)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil className="w-3.5 h-3.5" /></button>
             </div>
           )}
         </div>
@@ -163,6 +164,7 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
             const combos = floorSynergies(keep, index + 1)
             const themed = floorThemed(keep, index + 1)
             const bonus = floorBonus(keep, index + 1)
+            const lure = lureOnFloor(keep, index + 1)
             const traps = floor.trapIds.map((id) => keep.traps.find((t) => t.id === id)).filter((t): t is KeeperTrap => !!t)
             const monsters = floor.monsterIds.map((id) => keep.monsters.find((m) => m.id === id)).filter((m): m is KeeperMonster => !!m)
             const canDrop = picked && (picked.kind === 'trap' ? traps.length < FLOOR_TRAP_CAP || floor.trapIds.includes(picked.id) : monsters.length < FLOOR_MONSTER_CAP || floor.monsterIds.includes(picked.id))
@@ -185,10 +187,11 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
                   )}
                   {editFloor !== index && <button type="button" aria-label={`编辑第${index + 1}层`} onClick={() => setEditFloor(index)} className="p-1 text-muted-foreground"><Pencil className="w-3.5 h-3.5" /></button>}
                 </div>
-                {(combos.length > 0 || themed.length > 0) && (
+                {(combos.length > 0 || themed.length > 0 || lure) && (
                   <div className="flex flex-wrap gap-1 text-[10px]">
                     {combos.length > 0 && <span data-testid="synergy" className="px-1.5 py-0.5 rounded border border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-100">连携 +{Math.round(bonus.synergy * 100)}% 淫髓：{combos.map((c) => c.name).join('、')}</span>}
                     {themed.length > 0 && <span data-testid="theme-bonus" className="px-1.5 py-0.5 rounded border border-emerald-400/40 bg-emerald-500/10 text-emerald-100">主题契合 · 触发 {Math.round(triggerChance(keep, index + 1) * 100)}% · +{Math.round(bonus.theme * 100)}%</span>}
+                    {lure && <span data-testid="lure-bonus" className="px-1.5 py-0.5 rounded border border-pink-400/40 bg-pink-500/10 text-pink-100">⛓ 活体肉饵·{lure.name} · +15% 淫髓</span>}
                   </div>
                 )}
                 <div className="flex flex-wrap gap-1.5">
@@ -209,9 +212,12 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
                     const monster = monsters[slot]
                     if (!monster) return <span key={`m${slot}`} className="px-2 py-1 rounded-md border border-dashed border-border text-[11px] text-muted-foreground/60">魔物位</span>
                     const guard = floor.guardId === monster.id
+                    const mHit = monsterHitOf(monster)
                     return (
                       <span key={monster.id} className="flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-secondary/40 text-[11px]">
-                        <span aria-hidden>👾</span><span className="font-bold">{monster.temporary ? '临时·' : ''}{monster.name}</span>
+                        <span aria-hidden>👾</span><button type="button" onClick={() => setDetail({ kind: 'monster', id: monster.id })} className="font-bold">{monster.temporary ? '临时·' : ''}{monster.name}</button>
+                        {(monster.level ?? 1) > 1 && <span className="text-amber-300">Lv{monster.level}</span>}
+                        {mHit && <Dots score={mHit.score} />}
                         <button type="button" aria-pressed={guard} title={guard ? '守在这一层：她在这层时先出场' : '设为守层'} aria-label={`${monster.name}守层`} onClick={() => onKeep(setGuard(keep, index, guard ? null : monster.id))} className={guard ? 'text-amber-300' : 'text-muted-foreground'}>
                           {guard ? <Shield className="w-3 h-3" /> : <Star className="w-3 h-3" />}
                         </button>
@@ -229,12 +235,12 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
             )
           })}
         </ol>
-        <button type="button" onClick={() => setTempOpen(true)} className="text-xs text-muted-foreground flex items-center gap-1"><Plus className="w-3.5 h-3.5" />临时捏一只魔物（{TEMP_MONSTER_COST} 淫髓，取出就散）</button>
+        <button type="button" onClick={() => setTempOpen(true)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"><Plus className="w-3.5 h-3.5" />唤出一次性临时魔物（消耗 {TEMP_MONSTER_COST} 淫髓，撤下即消散）</button>
       </div>
       <aside className="lg:order-2 lg:sticky lg:top-4 space-y-2" data-testid="stock-tray">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold">库存</h2>
-          <span className="text-[10px] text-muted-foreground">{picked ? '再点一层放下' : '先点一件，再点一层；桌面可以拖'}</span>
+          <span className="text-[10px] text-muted-foreground">{picked ? '再点击目标楼层放置' : '点选后指定楼层，或直接拖拽布防'}</span>
         </div>
         {keep.traps.length + keep.monsters.length === 0 ? (
           <p className="text-xs text-muted-foreground">库里还空着。<button type="button" onClick={() => setTab('workshop')} className="text-primary">去工房入库</button></p>
@@ -261,7 +267,7 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
     }
     const owned = keep.monsters
     const catalog = PRESET_MONSTERS.filter((preset) => !owned.some((monster) => monster.id === preset.id)).map(monsterFromPreset)
-    return [...owned, ...catalog].map((monster) => ({ kind: 'monster' as const, id: monster.id, name: monster.name, category: '魔物', line: monster.behavior, owned: owned.includes(monster), monster, hit: null }))
+    return [...owned, ...catalog].map((monster) => ({ kind: 'monster' as const, id: monster.id, name: monster.name, category: '魔物', line: monster.behavior, owned: owned.includes(monster), monster, hit: target ? monsterHitPreview(monster, target) : null }))
   }, [kind, keep.traps, keep.monsters, target])
   const groups = ['全部', ...TRAP_GROUPS.map((g) => g.label)]
   const shown = cards
@@ -282,7 +288,7 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索名称或描述" aria-label="搜索" className="flex-1 bg-transparent text-xs outline-none" />
         </label>
         <select aria-label="排序" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} className="rounded-lg border border-border bg-card px-2 py-1 text-xs">
-          <option value="default">默认</option><option value="category">按类别</option><option value="owned">已入库优先</option>{target && kind === 'trap' && <option value="hit">命中优先</option>}
+          <option value="default">默认</option><option value="category">按类别</option><option value="owned">已入库优先</option>{target && <option value="hit">命中优先</option>}
         </select>
         <button type="button" onClick={() => setCreator(true)} className="flex items-center gap-1 rounded-lg border border-primary/40 px-2.5 py-1 text-xs text-primary"><Plus className="w-3.5 h-3.5" />自定义</button>
       </div>
@@ -301,7 +307,7 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
             <span className="flex items-center gap-1.5 text-sm">
               <span aria-hidden>{card.kind === 'trap' ? groupIcon(card.category) : '👾'}</span>
               <span className="font-bold truncate">{card.name}</span>
-              {card.owned && <span className="ml-auto text-[10px] text-primary flex-shrink-0">{card.trap ? `Lv${card.trap.level ?? 1}` : '入库'}</span>}
+              {card.owned && <span className="ml-auto text-[10px] text-primary flex-shrink-0">{card.trap ? `Lv${card.trap.level ?? 1}` : `Lv${card.monster?.level ?? 1}`}</span>}
             </span>
             <span className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="truncate">{card.line}</span>
@@ -328,12 +334,14 @@ export function DungeonPage({ keep, settings, onKeep, onBack, initialTab = 'layo
               <div className="flex items-center gap-1.5">
                 <span aria-hidden>{trap ? groupIcon(trapCategory(trap)) : '👾'}</span>
                 <button type="button" onClick={() => setDetail({ kind: k, id: item.id })} className="font-bold text-sm">{item.name}</button>
-                {trap && <span className="ml-auto text-amber-300">Lv{trap.level ?? 1} · 撞上 {trap.hits ?? 0} 次</span>}
+                <span className="ml-auto text-amber-300">Lv{item.level ?? 1} · {trap ? `撞上 ${trap.hits ?? 0} 次` : `扑击 ${(item as KeeperMonster).hits ?? 0} 次`}</span>
               </div>
               {trap && <p className="text-muted-foreground">习性：{trapHabit(trap)}</p>}
+              {!trap && (item as KeeperMonster).habit && <p className="text-muted-foreground">习性：{(item as KeeperMonster).habit}</p>}
+              {!trap && (item as KeeperMonster).mutations?.length ? <p className="text-pink-200/80">{monsterMutationSummary(item as KeeperMonster)}</p> : null}
               {rows.length ? (
                 <ul className="text-muted-foreground space-y-0.5">{rows.slice(0, 4).map((row, i) => <li key={i}>第{row.floor}层 · {row.intruder || '无名'} · {row.at ? new Date(row.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</li>)}</ul>
-              ) : <p className="text-muted-foreground/70">还没有人撞上过。</p>}
+              ) : <p className="text-muted-foreground/70">暂无猎物触发记录。</p>}
             </div>
           )
         })}
@@ -371,7 +379,7 @@ function DetailDrawer({ pick, keep, target, onClose, onKeep, onNotice }: { pick:
   const owned = !!(ownedTrap || ownedMonster)
   const name = trap?.name ?? monster?.name ?? ''
   const sheet = trap ? CATEGORY_SHEET[trapCategory(trap)] : null
-  const hit = trap && target ? hitPreview(trap, target) : null
+  const hit = trap && target ? hitPreview(trap, target) : monster && target ? monsterHitPreview(monster, target) : null
   const floor = pick ? floorOf(keep, pick.kind, pick.id) : -1
 
   const stock = (andPlace: boolean) => {
@@ -396,7 +404,7 @@ function DetailDrawer({ pick, keep, target, onClose, onKeep, onNotice }: { pick:
         <div className="px-4 pb-6 space-y-3 text-sm">
           {trap && <p className="text-muted-foreground">{trap.mechanism}</p>}
           {trap?.prose && <p className="text-xs text-muted-foreground/80 whitespace-pre-wrap">{trap.prose}</p>}
-          {monster && <><p className="text-xs text-muted-foreground">{monster.appearance}</p><p className="text-muted-foreground">{monster.behavior}</p></>}
+          {monster && <><p className="text-xs text-muted-foreground">{monster.appearance}</p><p className="text-muted-foreground">{monster.behavior}</p>{monster.habit && <p className="text-xs text-muted-foreground">习性：{monster.habit}</p>}{monster.mutations?.length ? <p className="text-xs text-pink-200">{monsterMutationSummary(monster)}</p> : null}</>}
           {trap && sheet && (
             <dl className="text-xs space-y-1 rounded-lg border border-border p-2.5">
               <div><dt className="inline text-primary">习性　</dt><dd className="inline">{trapHabit(trap)}</dd></div>
@@ -409,6 +417,7 @@ function DetailDrawer({ pick, keep, target, onClose, onKeep, onNotice }: { pick:
             <div className="rounded-lg border border-fuchsia-400/30 bg-fuchsia-500/5 p-2.5 text-xs space-y-1" data-testid="hit-preview">
               <p className="font-bold text-fuchsia-200">对 {target.name} 的命中 <Dots score={hit.score} /></p>
               <p>{hit.parts.map((p) => `${p.label} Lv${p.level}${p.weak ? '（死穴 ✓）' : ''}`).join(' · ') || '全身'}</p>
+              {hit.tagNote && <p className="text-pink-300">癖好克制：{hit.tagNote}</p>}
               {hit.raceNote && <p className={hit.race === 'weak' ? 'text-emerald-300' : 'text-amber-300'}>{hit.race === 'weak' ? '种族克制：' : '种族抗性：'}{hit.raceNote}</p>}
             </div>
           )}
@@ -422,6 +431,31 @@ function DetailDrawer({ pick, keep, target, onClose, onKeep, onNotice }: { pick:
                   {levelUpBlock(ownedTrap, keep.progress.essence) && <span className="ml-2 text-muted-foreground">{levelUpBlock(ownedTrap, keep.progress.essence)}</span>}
                 </>
               ) : <p className="text-muted-foreground">已满级：{LEVEL_RULES.map((r) => r.gain).join('；')}</p>}
+            </div>
+          )}
+          {ownedMonster && !ownedMonster.temporary && (
+            <div className="rounded-lg border border-rose-500/30 p-2.5 text-xs space-y-1.5" data-testid="monster-level-up">
+              <p>Lv{ownedMonster.level ?? 1} · 已扑击 {ownedMonster.hits ?? 0} 次</p>
+              {monsterNextLevelRule(ownedMonster) ? (
+                <>
+                  <p className="text-muted-foreground">喂养进化：植入 1 种变异器官并激活对应同层连携（需扑击 {monsterNextLevelRule(ownedMonster)!.hits} 次，消耗 {monsterNextLevelRule(ownedMonster)!.cost} 淫髓）</p>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {MONSTER_MUTATIONS.filter((mut) => !(ownedMonster.mutations ?? []).includes(mut.id)).map((mut) => (
+                      <button
+                        key={mut.id}
+                        type="button"
+                        disabled={!!monsterLevelUpBlock(ownedMonster, keep.progress.essence)}
+                        title={mut.effect}
+                        onClick={() => onKeep(levelUpMonster(keep, ownedMonster.id, mut.id))}
+                        className="px-2.5 py-1 rounded-md border border-rose-400/50 bg-rose-500/15 text-rose-100 font-bold hover:bg-rose-500/25 disabled:opacity-40"
+                      >
+                        植入「{mut.label}」
+                      </button>
+                    ))}
+                  </div>
+                  {monsterLevelUpBlock(ownedMonster, keep.progress.essence) && <p className="text-muted-foreground">{monsterLevelUpBlock(ownedMonster, keep.progress.essence)}</p>}
+                </>
+              ) : <p className="text-muted-foreground">已进化至完全体（Lv3）</p>}
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -458,14 +492,15 @@ function CreatorDialog({ open, kind, keep, settings, onClose, onKeep }: { open: 
 
   const generate = async () => {
     setLoading(true); setError(''); setDraft('')
-    const prompt = isTrap ? buildWorkshopTrapPrompt(settings.proseStyle, hint, [], category) : buildMonsterPrompt(settings.proseStyle, hint)
+    const seed = Date.now() % 100000
+    const prompt = isTrap ? buildWorkshopTrapPrompt(settings.proseStyle, hint, [], category, seed) : buildMonsterPrompt(settings.proseStyle, hint, [], seed)
     try {
       let full = ''
       await chatStream({ messages: [{ role: 'user', content: prompt }], model: settings.chatModel, apiKey: settings.chatApiKey, grokApiKey: settings.grokApiKey }, (delta) => { full += delta; setDraft(full) })
       if (isTrap) {
         setName(section(full, '陷阱名称')); setSecondary(section(full, '触发描写')); setPrimary(section(full, '机械摘要')); setHabit(section(full, '习性'))
       } else {
-        setName(section(full, '魔物名称')); setSecondary(section(full, '外观')); setPrimary(section(full, '行为') || section(full, '机械摘要'))
+        setName(section(full, '魔物名称')); setSecondary(section(full, '外观')); setPrimary(section(full, '行为') || section(full, '机械摘要')); setHabit(section(full, '习性'))
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -484,7 +519,7 @@ function CreatorDialog({ open, kind, keep, settings, onClose, onKeep }: { open: 
       const trap: KeeperTrap = { id, name: trimmedName.slice(0, 40), mechanism: trimmedPrimary.slice(0, 400), prose: secondary.trim().slice(0, 800), placed: false, source: 'custom', category: cat, status: CATEGORY_SHEET[cat].status, habit: habit.trim().slice(0, 80) || CATEGORY_SHEET[cat].habit, level: 1, hits: 0 }
       onKeep({ ...paid, traps: [...paid.traps, trap] })
     } else {
-      const monster: KeeperMonster = { id, name: trimmedName.slice(0, 40), appearance: secondary.trim().slice(0, 240), behavior: trimmedPrimary.slice(0, 400), placed: false, source: 'custom' }
+      const monster: KeeperMonster = { id, name: trimmedName.slice(0, 40), appearance: secondary.trim().slice(0, 240), behavior: trimmedPrimary.slice(0, 400), ...(habit.trim() ? { habit: habit.trim().slice(0, 80) } : {}), placed: false, source: 'custom' }
       onKeep({ ...paid, monsters: [...paid.monsters, monster] })
     }
     setName(''); setPrimary(''); setSecondary(''); setHabit(''); setDraft(''); setError(''); setHint('')
@@ -497,10 +532,10 @@ function CreatorDialog({ open, kind, keep, settings, onClose, onKeep }: { open: 
       <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="creator">
         <DialogHeader>
           <DialogTitle>自定义{isTrap ? '陷阱' : '魔物'}</DialogTitle>
-          <DialogDescription>入库 {customCost(kind, keep)} 淫髓，自定义上限 {CUSTOM_LIMITS[kind]} 件。自己写，或让模型起稿。</DialogDescription>
+          <DialogDescription>消耗 {customCost(kind, keep)} 淫髓锻造入库（自定义上限 {CUSTOM_LIMITS[kind]} 件）。可输入灵感交由 AI 起稿，再自由微调。</DialogDescription>
         </DialogHeader>
         <div className="space-y-2.5">
-          <textarea value={hint} onChange={(event) => setHint(event.target.value)} placeholder={isTrap ? '例如：只勒住乳和阴蒂的绳，不要插进去' : '例如：一只只舔尿道的小虫，听命令才钻'} className={cn(field, 'min-h-14')} />
+          <textarea value={hint} onChange={(event) => setHint(event.target.value)} placeholder={isTrap ? '例如：只勒住双乳与阴蒂的悬吊红绳，随挣扎震动却不插入' : '例如：潜伏在石缝里的温热软体虫，听令后专门吮吸乳尖与阴蒂'} className={cn(field, 'min-h-14')} />
           {isTrap && (
             <select aria-label="类别" value={category} onChange={(event) => setCategory(event.target.value)} className={field}>
               <option value="">类别：按描述自动判断</option>
@@ -508,13 +543,13 @@ function CreatorDialog({ open, kind, keep, settings, onClose, onKeep }: { open: 
             </select>
           )}
           <button type="button" onClick={generate} disabled={loading} className="px-3 py-1.5 rounded-lg border border-primary/40 text-primary text-sm disabled:opacity-40">
-            {loading ? <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />正在起稿</span> : '让模型起稿'}
+            {loading ? <span className="inline-flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />正在构思起稿…</span> : 'AI 构思起稿'}
           </button>
           {draft && <pre className="whitespace-pre-wrap text-xs text-muted-foreground max-h-32 overflow-auto">{draft}</pre>}
           <input value={name} onChange={(event) => setName(event.target.value)} placeholder="名称" className={field} />
           <textarea value={secondary} onChange={(event) => setSecondary(event.target.value)} placeholder={isTrap ? '触发时她身上发生什么' : '外观'} className={cn(field, 'min-h-16')} />
           <textarea value={primary} onChange={(event) => setPrimary(event.target.value)} placeholder={isTrap ? '机械摘要：怎么束缚，主要碰哪里' : '行为：听令之后先做什么'} className={cn(field, 'min-h-16')} />
-          {isTrap && <input value={habit} onChange={(event) => setHabit(event.target.value)} placeholder="习性：比如耐心、贪婪、戏弄（可空，按类别默认）" className={field} />}
+          <input value={habit} onChange={(event) => setHabit(event.target.value)} placeholder={isTrap ? '习性：比如耐心、贪婪、戏弄（可空，按类别默认）' : '习性：比如护食、爱挑逗、刻板守令（可空）'} className={field} />
           {error && <p className="text-sm text-yellow-400" role="alert">{error}</p>}
           <button type="button" onClick={save} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold">入库 · {customCost(kind, keep)} 淫髓</button>
         </div>

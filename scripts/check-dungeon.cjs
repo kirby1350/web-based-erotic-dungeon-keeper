@@ -115,4 +115,113 @@ assert.ok(T.weakParts({ sexual: '死穴是乳头，一碰就软', otherDescripti
   assert.match(line, /【台词里的器官】/)
   assert.match(T.relayLine([{ name: 'A', kind: 'trap' }, { name: 'B', kind: 'trap' }], []), /即使城主只命令了其中一件/)
 }
+
+// --- 全角色死穴覆盖、癖好标签克制、种族特性覆写与姐妹羁绊联动 ---
+{
+  const { CHARACTER_PRESETS } = load('@/lib/types')
+  const { RAID_PARTY } = load('@/lib/campaign')
+  const { rollIntruder } = load('@/lib/intruder-roll')
+  const { DK_TERMS } = load('@/lib/terms-canon')
+  const { formParty } = load('@/lib/party')
+  const allPresets = [...CHARACTER_PRESETS, ...RAID_PARTY]
+  assert.equal(allPresets.length, 29)
+  for (const p of allPresets) {
+    const ch = K.characterFromPreset(p)
+    assert.ok(T.weakParts(ch).length > 0, `${p.name} 缺少可识别死穴部位`)
+    assert.ok(Array.isArray(ch.weakTags) && ch.weakTags.length > 0, `${p.name} 缺少 weakTags`)
+  }
+  // 26 名角色崩坏档自称互不重样
+  const tier4Self = allPresets.map((p) => DK_TERMS[p.name].self[3])
+  assert.equal(new Set(tier4Self).size, allPresets.length, '崩坏档自称存在重复模板')
+  // 随机闯入者带冒险者职业与死穴部位
+  for (let s = 0; s < 12; s++) {
+    let k = s + 1
+    const rolledPreset = rollIntruder([], () => { k = (k * 48271) % 2147483647; return (k - 1) / 2147483646 })
+    const ch = K.characterFromPreset(rolledPreset)
+    assert.ok(T.weakParts(ch).length > 0, `随机闯入者 ${rolledPreset.name} 缺少死穴`)
+    assert.match(rolledPreset.backstory, /是一名/)
+  }
+  // 情境标签弱点（weakTags）计入命中预览
+  const nj = K.characterFromPreset(CHARACTER_PRESETS.find((p) => p.name === '新泽西'))
+  const bindHit = T.hitPreview(preset('suspension_bondage'), nj)
+  assert.ok(bindHit.tagNote && bindHit.tagNote.includes('拘束压制'))
+  assert.ok(bindHit.score >= 2)
+  assert.match(T.hitLine('悬吊绳缚', bindHit), /癖好克制/)
+  // 索米种族特性覆写：不再注入冷漠无羞耻的通用机械描述
+  const suomi = K.characterFromPreset(CHARACTER_PRESETS.find((p) => p.name === '索米'))
+  const suomiSys = buildSystemPrompt(suomi)
+  assert.ok(suomiSys.includes('高拟真战术人形之躯'))
+  assert.equal(suomiSys.includes('缺乏常人的羞耻阈值'), false)
+  // 姐妹羁绊：同场结伴与收藏室在狱联动
+  const takaoPreset = CHARACTER_PRESETS.find((p) => p.name === '高雄')
+  const atagoPreset = CHARACTER_PRESETS.find((p) => p.name === '爱宕')
+  assert.equal(K.pickCompanion(takaoPreset, [], () => 0.1).name, '爱宕')
+  const duo = formParty(K.characterFromPreset(takaoPreset), K.characterFromPreset(atagoPreset))
+  let bondSave = K.emptyKeep()
+  bondSave.roster = [{ id: 'takao_1', station: '在狱里', character: duo, session: null, conversationId: 'c1', brief: { opening: 'personal' } }]
+  bondSave.activeId = 'takao_1'
+  const duoSys = buildSystemPrompt(duo, '', 'standard', null, undefined, K.keeperPromptContext(bondSave))
+  assert.match(duoSys, /【羁绊同场·爱宕（亲妹妹）】/)
+  const soloTakao = K.characterFromPreset(takaoPreset)
+  bondSave.roster = [{ id: 'takao_1', station: '在狱里', character: soloTakao, session: null, conversationId: 'c1', brief: { opening: 'personal' } }]
+  bondSave.collection = [{ id: 'atago_c', name: '爱宕', race: 'human', fate: 'kept', avatarUrl: null, pleasure: 60, desire: 70, character: K.characterFromPreset(atagoPreset), savedAt: 1, recall: '', memory: { version: 1, entries: [] } }]
+  const captiveSys = buildSystemPrompt(soloTakao, '', 'standard', null, undefined, K.keeperPromptContext(bondSave))
+  assert.match(captiveSys, /【羁绊在狱·爱宕（亲妹妹，已被留在收藏室）】/)
+
+  // 空城一键布设首层连携防线
+  const starter = K.quickStarterSetup(K.emptyKeep())
+  assert.equal(starter.floors[0].trapIds.includes('pollen_garden'), true)
+  assert.equal(starter.floors[0].monsterIds.includes('tentacle_warden'), true)
+  assert.equal(starter.floors[0].guardId, 'tentacle_warden')
+  assert.ok(load('@/lib/synergy').floorSynergies(starter, 1).some((c) => c.id === 'aphro_tentacle'))
+
+  // 魔物喂养进化（植入变异器官）+ 魔物命中预览 + 变异连携
+  let mSave = K.emptyKeep()
+  mSave.progress.essence = 50
+  mSave.monsters = [{ id: 'slime_1', name: '地底史莱姆', appearance: '半透明凝胶', behavior: '裹住双腿', placed: true, source: 'custom', level: 1, hits: 3 }]
+  mSave.floors[0].monsterIds = ['slime_1']
+  mSave = K.levelUpMonster(mSave, 'slime_1', 'milk_sucker')
+  const evolved = mSave.monsters[0]
+  assert.equal(evolved.level, 2)
+  assert.deepEqual(evolved.mutations, ['milk_sucker'])
+  assert.equal(mSave.progress.essence, 42)
+  const kashino = K.characterFromPreset(CHARACTER_PRESETS.find((p) => p.name === '樫野'))
+  assert.ok(T.monsterHitPreview(evolved, kashino).score >= 2)
+  mSave.traps = [{ id: 'rope_1', name: '悬吊红绳', mechanism: '绳索捆紧手腕悬吊', prose: '', placed: true, source: 'custom', category: '绳缚系', status: 'restraint', level: 1, hits: 0 }]
+  mSave.floors[0].trapIds = ['rope_1']
+  assert.ok(load('@/lib/synergy').floorSynergies(mSave, 1).some((c) => c.id === 'bind_milk'), 'mutated monster milk_sucker activates bind_milk combo')
+
+  // 收藏室活化：派驻楼层活体肉饵（+15% 淫髓 + 提示词注入）与后台挂机产髓
+  let colSave = K.emptyKeep()
+  colSave.collection = [
+    { id: 'cap_1', name: '樫野', race: 'tauren', fate: 'kept', cage: 'ranch', avatarUrl: null, pleasure: 70, desire: 65, character: kashino, savedAt: 1, recall: '', memory: { version: 1, entries: [] } },
+    { id: 'cap_2', name: '爱宕', race: 'human', fate: 'broken', cage: 'machine', avatarUrl: null, pleasure: 90, desire: 80, character: K.characterFromPreset(atagoPreset), savedAt: 2, recall: '', memory: { version: 1, entries: [] } },
+  ]
+  const passive1 = K.tickCollectionPassive(colSave)
+  assert.equal(passive1.gained, 3, 'tauren in ranch yields 2 + machine yields 1')
+  assert.equal(passive1.save.progress.essence, 3)
+  assert.ok(passive1.save.recentFeed.length >= 2)
+  colSave = K.setCaptiveLureFloor(passive1.save, 'cap_2', 1)
+  assert.equal(K.lureOnFloor(colSave, 1)?.name, '爱宕')
+  assert.equal(K.floorBonus(colSave, 1).lure, 0.15)
+  colSave.roster = [{ id: 'r_takao', station: '在第1层', character: { ...soloTakao, floor: 1 }, session: null, conversationId: 'c2', brief: { opening: 'corridor' } }]
+  colSave.activeId = 'r_takao'
+  const lureSys = buildSystemPrompt(colSave.roster[0].character, '', 'standard', null, undefined, K.keeperPromptContext(colSave))
+  assert.match(lureSys, /【本层活体肉饵·爱宕】/)
+
+  // 敏感体质词条淫髓倍率加成
+  const baseEss = K.turnEssence(K.emptyKeep(), 10, 40, 1)
+  const traitEss = K.turnEssence(K.emptyKeep(), 10, 40, 1, { bodyDevelopment: { breast: 5, clitoris: 5, urethra: 3, vagina: 0, anus: 0 } })
+  assert.ok(traitEss > baseEss)
+
+  // 讨伐队刻纹诱饵放归：不判败北，反而涨恶名并留在待讨伐名单
+  const C = load('@/lib/campaign')
+  let camp = { ...C.emptyCampaign(), infamy: 100, raid: true }
+  const baited = C.recordFate(camp, RAID_PARTY[0].name, 'defeated', { crestedBait: true })
+  assert.equal(baited.status, 'ongoing')
+  assert.equal(baited.infamy, 112)
+  assert.equal(C.raidRemaining(baited).some((m) => m.name === RAID_PARTY[0].name), true)
+  const plainRelease = C.recordFate(camp, RAID_PARTY[0].name, 'defeated')
+  assert.equal(plainRelease.status, 'defeat')
+}
 console.log('dungeon ok: placement, synergy settlement, theme, phases, level-up, migration, prompts')

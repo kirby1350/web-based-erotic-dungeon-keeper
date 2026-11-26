@@ -77,3 +77,48 @@ export function splitNarrative(narrative: string, focusName: string, partnerName
   }
   return { focus: focus.join('\n'), partner: partner.join('\n') }
 }
+
+export interface DevTrait {
+  id: string
+  part: BodyPart
+  minLevel: 3 | 5
+  title: string
+  detail: string
+  promptHint: string
+}
+
+export const DEV_TRAITS: DevTrait[] = [
+  { id: 'breast_lv3', part: 'breast', minLevel: 3, title: '乳尖敏化', detail: '乳头充血难消，隔着布料轻擦也会发麻腿软（淫髓产出 +8%）', promptHint: '胸部已开发至敏化：乳尖稍受摩擦或气流便充血挺立、腰肢发软' },
+  { id: 'breast_lv5', part: 'breast', minLevel: 5, title: '乳首绝顶', detail: '乳腺与神经彻底熟化，单靠揉捏吸吮双乳即可直达绝顶（淫髓产出 +8%）', promptHint: '胸部已达乳首绝顶体质：仅靠揉乳吸吮即可引发强烈高潮，泌乳角色更会失控喷乳' },
+  { id: 'clitoris_lv3', part: 'clitoris', minLevel: 3, title: '蒂珠外露', detail: '阴蒂饱满翘起难以缩回，走动并腿都会磨出湿意（淫髓产出 +8%）', promptHint: '阴蒂已开发至外露敏感：红润肿胀地顶出包皮，双腿摩擦也会漏出鼻音' },
+  { id: 'clitoris_lv5', part: 'clitoris', minLevel: 5, title: '一触即泄', detail: '阴蒂连着全身电麻回路，指尖或吸盘轻捻即连环潮吹（淫髓产出 +8%）', promptHint: '阴蒂已达一触即泄体质：稍加捻弄或震动便引发连环痉挛与失禁潮吹' },
+  { id: 'urethra_lv3', part: 'urethra', minLevel: 3, title: '羞耻失禁', detail: '前孔松软敏感，快感攀升时极易控制不住漏出热液（淫髓产出 +8%）', promptHint: '尿道已开发至羞耻失禁：强烈刺激下前孔极易酸麻失守、羞耻漏液' },
+  { id: 'urethra_lv5', part: 'urethra', minLevel: 5, title: '前孔蜜化', detail: '尿道彻底化作快感带，微弱探入或电麻便令全身过载失神（淫髓产出 +8%）', promptHint: '尿道已达前孔蜜化体质：被刮擦或探入时快感如电流直冲脑髓' },
+  { id: 'vagina_lv3', part: 'vagina', minLevel: 3, title: '蜜穴贪吞', detail: '内壁熟软泥泞，一受挑逗便自动分泌大量爱液迎合（淫髓产出 +8%）', promptHint: '小穴已开发至蜜穴贪吞：尚未深入便已湿滑泛滥，内壁本能吸附异物' },
+  { id: 'vagina_lv5', part: 'vagina', minLevel: 5, title: '宫口吸附', detail: '深处食髓知味，被顶到最里面便死死吮住不放、渴求灌满（淫髓产出 +8%）', promptHint: '小穴已达宫口吸附体质：深处嫩肉食髓知味地缠绞顶入物，拔出时极度空虚不舍' },
+  { id: 'anus_lv3', part: 'anus', minLevel: 3, title: '后庭酥化', detail: '排泄羞耻已转化为酸胀快感，后穴被撑开时双腿发软（淫髓产出 +8%）', promptHint: '后庭已开发至酥化：异物进入后穴带来的羞耻感直接化为酸麻快感' },
+  { id: 'anus_lv5', part: 'anus', minLevel: 5, title: '菊蕾贪欢', detail: '后穴彻底驯化为第二性器，层层嫩肉主动吞绞直至绝顶（淫髓产出 +8%）', promptHint: '后庭已达菊蕾贪欢体质：一圈圈嫩肉熟练地吞吐吮吸，单靠后穴也能高潮' },
+]
+
+/** 根据当前身体开发等级返回已点亮的敏感体质词条（同一部位 Lv5 会连同展示最高阶词条，计分按解锁总数）。 */
+export function unlockedDevTraits(dev: BodyDevelopment | undefined): DevTrait[] {
+  if (!dev) return []
+  return DEV_TRAITS.filter((t) => (dev[t.part] ?? 0) >= t.minLevel)
+}
+
+/** 展示在状态栏的精简词条（同一部位若已达 Lv5，折叠 Lv3 只显示更高阶的 Lv5 词条以免拥挤）。 */
+export function visibleDevTraits(dev: BodyDevelopment | undefined): DevTrait[] {
+  const all = unlockedDevTraits(dev)
+  return all.filter((t) => t.minLevel === 5 || !all.some((other) => other.part === t.part && other.minLevel === 5))
+}
+
+export function newlyUnlockedDevTraits(before: BodyDevelopment | undefined, after: BodyDevelopment | undefined): DevTrait[] {
+  const prevIds = new Set(unlockedDevTraits(before).map((t) => t.id))
+  return unlockedDevTraits(after).filter((t) => !prevIds.has(t.id))
+}
+
+export function devTraitsPromptLine(dev: BodyDevelopment | undefined): string {
+  const active = visibleDevTraits(dev)
+  if (!active.length) return ''
+  return `【已觉醒敏感体质】${active.map((t) => `「${t.title}」${t.promptHint}`).join('；')}。碰到对应部位时必须体现这些已被改造熟化的身体本能。`
+}

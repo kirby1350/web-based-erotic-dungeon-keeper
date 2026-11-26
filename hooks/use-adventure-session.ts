@@ -6,15 +6,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppSettings, Character, GameSession } from '@/lib/types'
 import { getKeep, getSession, saveGame, saveKeep } from '@/lib/storage'
 import { chatStream } from '@/lib/dzmm'
-import { buildStateRepairPrompt, buildSystemPrompt, withQualityPrefix } from '@/lib/prompts'
-import { advancePhase, grantEssence, keeperPresence, keeperPromptContext, turnEssence } from '@/lib/keeper'
+import { buildStateRepairPrompt, buildSystemPrompt, dialogueTurnHint, withQualityPrefix } from '@/lib/prompts'
+import { advancePhase, grantEssence, hydrateCharacterPreset, keeperPresence, keeperPromptContext, tickCollectionPassive, turnEssence } from '@/lib/keeper'
 import { buildProgramResultContext, buildTurnContext, resolveTurnCharacter, type ProgramTurnResult } from '@/lib/adventure-context'
 import { buildMemoryInput, emptyMemory, mergeMemoryResponse, MEMORY_SUMMARY_PROMPT } from '@/lib/adventure-memory'
-import { inspectReply, stripPlanLeak, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
+import { newlyUnlockedDevTraits } from '@/lib/body-development'
+import { compactHistoryMessages, inspectReply, stripPlanLeak, parseOptions, replaceStateMetadata, salvageStateMetadata } from '@/lib/chat-protocol'
 import { checkReply, guardDisabled, pickBetter, retryNote, withRetryNote } from '@/lib/prose-guard'
 import { partyPromptBlock, together } from '@/lib/party'
-import { denseLength, denseBankOpts, denseStyleBlock, denseTurnNote, rememberBankWords, repeatNote } from '@/lib/prose-bank'
-import { applyTermCommands, dkTerms, dkTermsLine, tickTerms } from '@/lib/terms-dk'
+import { denseLength, denseBankOpts, denseStyleBlock, denseTurnNote, isNonContactTurn, rememberBankWords, repeatNote } from '@/lib/prose-bank'
+import { applyTermCommands, backfillCorruptionFromTurns, dkShortTermsLine, dkTerms, tickTerms } from '@/lib/terms-dk'
 import { termsChange } from '@/lib/terms'
 import { toast } from 'sonner'
 import { completeTurn, pendingMessages, PROMPT_VERSION, type PendingTurn } from '@/lib/turn-engine'
@@ -34,6 +35,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
   characterRef.current = character
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingStage, setLoadingStage] = useState<'generating' | 'polishing' | 'repairing' | null>(null)
   const [summarising, setSummarising] = useState(false)
   const [statsError, setStatsError] = useState('')
   const runningRef = useRef(false)
@@ -62,6 +64,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     let turnTimedOut = false
     const turnTimer = setTimeout(() => { turnTimedOut = true; controller.abort() }, CHAT_TIMEOUT_MS)
     setLoading(true)
+    setLoadingStage(pending.phase === 'repair' ? 'repairing' : 'generating')
     setStatsError('')
     let content = pending.phase === 'generating' ? '' : pending.draft
     let currentPending = pending
@@ -99,6 +102,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
         if (first.clear.length) {
           const started = Date.now()
           let retry = ''
+          if (mountedRef.current) setLoadingStage('polishing')
           setDraft('')
           await chatStream({ messages: withRetryNote(pending.requestMessages, retryNote(first, spec)), model: pending.model, grokApiKey: settings.grokApiKey, signal: controller.signal }, (delta) => {
             if (controller.signal.aborted) return
@@ -121,6 +125,7 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       let repaired = !!pending.repaired || pending.phase === 'repair'
       if (inspection.metadataErrors.length) {
         checkpoint('repair', content)
+        if (mountedRef.current) setLoadingStage('repairing')
         const prior = content
         let metadata = ''
         await chatStream({ model: pending.model, grokApiKey: settings.grokApiKey, signal: controller.signal, conversationId: crypto.randomUUID(), messages: [
@@ -150,18 +155,23 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
       completed.character = tickTerms(completed.character)
       if (together(completed.character) && completed.character.partner) completed.character = { ...completed.character, partner: tickTerms(completed.character.partner) }
       const changed = termsChange(dkTerms(pending.before), dkTerms(completed.character), completed.character.name)
+      const unlockedTraits = newlyUnlockedDevTraits(pending.before.bodyDevelopment, completed.character.bodyDevelopment)
       const savedSession = settings.proseStyle === 'dense'
         ? { ...completed.session, recentBank: rememberBankWords(sessionRef.current.recentBank, content) }
         : completed.session
       // This single write commits story, character, audit record and removal of pending work.
       saveGame(completed.character, savedSession)
+      let passiveInfo: { gained: number; notes: string[] } = { gained: 0, notes: [] }
       try {
         const live = advancePhase(getKeep(), getKeep().activeId, completed.character.encounter)
-        let gain = turnEssence(live, pending.before.pleasure ?? 0, completed.character.pleasure ?? 0, completed.character.floor ?? 1)
+        let gain = turnEssence(live, pending.before.pleasure ?? 0, completed.character.pleasure ?? 0, completed.character.floor ?? 1, completed.character)
         // 双人一起时，同伴身上涨的快感也算淫髓
         if (together(pending.before) && pending.before.partner && completed.character.partner)
-          gain += turnEssence(live, pending.before.partner.pleasure ?? 0, completed.character.partner.pleasure ?? 0, completed.character.floor ?? 1)
-        saveKeep(gain > 0 ? grantEssence(live, gain) : live)
+          gain += turnEssence(live, pending.before.partner.pleasure ?? 0, completed.character.partner.pleasure ?? 0, completed.character.floor ?? 1, completed.character.partner)
+        const withTurnEssence = gain > 0 ? grantEssence(live, gain) : live
+        const passive = tickCollectionPassive(withTurnEssence)
+        passiveInfo = { gained: passive.gained, notes: passive.notes }
+        saveKeep(passive.save)
       } catch { /* 淫髓没记上时，这一回合的正文和身体仍然算数 */ }
       committed = true
       characterRef.current = completed.character
@@ -172,6 +182,12 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
         setStatsError(completed.warnings.join('；'))
         onTurnCommit(completed.character)
         if (changed) toast(`她改口了`, { description: changed })
+        for (const trait of unlockedTraits) {
+          toast(`觉醒敏感体质：${trait.title}`, { description: trait.detail })
+        }
+        if (passiveInfo.gained > 0 && passiveInfo.notes[0]) {
+          toast(`收藏室产出 +${passiveInfo.gained} 淫髓`, { description: passiveInfo.notes[0] })
+        }
         try { onRequestImage(withQualityPrefix(inspection.scene)) } catch { setStatsError('回合已保存，插图请求失败') }
       }
     } catch (error) {
@@ -184,31 +200,34 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     } finally {
       clearTimeout(turnTimer)
       runningRef.current = false
-      if (mountedRef.current) setLoading(false)
+      if (mountedRef.current) { setLoading(false); setLoadingStage(null) }
     }
   }, [settings.grokApiKey, settings.proseStyle, onTurnCommit, onRequestImage, publish])
 
   const beginTurn = useCallback((input: string, result: ProgramTurnResult | null = null) => {
     if (runningRef.current || summaryRunningRef.current || sessionRef.current.pendingTurn) return
-    const commanded = applyTermCommands(structuredClone(characterRef.current), input)
+    const hydratedBefore = backfillCorruptionFromTurns(hydrateCharacterPreset(structuredClone(characterRef.current)), sessionRef.current.turns)
+    const commanded = applyTermCommands(hydratedBefore, input)
     const before = commanded.character
     if (commanded.found) toast('她记住了新的叫法', { description: '可以在角色档案的「称呼」卡里撤销' })
     const duo = together(before) && before.partner ? before.partner : null
-    const presence = keeperPresence(keeperPromptContext(getKeep()))
-    const termsNote0 = `\n\n${dkTermsLine(resolveTurnCharacter(before, result), presence)}`
+    const presence = keeperPresence(keeperPromptContext(getKeep()), input)
     const current = resolveTurnCharacter(before, result)
     const saved = sessionRef.current
     const dense = settings.proseStyle === 'dense'
     const bank = dense ? denseBankOpts(input, current, Date.now() % 100000, saved.recentBank ?? []) : null
+    const nonContact = isNonContactTurn(input, result)
+    const termsNote0 = `\n\n${dkShortTermsLine(current, presence)}\n${dialogueTurnHint(current, nonContact)}`
     const span = bank ? denseLength(bank.stepIndex) : null
     const termsNote = termsNote0 + (duo
-      ? `\n${dkTermsLine(duo, presence)}\n（${duo.name}也在场：她只占 1 到 2 个叙述段、至少 1 行台词，其余段落都写${current.name}。${span ? `两个人合计 ${span.min} 到 ${span.max} 字，不因为有两个人就写长；` : ''}台词行数也按整段合计。[DESC] 之后写 [PARTNER:{"name":"${duo.name}","hp":…,"pleasure":…,"desire":…}]。）`
+      ? `\n（${duo.name}也在场：她只占 1 到 2 个叙述段、至少 1 行台词，其余段落都写${current.name}。${span ? `两个人合计 ${span.min} 到 ${span.max} 字，不因为有两个人就写长；` : ''}台词行数也按整段合计。[DESC] 之后写 [PARTNER:{"name":"${duo.name}","hp":…,"pleasure":…,"desire":…}]。）`
       : '')
+    const history = compactHistoryMessages(saved.messages)
     const pending: PendingTurn = { id: crypto.randomUUID(), input, startedAt: Date.now(), before,
       result: structuredClone(result), model: settings.chatModel, promptVersion: PROMPT_VERSION, phase: 'generating', draft: '', guard: { dense, stepIndex: bank ? bank.stepIndex : null },
       requestMessages: [
-        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep(), saved.messages.filter((m) => m.role === 'assistant').slice(-2).map((m) => m.content))) + (current.partner ? `\n\n${partyPromptBlock(current, presence)}` : '') + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
-        ...saved.messages.map((message) => ({ role: message.role, content: message.content })),
+        { role: 'system', content: buildSystemPrompt(current, saved.summary, settings.proseStyle, result, saved.memory ?? emptyMemory(), keeperPromptContext(getKeep(), saved.messages.filter((m) => m.role === 'assistant').slice(-2).map((m) => m.content)), nonContact) + (current.partner ? `\n\n${partyPromptBlock(current, presence)}` : '') + (bank ? `\n\n${denseStyleBlock(bank)}` : '') },
+        ...history.map((message) => ({ role: message.role, content: message.content })),
         { role: 'user', content: (bank ? `${input}${denseTurnNote(bank.stepIndex)}${repeatNote(saved.messages.filter((m) => m.role === 'assistant').at(-1)?.content)}` : input) + termsNote },
       ],
     }
@@ -273,10 +292,55 @@ export function useAdventureSession({ character, settings, onTurnCommit, onReque
     }
   }, [session, settings.chatModel, settings.grokApiKey, publish])
 
+  const rewindInternal = useCallback(() => {
+    if (runningRef.current || summaryRunningRef.current || sessionRef.current.pendingTurn) return null
+    const cur = sessionRef.current
+    const lastTurn = cur.turns?.at(-1)
+    if (!lastTurn || !cur.messages.some((m) => m.turnId === lastTurn.id)) return null
+    const restoredChar: Character = {
+      ...lastTurn.before,
+      avatarUrl: characterRef.current.avatarUrl,
+      ...(lastTurn.before.partner && characterRef.current.partner
+        ? { partner: { ...lastTurn.before.partner, avatarUrl: characterRef.current.partner.avatarUrl } }
+        : {}),
+    }
+    const prevSession: GameSession = {
+      ...cur,
+      messages: cur.messages.filter((m) => m.turnId !== lastTurn.id),
+      turns: (cur.turns ?? []).slice(0, -1),
+      pendingTurn: null,
+    }
+    saveGame(restoredChar, prevSession)
+    characterRef.current = restoredChar
+    sessionRef.current = prevSession
+    if (mountedRef.current) {
+      setSession(prevSession)
+      setDraft('')
+      setStatsError('')
+      onTurnCommit(restoredChar)
+    }
+    return lastTurn
+  }, [onTurnCommit])
+
+  const undoLastTurn = useCallback((): string | null => {
+    const popped = rewindInternal()
+    if (!popped) return null
+    return popped.result ? '' : popped.input
+  }, [rewindInternal])
+
+  const rerollLastTurn = useCallback(() => {
+    const popped = rewindInternal()
+    if (!popped) return
+    beginTurn(popped.input, popped.result)
+  }, [rewindInternal, beginTurn])
+
   const displayed = session.pendingTurn && loading ? { ...session, pendingTurn: { ...session.pendingTurn, draft } } : session
   const lastReply = [...session.messages].reverse().find((message) => message.role === 'assistant')
+  const lastTurnId = session.turns?.at(-1)?.id
+  const canRewind = !loading && !summarising && !session.pendingTurn && Boolean(lastTurnId && session.messages.some((m) => m.turnId === lastTurnId))
   return { messages: pendingMessages(displayed), summary: session.summary, memory: session.memory ?? emptyMemory(),
-    loading, summarising, statsError, setStatsError, pending: session.pendingTurn, started: !!session.pendingTurn || session.messages.length > 0,
+    loading, loadingStage, summarising, statsError, setStatsError, pending: session.pendingTurn, started: !!session.pendingTurn || session.messages.length > 0,
     latestOptions: session.pendingTurn ? [] : lastReply ? parseOptions(lastReply.content) : [],
+    canRewind, undoLastTurn, rerollLastTurn,
     beginTurn, retryPending, discardPending, stop: () => abortRef.current?.abort() }
 }

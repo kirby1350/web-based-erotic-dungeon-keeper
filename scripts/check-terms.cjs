@@ -62,8 +62,8 @@ assert.ok(D.dkTermsLine(atago).includes('器官叫法一段回复里最多点两
 // 每个角色的部位叫法：阶段对得上、专属词不串、非泌乳角色没有乳汁
 const BT = load('@/lib/body-terms-dk')
 const names = Object.keys(BT.DK_BODY_TERMS)
-assert.equal(names.length, 26)
-const LACT = ['女骑士薇奥拉', '娜露梅亚', '阿妮拉', '樫野', '信浓']
+assert.equal(names.length, 29)
+const LACT = ['女骑士薇奥拉', '娜露梅亚', '阿妮拉', '樫野', '信浓', '嘉列翁']
 assert.deepEqual(names.filter((n) => BT.DK_BODY_TERMS[n].lactation).sort(), [...LACT].sort())
 const pool = [...types.CHARACTER_PRESETS, ...load('@/lib/campaign').RAID_PARTY]
 const mk = (name) => {
@@ -108,4 +108,23 @@ assert.deepEqual(leaks, [], `专属词串用：\n${leaks.join('\n')}`)
 // 命令过的胸叫法仍以命令为准
 const kc = D.applyTermCommands(mk('樫野'), '把你的胸叫做「补给舱」').character
 assert.equal(D.dkBodyTerms(kc).terms.breast, '补给舱')
+// 26 名角色五阶段均含阴蒂、后庭与轮换指代，且台词部位词不含「·」旁白拼接符
+for (const name of names) {
+  for (const st of BT.BODY_STAGES) {
+    const s = BT.DK_BODY_TERMS[name].stages[st]
+    assert.ok(s.clitoris && s.anus && Array.isArray(s.alts) && s.alts.length >= 2, `${name}/${st} 缺阴蒂/后庭/轮换词`)
+    for (const v of [s.breast, s.nipple, s.clitoris, s.pussy, s.anus, s.milk || '']) {
+      assert.equal(v.includes('·'), false, `${name}/${st} 残留间隔号形容词：${v}`)
+    }
+  }
+}
+const illLine = D.dkBodyTermsLine(mk('光辉'))
+assert.ok(illLine.includes('阴蒂叫「') && illLine.includes('后庭叫「') && illLine.includes('同阶段可穿插轮换的口语指代'))
+// 堕落度计入未升满的 exp，且高快感+高欲望回合推进合理（3~4 轮强刺激进动摇/沦陷）
+assert.ok(D.corruptionOf({ bodyDevelopment: { breast: 0, clitoris: 0, urethra: 0, vagina: 0, anus: 0, exp: { breast: 80, vagina: 80 } } }) >= 9)
+let prog = mk('高雄')
+prog = D.tickTerms({ ...prog, pleasure: 55, desire: 50 })
+prog = D.tickTerms({ ...prog, pleasure: 75, desire: 70 })
+prog = D.tickTerms({ ...prog, pleasure: 88, desire: 82 })
+assert.ok(D.corruptionOf(prog) >= 25, `三轮强刺激+高潮后应至少进入动摇档，实际=${D.corruptionOf(prog)}`)
 console.log('terms ok')

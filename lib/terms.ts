@@ -71,14 +71,25 @@ export function resolveTerms(profile: TermProfile, state: TermsState | undefined
 /** 城主在不在她面前：present 面对面（调教、亲自迎上）；known 她认识城主但他不在场（被抓过又回来）；absent 她不知道有城主。 */
 export type KeeperPresence = 'present' | 'known' | 'absent'
 
-const PRESENCE_NOTE: Record<Exclude<KeeperPresence, 'present'>, string> = {
-  absent: '城主不在场：她不知道有城主，也看不见在操纵机关的人。台词只能是自言自语、对陷阱和魔物的反应、骂这座地城，或者对着空无一人的通道喊话；不要称呼城主、不要看向城主、不要问城主问题。',
-  known: '城主不在场：她被城主抓过，认得他，但此刻看不见他。可以对着空气嘴硬、挑衅或喊他，城主不会回应，也不要写她看向城主；喊他时用下面这个叫法。',
+function presenceRule(presence: KeeperPresence, r: ResolvedTerms): string {
+  if (presence === 'present') return ''
+  if (presence === 'known') {
+    return r.corruptTier >= 2 || r.arousalTier >= 3
+      ? '城主不在场：她被城主调教过，此刻看不见他却满脑子都是他。不要写她看见城主，城主也不会回应；台词只能是对着空气或身上的机关呜咽着喊他、求他快出来碰自己，严禁硬气叫阵。'
+      : '城主不在场：她被城主抓过，认得他，但此刻看不见他。可以对着空气嘴硬、羞恼或喊他，城主不会回应，也不要写她看向城主；喊他时用下面这个叫法。'
+  }
+  if (r.corruptTier >= 2 || r.arousalTier >= 3) {
+    return '城主不在场：她不知道有城主，也看不见操纵机关的人；不要称呼城主、不要看向城主、不要问城主问题。她此刻已深陷情欲或沦陷，严禁对着空通道逞强叫阵或喊“还有什么招数尽管使出来”！台词必须是瘫在原地对着刚折磨过她的吸盘/触手/空气漏出的失神呢喃、羞耻喘息，或在机关退开时食髓知味、空虚发痒的软弱哀求。'
+  }
+  if (r.corruptTier === 1 || r.arousalTier === 2) {
+    return '城主不在场：她不知道有城主，也看不见操纵机关的人；不要称呼城主、不要看向城主、不要问城主问题。她此刻身心已经动摇，哪怕想对着暗处撑一句场面话，也必须说到一半因腿软、发烫或流水的羞耻感而发抖卡壳，底气全空，禁止写成潇洒无畏的挑衅。'
+  }
+  return '城主不在场：她不知道有城主，也看不见在操纵机关的人。台词只能是自言自语、对陷阱和魔物的戒备抗拒，或强自镇定地试探暗处；不要称呼城主、不要看向城主、不要问城主问题。'
 }
 
 export function termsLine(name: string, r: ResolvedTerms, presence: KeeperPresence = 'present'): string {
   const you = presence === 'absent' ? '' : `叫你「${r.player.value}」｜`
-  const note = presence === 'present' ? '' : PRESENCE_NOTE[presence]
+  const note = presenceRule(presence, r)
   return `${note}【本回合称呼·${name}】自称「${r.self.value}」｜${you}胸叫「${r.breast.value}」｜下面叫「${r.pussy.value}」｜后面叫「${r.anus.value}」（堕落：${CORRUPT_TIERS[r.corruptTier]}，快感：${AROUSAL_TIERS[r.arousalTier]}）。要叫到这些时只用这几个叫法，不要混回旧叫法；器官叫法一段回复里最多点两三次，其余用「那里」「里面」、代词或省掉，不要每句台词都带，自称也不必句句都有；${r.corruptTier < 3 && !/母猪|肉便器/.test(r.self.value) ? '她还没堕到底，台词里不准自称母猪、肉便器之类；' : ''}叙述部分照常。`
 }
 

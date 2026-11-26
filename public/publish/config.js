@@ -90,7 +90,8 @@ window.Dungeon = window.Dungeon || {};
   // ---- Self-host image providers (used by the /api/image/* fallback in draw.js) ----
   // Mirrors lib/types.ts IMAGE_MODELS / TENSORART_MODELS.
   var IMAGE_MODELS = {
-    tsubaki_v2: { label: 'Tsubaki v2', modelId: '1983308862240288769', family: 'illustrious' },
+    tsubaki_v3: { label: 'Tsubaki.3 (DiT 新一代)', modelId: '2024383379556065549', family: 'illustrious', apiVersion: 'v2' },
+    tsubaki_v2: { label: 'Tsubaki v2', modelId: '1983308862240288769', family: 'illustrious', apiVersion: 'v1' },
   };
   var TENSORART_MODELS = {
     wai_nsfw_v16: { label: 'WAI-NSFW-V16', modelId: '943946051788787917', family: 'illustrious' },

@@ -7,6 +7,14 @@ import { corruptTierOf } from '@/lib/terms'
 
 export const PORTRAIT_TIERS = ['pure', 'shaken', 'fallen', 'broken'] as const
 export type PortraitTier = (typeof PORTRAIT_TIERS)[number]
+export const PORTRAIT_STAGE_ITEMS = [
+  { id: 'pure', label: '矜持' },
+  { id: 'shaken', label: '动摇' },
+  { id: 'fallen', label: '沦陷' },
+  { id: 'broken', label: '崩坏' },
+  { id: 'climax', label: '绝顶' },
+] as const
+export type PortraitStageId = (typeof PORTRAIT_STAGE_ITEMS)[number]['id']
 /** slug → 这个角色已有的状态文件名（.png 不带后缀，.webp 带 ".webp"） */
 export type PortraitManifest = Record<string, string[]>
 
@@ -25,10 +33,13 @@ export const PORTRAIT_FOCUS: Record<string, string> = {
   anila: '50% 18%',
   cheshire: '50% 20%',
   yuel: '50% 17%',
+  galleon: '50% 18%',
+  'ichinose-asuna': '50% 18%',
+  'hanekawa-hasumi': '50% 18%',
 }
 export const DEFAULT_FOCUS = '50% 20%'
 
-export function portraitSlug(c: Pick<Character, 'avatarUrl'>): string | null {
+export function portraitSlug(c: { avatarUrl?: string | null }): string | null {
   const m = c.avatarUrl?.match(/\/avatars\/([\w-]+)\.(png|jpe?g|webp)$/i)
   return m ? m[1] : null
 }
@@ -57,4 +68,20 @@ export function resolvePortrait(c: Character, manifest: PortraitManifest | null)
     }
   }
   return { src: c.avatarUrl || null, state: null, focus }
+}
+
+/** 返回该角色在清单中已拥有的全部多阶段立绘（按 矜持→动摇→沦陷→崩坏→绝顶 排序），供档案室画廊切换查看 */
+export function availablePortraitStages(
+  c: { avatarUrl?: string | null },
+  manifest: PortraitManifest | null,
+): { id: PortraitStageId; label: string; src: string }[] {
+  const slug = portraitSlug(c)
+  const have = slug ? manifest?.[slug] : undefined
+  if (!slug || !have?.length) return []
+  const out: { id: PortraitStageId; label: string; src: string }[] = []
+  for (const item of PORTRAIT_STAGE_ITEMS) {
+    if (have.includes(`${item.id}.webp`)) out.push({ ...item, src: `/portraits/${slug}/${item.id}.webp` })
+    else if (have.includes(item.id)) out.push({ ...item, src: `/portraits/${slug}/${item.id}.png` })
+  }
+  return out
 }

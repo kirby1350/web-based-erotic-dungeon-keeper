@@ -5,6 +5,7 @@ import type { KeeperSave } from '@/lib/keeper'
 import { RACE_INFO, type Character } from '@/lib/types'
 import { CORRUPT_TIERS, TERM_SLOTS, TERM_SLOT_LABEL } from '@/lib/terms'
 import { dkTerms } from '@/lib/terms-dk'
+import { visibleDevTraits } from '@/lib/body-development'
 import { BODY_PARTS, activeDefenses, buffTags, corruptionView } from '@/lib/status-view'
 import { CLIMAX_AT, resolvePortrait } from '@/lib/portraits'
 import { StatePortrait, usePortraitManifest } from '@/components/state-portrait'
@@ -40,6 +41,7 @@ export function StatusPanel({ character, keep, log, onOpenProfile }: { character
   const terms = dkTerms(c)
   const defenses = activeDefenses(c, keep)
   const tags = buffTags(c)
+  const devTraits = visibleDevTraits(c.bodyDevelopment)
   const nearClimax = (c.pleasure ?? 0) >= CLIMAX_AT - 10
   const hasArt = resolvePortrait(c, usePortraitManifest()).src != null
   return (
@@ -111,7 +113,7 @@ export function StatusPanel({ character, keep, log, onOpenProfile }: { character
         )}
       </Section>
 
-      <Section title="开发度">
+      <Section title="开发度" aside={devTraits.length > 0 ? <span className="text-[10px] text-pink-300">淫髓 +{Math.min(40, devTraits.length * 8)}%</span> : undefined}>
         <div className="grid grid-cols-5 gap-1" data-testid="development-grid">
           {BODY_PARTS.map(({ key, label }) => {
             const lv = c.bodyDevelopment?.[key] ?? 0
@@ -128,6 +130,15 @@ export function StatusPanel({ character, keep, log, onOpenProfile }: { character
             )
           })}
         </div>
+        {devTraits.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1" data-testid="dev-traits">
+            {devTraits.map((trait) => (
+              <span key={trait.id} title={trait.detail} className="cursor-help rounded-full border border-pink-400/50 bg-pink-500/15 px-2 py-0.5 text-[10px] text-pink-200">
+                {trait.title}
+              </span>
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section title="最近变化">

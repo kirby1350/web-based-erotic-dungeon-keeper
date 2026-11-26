@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Image as ImageIcon, Loader2, RefreshCw, Wand2, ChevronDown, ChevronUp } from 'lucide-react'
 import { AppSettings, IMAGE_MODELS, IMAGE_STYLES, TENSORART_MODELS, Character, type ImagePromptFamily } from '@/lib/types'
-import { getKeep } from '@/lib/storage'
+import { getKeep, getSession } from '@/lib/storage'
 import { keeperPromptContext, sceneChrome } from '@/lib/keeper'
 import { buildImagePrompt, DEFAULT_SCENE_PROMPT, presetTagsFor, resolveImagePromptFamily } from '@/lib/prompts'
 import { dzmmReady, dzmmDraw } from '@/lib/dzmm'
@@ -30,11 +30,12 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
   const training = sceneChrome(keeperPromptContext(getKeep()), character.floor ?? 1).mode === 'train'
 
   // PixAI polling
-  const pollPixai = useCallback(async (taskId: string): Promise<string[]> => {
+  const pollPixai = useCallback(async (taskId: string, apiVersion: 'v1' | 'v2' = 'v1'): Promise<string[]> => {
     const key = settings.pixaiApiKey || ''
+    const suffix = apiVersion === 'v2' ? '?v=2' : ''
     for (let i = 0; i < 120; i++) {
       await new Promise((r) => setTimeout(r, 1000))
-      const res = await fetch(`/api/image/task/${taskId}`, {
+      const res = await fetch(`/api/image/task/${taskId}${suffix}`, {
         headers: key ? { 'x-pixai-key': key } : {},
       })
       if (!res.ok) throw new Error(`轮询失败: ${res.status}`)
@@ -84,13 +85,14 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
         ? 'illustrious'
         : provider === 'tensorart'
           ? resolveImagePromptFamily(TENSORART_MODELS[settings.tensorartModel] ?? TENSORART_MODELS['wai_nsfw_v16'])
-          : resolveImagePromptFamily(IMAGE_MODELS[settings.imageModel] ?? IMAGE_MODELS['tsubaki_v2'])
+          : resolveImagePromptFamily(IMAGE_MODELS[settings.imageModel] ?? IMAGE_MODELS['tsubaki_v3'])
       // Appearance anchor stays first. Scene tags follow. Quality words depend on the backend.
       const { prompt: finalPrompt, negative } = buildImagePrompt({
         scene: prompt,
         character,
         extraTags: [presetTags, styleTags, customTags],
         family,
+        memory: getSession()?.memory,
       })
       let imageUrls: string[]
 
@@ -125,7 +127,8 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
         if (!jobId) throw new Error('未获取到 TensorArt Job ID')
         imageUrls = await pollTensorart(jobId)
       } else {
-        const modelId = (IMAGE_MODELS[settings.imageModel] ?? IMAGE_MODELS['tsubaki_v2']).modelId
+        const pxCfg = IMAGE_MODELS[settings.imageModel] ?? IMAGE_MODELS['tsubaki_v3']
+        const modelId = pxCfg.modelId
         const res = await fetch('/api/image/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -135,7 +138,8 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
             modelId,
             width: 768,
             height: 1280,
-            batchSize: 4,
+            aspectRatio: '2:3',
+            batchSize: pxCfg.apiVersion === 'v2' ? 1 : 4,
             apiKey: settings.pixaiApiKey,
           }),
         })
@@ -146,7 +150,7 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
         const data = await res.json()
         const taskId: string = data?.id
         if (!taskId) throw new Error('未获取到 PixAI 任务 ID')
-        imageUrls = await pollPixai(taskId)
+        imageUrls = await pollPixai(taskId, data?.apiVersion === 'v2' ? 'v2' : 'v1')
       }
 
       setImages((prev) => [

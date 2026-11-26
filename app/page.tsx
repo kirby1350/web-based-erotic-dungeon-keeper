@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { Character, type AppSettings, type GameSession } from '@/lib/types'
 import { getCharacter, getKeep, getSession, getSettings, saveGame, saveKeep } from '@/lib/storage'
 import { dzmmReady } from '@/lib/dzmm'
-import { adoptMonster, adoptTrap, emptyKeep, buildCaptiveRecall, collapsed, cageKind, fateEssence, FATE_LABEL, recordSprung, fateGate, grantEssence, planReturn, rememberIntruder, stationFor, trainingSessionSummary, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
+import { adoptMonster, adoptTrap, emptyKeep, buildCaptiveRecall, collapsed, cageKind, fateEssence, FATE_LABEL, recordSprung, fateGate, grantEssence, planReturn, rememberIntruder, stampBrand, stationFor, trainingSessionSummary, type CaptiveRecord, type IntruderFate, type KeeperBrief, type KeeperSave, type RosterEntry } from '@/lib/keeper'
+import { itemActive } from '@/lib/terms'
+import { crestFromScene } from '@/lib/terms-dk'
 import { buildAftermathPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
 import { AftermathPopup } from '@/components/aftermath-popup'
@@ -47,8 +49,13 @@ function writeLive(character: Character | null, session: GameSession | null, con
 
 function adoptArrival(keep: KeeperSave, payload: BeginIntrusion): KeeperSave {
   let next = keep
+  const newTrap = payload.trap && !keep.traps.some((t) => t.id === payload.trap!.id)
+  const newMonster = payload.monster && !keep.monsters.some((m) => m.id === payload.monster!.id)
   if (payload.trap) next = adoptTrap(next, payload.trap)
   if (payload.monster) next = adoptMonster(next, payload.monster)
+  if ((newTrap || newMonster) && next.progress.essence >= 2) {
+    next = { ...next, progress: { ...next.progress, essence: next.progress.essence - 2 } }
+  }
   return next
 }
 
@@ -122,7 +129,12 @@ export default function HomePage() {
     const whole = entry.character
     // 双人：只结算焦点这一个，同伴接着这一场（同一个名额、同一段记录）
     const heir = promotePartner(whole)
-    const { partner: _partner, party: _party, ...current } = whole
+    const { partner: _partner, party: _party, ...rawCurrent } = whole
+    const crestedBait = fate === 'defeated' && Boolean(next.campaign?.raid) && isRaidMember(rawCurrent.name)
+      && (itemActive(rawCurrent.terms, rawCurrent.turnCount ?? 0) || crestFromScene(rawCurrent))
+    const current = crestedBait
+      ? stampBrand(rawCurrent, '淫纹诱饵', line.trim() || '带着发作的淫纹归队，当着讨伐队同伴的面腿软发情')
+      : rawCurrent
     const remembered = buildCaptiveRecall(entry.session, fate)
     const record: CaptiveRecord = {
       id: crypto.randomUUID(),
@@ -140,7 +152,7 @@ export default function HomePage() {
       ledger: line.trim(),
     }
     if (heir) {
-      next = { ...next, campaign: recordFate(next.campaign ?? emptyCampaign(), current.name, fate) }
+      next = { ...next, campaign: recordFate(next.campaign ?? emptyCampaign(), current.name, fate, { crestedBait }) }
       next = grantEssence({
         ...next,
         roster: next.roster.map((item) => item.id === id ? { ...item, character: heir, station: '同伴留在原地' } : item),
@@ -154,7 +166,7 @@ export default function HomePage() {
       return
     }
     const removingActive = next.activeId === id
-    next = { ...next, campaign: recordFate(next.campaign ?? emptyCampaign(), current.name, fate) }
+    next = { ...next, campaign: recordFate(next.campaign ?? emptyCampaign(), current.name, fate, { crestedBait }) }
     next = grantEssence({
       ...next,
       roster: next.roster.filter((item) => item.id !== id),
@@ -177,13 +189,17 @@ export default function HomePage() {
     const current = live.activeId === id ? (getCharacter() ?? entry.character) : entry.character
     if (!force && !fateGate(current, fate).ok) return
     const down = collapsed(current)
+    const crestedBait = fate === 'defeated' && Boolean(live.campaign?.raid) && isRaidMember(current.name)
+      && (itemActive(current.terms, current.turnCount ?? 0) || crestFromScene(current))
     const brief = fate === 'kept'
       ? '她被留在收藏室。这场调教到此结束，她记得城主和自己的身体。'
       : fate === 'broken'
         ? down
           ? '她的生命值到了 0，身体撑不住。按玩坏结算。记不清计划和说过的话，只剩身体。'
           : '她被玩坏。记不清计划和说过的话，只剩身体。'
-        : '她被放走。她记得往外的路，也记得自己栽在哪一层。'
+        : crestedBait
+          ? '她带着正在发作的淫纹被你故意放归讨伐队大营。当着同伴的面腿软发情、失态呻吟，不仅说不出迷宫死穴，反而动摇整支讨伐队的军心。'
+          : '她被放走。她记得往外的路，也记得自己栽在哪一层。'
     aftermath.ask({
       title: `${FATE_LABEL[fate]} · ${current.name}`,
       prompt: buildAftermathPrompt({
@@ -309,9 +325,9 @@ export default function HomePage() {
           onOpenSettings={() => setShowSettings(true)}
         />
       )}
-      {screen === 'gate' && <IntruderGate keep={keep} raidNext={keep.campaign?.raid ? raidRemaining(keep.campaign)[0] : undefined} cheat={settings.cheatMode === true} onBegin={begin} onBack={() => setScreen('hall')} />}
+      {screen === 'gate' && <IntruderGate keep={keep} raidNext={keep.campaign?.raid ? raidRemaining(keep.campaign)[0] : undefined} raidCompanion={keep.campaign?.raid ? raidRemaining(keep.campaign)[1] : undefined} cheat={settings.cheatMode === true} onBegin={begin} onBack={() => setScreen('hall')} />}
       {screen === 'collection' && (
-        <KeeperCollection keep={keep} settings={settings} cheat={settings.cheatMode === true} blocked={keep.roster.length >= keep.progress.intruderSlots} onBringBack={bringBack} onUpdate={updateCaptive} onBack={() => setScreen('hall')} />
+        <KeeperCollection keep={keep} settings={settings} cheat={settings.cheatMode === true} blocked={keep.roster.length >= keep.progress.intruderSlots} onBringBack={bringBack} onUpdate={updateCaptive} onKeep={commitKeep} onBack={() => setScreen('hall')} />
       )}
       {screen === 'archive' && <KeeperArchive keep={keep} cheat={settings.cheatMode === true} onKeep={commitKeep} onBack={() => setScreen('hall')} />}
       {screen === 'dungeon' && <DungeonPage key={`${dungeonView.tab}-${dungeonView.kind}`} keep={keep} settings={settings} initialTab={dungeonView.tab} initialKind={dungeonView.kind} onKeep={commitKeep} onBack={() => setScreen('hall')} />}

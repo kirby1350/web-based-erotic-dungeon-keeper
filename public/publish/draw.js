@@ -19,10 +19,11 @@ window.Dungeon = window.Dungeon || {};
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-  async function pollPixai(taskId, key) {
+  async function pollPixai(taskId, key, apiVersion) {
+    var suffix = apiVersion === 'v2' ? '?v=2' : '';
     for (var i = 0; i < 120; i++) {
       await sleep(1000);
-      var res = await fetch('/api/image/task/' + taskId, { headers: key ? { 'x-pixai-key': key } : {} });
+      var res = await fetch('/api/image/task/' + taskId + suffix, { headers: key ? { 'x-pixai-key': key } : {} });
       if (!res.ok) throw new Error('轮询失败: ' + res.status);
       var data = await res.json();
       var status = data && data.status;
@@ -92,12 +93,13 @@ window.Dungeon = window.Dungeon || {};
     }
 
     // default: PixAI
-    var pxModel = (C.IMAGE_MODELS[s.imageModel] || C.IMAGE_MODELS.tsubaki_v2);
+    var pxModel = (C.IMAGE_MODELS[s.imageModel] || C.IMAGE_MODELS.tsubaki_v3);
     var pres = await fetch('/api/image/generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompts: prompt, negativePrompts: neg, modelId: pxModel.modelId,
-        width: C.IMAGE_WIDTH, height: C.IMAGE_HEIGHT, batchSize: C.IMAGE_BATCH,
+        width: C.IMAGE_WIDTH, height: C.IMAGE_HEIGHT, aspectRatio: '2:3',
+        batchSize: pxModel.apiVersion === 'v2' ? 1 : C.IMAGE_BATCH,
         apiKey: s.pixaiApiKey || undefined,
       }),
     });
@@ -105,7 +107,7 @@ window.Dungeon = window.Dungeon || {};
     var pdata = await pres.json();
     var taskId = pdata && pdata.id;
     if (!taskId) throw new Error('未获取到 PixAI 任务 ID');
-    return pollPixai(taskId, s.pixaiApiKey || '');
+    return pollPixai(taskId, s.pixaiApiKey || '', pdata && pdata.apiVersion);
   }
 
   D.draw = { available: available, platformAvailable: platformAvailable, generate: generate };

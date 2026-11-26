@@ -21,3 +21,5 @@ next-env.d.ts
 test-results/
 playwright-report/
 public/portraits-manifest.json
+public/portraits/**/.toolbox-meta.json
+public/portraits/**/.tmp-*

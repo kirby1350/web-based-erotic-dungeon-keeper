@@ -25,6 +25,10 @@ assert.equal(P.resolvePortrait({ ...atago, avatarUrl: null }, { atago: ['pure'] 
 assert.equal(P.resolvePortrait(atago, null).focus, P.PORTRAIT_FOCUS.atago)
 assert.equal(P.resolvePortrait(broken, { atago: ['pure.webp', 'climax.webp'] }).src, '/portraits/atago/climax.webp', 'webp 优先')
 assert.equal(P.resolvePortrait({ ...broken, pleasure: 50 }, { atago: ['pure.webp', 'shaken'] }).src, '/portraits/atago/shaken.png', 'png 和 webp 混用')
+assert.deepEqual(
+  P.availablePortraitStages(atago, { atago: ['climax.webp', 'pure.webp', 'fallen'] }).map((s) => `${s.id}:${s.src}`),
+  ['pure:/portraits/atago/pure.webp', 'fallen:/portraits/atago/fallen.png', 'climax:/portraits/atago/climax.webp'],
+)
 
 // 清单脚本：只收合法状态名
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'portraits-'))
@@ -40,7 +44,7 @@ fs.rmSync(tmp, { recursive: true, force: true })
 assert.deepEqual(S.corruptionView(fallen), { score: 48, tier: 1, label: '动摇', toNext: 92, nextAt: 50 })
 assert.equal(S.corruptionView(broken).toNext, 100)
 const after = { ...fallen, pleasure: 42, desire: 18, bodyDevelopment: { ...dev(2), anus: 3 }, brands: ['淫纹'] }
-assert.deepEqual(S.statusChanges(fallen, after), ['快感 +12', '欲望 -2', '开发·后庭 2→3', '堕落 动摇→沦陷', '烙印「淫纹」'])
+assert.deepEqual(S.statusChanges(fallen, after), ['快感 +12', '欲望 -2', '开发·后庭 2→3', '觉醒「后庭酥化」', '堕落 动摇→沦陷', '烙印「淫纹」'])
 assert.deepEqual(S.pushChanges(['旧1', '旧2', '旧3'], ['a', 'b', 'c']), ['c', 'b', 'a', '旧1', '旧2'])
 const keep = K.emptyKeep()
 keep.traps = [{ id: 't1', name: '触手深渊', mechanism: '缠住', prose: '', placed: true, source: 'preset' }]

@@ -123,6 +123,19 @@ export function cleanContent(content: string): string {
   return (index < 0 ? content : content.slice(0, index)).trim()
 }
 
+/** 构造历史消息时去掉更早回合的 [OPTIONS]/[SCENE]/[STATS]/[DESC] 尾注，只保留最近一轮助手消息作格式锚点，避免旧数值污染并节省上下文。 */
+export function compactHistoryMessages<T extends { role: 'user' | 'assistant'; content: string }>(messages: T[]): T[] {
+  let lastAssistant = -1
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'assistant') { lastAssistant = i; break }
+  }
+  return messages.map((message, index) => {
+    if (message.role !== 'assistant' || index === lastAssistant) return { ...message }
+    const prose = cleanContent(message.content)
+    return { ...message, content: prose || message.content }
+  })
+}
+
 export function parseOptions(content: string): string[] {
   const match = content.match(/\[OPTIONS\]([\s\S]*?)(?:\[\/OPTIONS\]|\[SCENE|\[STATS|\[DESC|\[PARTNER|$)/i)
   return match ? match[1].split('\n').map((line) => line.trim().replace(/^[-*•]\s*/, '').replace(/^\d+[.、)]\s*/, '')).filter(Boolean) : []

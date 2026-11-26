@@ -1,6 +1,7 @@
 // 场景右栏的状态视图：堕落档进度、生效中的陷阱魔物、回合间的数值变化日志。只读，不改存档。
 import type { BodyPart, Character } from '@/lib/types'
 import type { KeeperSave } from '@/lib/keeper'
+import { newlyUnlockedDevTraits } from '@/lib/body-development'
 import { CORRUPT_TIERS, corruptTierOf } from '@/lib/terms'
 import { corruptionOf, crestFromScene } from '@/lib/terms-dk'
 
@@ -63,6 +64,7 @@ export function statusChanges(before: Character, after: Character): string[] {
       if (eb > ea) out.push(`开发·${label} +${eb - ea}`)
     }
   }
+  for (const trait of newlyUnlockedDevTraits(before.bodyDevelopment, after.bodyDevelopment)) out.push(`觉醒「${trait.title}」`)
   const ta = corruptTierOf(corruptionOf(before)), tb = corruptTierOf(corruptionOf(after))
   if (ta !== tb) out.push(`堕落 ${CORRUPT_TIERS[ta]}→${CORRUPT_TIERS[tb]}`)
   for (const b of after.brands ?? []) if (!(before.brands ?? []).includes(b)) out.push(`烙印「${b}」`)

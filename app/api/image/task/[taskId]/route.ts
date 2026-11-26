@@ -12,7 +12,8 @@ export async function GET(
   }
 
   try {
-    const response = await fetch(`https://api.pixai.art/v1/task/${taskId}`, {
+    const apiVersion = req.nextUrl.searchParams.get('v') === '2' ? 'v2' : 'v1'
+    const response = await fetch(`https://api.pixai.art/${apiVersion}/task/${taskId}`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
       },

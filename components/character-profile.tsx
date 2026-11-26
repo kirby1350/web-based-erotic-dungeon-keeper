@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { Maximize2, X } from 'lucide-react'
 import { RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
 import { characterFromPreset, FATE_LABEL, CAGES, type CaptiveRecord } from '@/lib/keeper'
 import { getKeep, saveKeep } from '@/lib/storage'
 import { CORRUPT_TIERS, AROUSAL_TIERS, TERM_SLOTS, TERM_SLOT_LABEL, TERM_SOURCE_LABEL, addOverrides, itemActive, resetSlot, toggleLock, type TermSlot } from '@/lib/terms'
 import { CREST_ITEM, applyCrest, corruptionOf, dkTerms, removeCrest, sourceWork } from '@/lib/terms-dk'
+import { visibleDevTraits } from '@/lib/body-development'
+import { availablePortraitStages, portraitState, type PortraitStageId } from '@/lib/portraits'
+import { usePortraitManifest } from '@/components/state-portrait'
 import { IntruderDossier } from '@/components/intruder-dossier'
 
 export interface ProfileHistory { title: string; text: string }
@@ -76,13 +79,13 @@ export function TermsCard({ character, cheat, onChange }: { character: Character
           )
         })}
       </ul>
-      <p className="text-[11px] text-muted-foreground leading-relaxed">器官叫法跟本回合快感走，回合结束就回落；自称和叫你跟堕落走，是永久的。在对话里说「以后叫自己…」「以后叫我…」「把你的胸叫做…」，她会记住。</p>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">部位羞耻称呼随当轮快感与堕落自动升温；自称与对你的称呼随堕落档永久改变。你也可在对话中直接下令调教改口（如「以后叫我主人」「把你的胸叫做…」），她会铭记在心。</p>
       {onChange && (
         <div className="flex flex-wrap items-center gap-2 text-[11px]">
           {crest
             ? <><span className="text-pink-200">{character.terms?.itemLabel ?? CREST_ITEM.label}：还剩 {(character.terms?.itemUntil ?? 0) - (character.turnCount ?? 0)} 回合</span>
                 <button type="button" className="text-muted-foreground" onClick={() => onChange(removeCrest(character))}>解除淫纹</button></>
-            : <button type="button" className="text-primary" onClick={buyCrest}>刻上{CREST_ITEM.label}（{CREST_ITEM.cost} 淫髓，{CREST_ITEM.turns} 回合内档位 +1）</button>}
+            : <button type="button" className="text-primary text-left" onClick={buyCrest}>刻上{CREST_ITEM.label}（{CREST_ITEM.cost} 淫髓，{CREST_ITEM.turns} 回合内档位 +1；讨伐队成员带纹放归可化作发情诱饵）</button>}
         </div>
       )}
     </section>
@@ -93,19 +96,129 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
   const character = isCharacter(person) ? person : characterFromPreset(person)
   const corruption = corruptionOf(character)
   const tier = dkTerms(character).corruptTier
+  const devTraits = isCharacter(person) ? visibleDevTraits(character.bodyDevelopment) : []
+  const manifest = usePortraitManifest()
+  const stages = availablePortraitStages(person, manifest)
+  const liveState = isCharacter(person) ? portraitState(character) : { tier: 'pure' as const, climax: false }
+  const defaultStageId: PortraitStageId = liveState.climax ? 'climax' : liveState.tier
+  const [pickedStage, setPickedStage] = useState<PortraitStageId | 'avatar' | null>(null)
+  const [lightbox, setLightbox] = useState(false)
+
+  const activeStageKey: PortraitStageId | 'avatar' = pickedStage
+    ?? (stages.find((s) => s.id === defaultStageId)?.id ?? stages[0]?.id ?? 'avatar')
+  const currentStageObj = activeStageKey === 'avatar' ? null : stages.find((s) => s.id === activeStageKey)
+  const displaySrc = currentStageObj?.src ?? person.avatarUrl ?? null
+
   return (
     <div className="fixed inset-0 z-50 bg-black/80 overflow-y-auto" data-testid="character-profile" role="dialog" aria-label={`${person.name}的档案`}>
+      {lightbox && displaySrc && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/92 flex flex-col items-center justify-center p-4 gap-3"
+          onClick={() => setLightbox(false)}
+        >
+          <img
+            src={displaySrc}
+            alt={`${person.name} · ${currentStageObj?.label ?? '头像'}`}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[82vh] max-w-[94vw] rounded-xl border border-border object-contain shadow-2xl"
+          />
+          {stages.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              {stages.map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setPickedStage(st.id)}
+                  className={`px-3 py-1 rounded-full border text-xs transition-colors ${activeStageKey === st.id ? 'border-primary bg-primary/20 text-primary font-bold' : 'border-white/20 bg-black/60 text-white/75 hover:text-white'}`}
+                >
+                  {st.label}
+                </button>
+              ))}
+              {person.avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setPickedStage('avatar')}
+                  className={`px-3 py-1 rounded-full border text-xs transition-colors ${activeStageKey === 'avatar' ? 'border-primary bg-primary/20 text-primary font-bold' : 'border-white/20 bg-black/60 text-white/75 hover:text-white'}`}
+                >
+                  头像
+                </button>
+              )}
+            </div>
+          )}
+          <button type="button" onClick={() => setLightbox(false)} className="text-xs text-white/60 hover:text-white">点击任意处关闭原图</button>
+        </div>
+      )}
       <div className="mx-auto w-full max-w-[480px] md:max-w-3xl lg:max-w-6xl min-h-full bg-background border-x border-border/60 p-4 lg:p-8">
         <div className="flex justify-end">
-          <button type="button" onClick={onClose} className="flex items-center gap-1 text-xs text-muted-foreground"><X className="w-4 h-4" />关闭档案</button>
+          <button type="button" onClick={onClose} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><X className="w-4 h-4" />关闭档案</button>
         </div>
         <div className="lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-8">
-          <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-            <div className="w-full aspect-[3/4] max-h-[60vh] rounded-xl overflow-hidden border border-border bg-secondary">
-              {person.avatarUrl
-                ? <img src={person.avatarUrl} alt={person.name} className="w-full h-full object-cover object-top" />
-                : <div className="w-full h-full flex items-center justify-center text-6xl font-bold text-primary">{person.name[0]}</div>}
+          <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+            <div className="group relative w-full aspect-[2/3] max-h-[62vh] rounded-xl overflow-hidden border border-border bg-secondary">
+              {displaySrc ? (
+                <>
+                  <img
+                    src={displaySrc}
+                    alt={`${person.name}${currentStageObj ? ` · ${currentStageObj.label}` : ''}`}
+                    onClick={() => setLightbox(true)}
+                    className="w-full h-full object-cover object-top cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.01]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLightbox(true)}
+                    title="放大查看完整立绘"
+                    className="absolute top-2.5 right-2.5 rounded-md border border-white/20 bg-black/55 px-2 py-1 text-[10px] text-white/85 backdrop-blur-sm hover:bg-black/75 flex items-center gap-1"
+                  >
+                    <Maximize2 className="w-3 h-3" />原图
+                  </button>
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-6xl font-bold text-primary">{person.name[0]}</div>
+              )}
             </div>
+            {stages.length > 0 && (
+              <div className="space-y-1" data-testid="portrait-stage-tabs">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>阶段立绘切换（点击图片可看完整大图）</span>
+                  {currentStageObj && <span className="text-pink-200">{currentStageObj.label}态</span>}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {stages.map((st) => {
+                    const selected = activeStageKey === st.id
+                    const isCurrent = isCharacter(person) && defaultStageId === st.id
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setPickedStage(st.id)}
+                        className={`px-2.5 py-1 rounded-md border text-[11px] transition-colors ${
+                          selected
+                            ? 'border-primary bg-primary/15 text-primary font-bold'
+                            : 'border-border bg-secondary/50 text-muted-foreground hover:text-foreground hover:border-primary/40'
+                        }`}
+                      >
+                        {st.label}{isCurrent ? '·当前' : ''}
+                      </button>
+                    )
+                  })}
+                  {person.avatarUrl && (
+                    <button
+                      type="button"
+                      aria-pressed={activeStageKey === 'avatar'}
+                      onClick={() => setPickedStage('avatar')}
+                      className={`px-2 py-1 rounded-md border text-[11px] transition-colors ${
+                        activeStageKey === 'avatar'
+                          ? 'border-primary bg-primary/15 text-primary font-bold'
+                          : 'border-border bg-secondary/50 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      头像
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <div>
               <h1 className="text-3xl font-bold gold-text">{person.name}</h1>
               <p className="text-sm text-muted-foreground mt-1">{sourceWork(person)} · {RACE_INFO[person.race]?.label}</p>
@@ -118,6 +231,15 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
               <div className="flex justify-between text-[10px] text-muted-foreground">{CORRUPT_TIERS.map((t, i) => <span key={t} className={i <= tier ? 'text-pink-200' : ''}>{t}</span>)}</div>
               {isCharacter(person) && (
                 <p className="text-[11px] text-muted-foreground">{bodyRows(character).map(([k, v]) => `${k} ${v}`).join(' · ')}{character.brands?.length ? ` · 烙印 ${character.brands.length}` : ''}</p>
+              )}
+              {devTraits.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {devTraits.map((trait) => (
+                    <span key={trait.id} title={trait.detail} className="rounded-full border border-pink-400/50 bg-pink-500/15 px-2 py-0.5 text-[10px] text-pink-200">
+                      {trait.title}
+                    </span>
+                  ))}
+                </div>
               )}
             </section>
             <TermsCard character={character} cheat={cheat} onChange={onChange} />

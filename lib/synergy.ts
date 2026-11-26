@@ -27,6 +27,9 @@ export const SYNERGY_RULES: SynergyRule[] = [
   { id: 'slime_machine', name: '润滑机关', trap: ['slime'], monster: ['machine'], bonus: 0.25, note: '粘液把她浑身打湿，机械动作毫无阻滞，一下比一下深。' },
   { id: 'hypno_any', name: '幻中受辱', trap: ['hypno'], monster: [], bonus: 0.2, note: '幻觉让她认不清是谁在碰她，抵抗慢了半拍。' },
   { id: 'milk_aphro', name: '催乳牧场', trap: ['aphro', 'milk'], monster: ['milk', 'machine'], bonus: 0.3, note: '发情让乳房胀起来，挤奶装置正好接住。' },
+  { id: 'bind_milk', name: '悬缚榨乳', trap: ['bind'], monster: ['milk'], bonus: 0.25, note: '绳索与枷具将双臂锁死挺起胸口，榨乳吸盘得以死死咬住前端尽情抽吸。' },
+  { id: 'bind_oviposit', name: '缚躯植卵', trap: ['bind', 'slime'], monster: ['parasite'], bonus: 0.3, note: '四肢动弹不得，产卵管得以顺着湿滑体液一寸寸抵进深处灌注温卵。' },
+  { id: 'trap_aphro_gland', name: '催淫吐息', trap: ['bind', 'tentacle', 'hypno'], monster: ['aphro'], bonus: 0.25, note: '机关困住手脚的同时，魔物喷吐的浓烈催淫甜雾被她一口口吸进肺腑。' },
   { id: 'shock_tentacle', name: '电流触手', trap: ['shock'], monster: ['tentacle', 'slime'], bonus: 0.3, note: '电流让她的肌肉不听使唤，缠上来的东西更好钻进去。' },
   { id: 'parasite_slime', name: '温巢孕育', trap: ['parasite'], monster: ['slime', 'tentacle'], bonus: 0.3, note: '温热的巢让寄生的东西安顿下来，她的小腹一阵阵发紧。' },
 ]
@@ -38,12 +41,16 @@ function hit(need: DefenseTag[], have: Set<DefenseTag>): boolean {
   return need.length === 0 || need.some((tag) => have.has(tag))
 }
 
-/** 第 floor 层（从 1 起）的连携。需要同层同时有陷阱和魔物。 */
+/** 第 floor 层（从 1 起）的连携。需要同层同时有陷阱和魔物（含魔物变异带来的标签）。 */
 export function floorSynergies(save: KeeperSave, floor: number): FloorSynergy[] {
   const layer = save.floors?.[floor - 1]
   if (!layer || !layer.trapIds.length || !layer.monsterIds.length) return []
   const trapTags = new Set(save.traps.filter((t) => layer.trapIds.includes(t.id)).flatMap((t) => tagsOf(`${t.name} ${t.mechanism}`)))
-  const monsterTags = new Set(save.monsters.filter((m) => layer.monsterIds.includes(m.id)).flatMap((m) => tagsOf(`${m.name} ${m.appearance} ${m.behavior}`)))
+  const mutTagMap: Record<string, DefenseTag> = { aphro_gland: 'aphro', milk_sucker: 'milk', bind_tendril: 'bind', ovipositor: 'parasite' }
+  const monsterTags = new Set(save.monsters.filter((m) => layer.monsterIds.includes(m.id)).flatMap((m) => [
+    ...tagsOf(`${m.name} ${m.appearance} ${m.behavior}`),
+    ...(m.mutations ?? []).map((id) => mutTagMap[id]).filter((x): x is DefenseTag => !!x),
+  ]))
   return SYNERGY_RULES.filter((rule) => rule.trap.some((tag) => trapTags.has(tag)) && hit(rule.monster, monsterTags))
     .map(({ id, name, note, bonus }) => ({ id, name, note, bonus }))
 }

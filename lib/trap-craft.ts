@@ -69,6 +69,39 @@ export const PHASE_RULES: string[] = [
 ]
 
 export interface TrapLike { id: string; name: string; mechanism: string; prose?: string; category?: string; status?: string; habit?: string; level?: number; hits?: number }
+export interface MonsterLike { id: string; name: string; appearance?: string; behavior: string; habit?: string; level?: number; hits?: number; mutations?: string[] }
+
+export interface MonsterMutation {
+  id: string
+  label: string
+  tag: DefenseTag
+  parts: BodyPart[]
+  effect: string
+}
+
+export const MONSTER_MUTATIONS: MonsterMutation[] = [
+  { id: 'aphro_gland', label: '催情毒腺', tag: 'aphro', parts: ['clitoris', 'vagina'], effect: '分泌甜腻催情雾与发热涎液，接触部位敏感度暴涨' },
+  { id: 'milk_sucker', label: '榨乳吸腕', tag: 'milk', parts: ['breast'], effect: '生出温热吸乳盘，专门罩住双乳与乳尖节拍抽吸催乳' },
+  { id: 'bind_tendril', label: '死锁缠丝', tag: 'bind', parts: ['breast', 'anus'], effect: '筋膜与触须韧性倍增，将猎物死死箍成无法并腿的羞耻姿势（束缚升至 Lv3）' },
+  { id: 'ovipositor', label: '拟态产卵管', tag: 'parasite', parts: ['vagina', 'anus'], effect: '前端伸出柔软脉动的灌注管，往最深处注入温热胶质软卵' },
+]
+
+export const MONSTER_LEVEL_RULES = [
+  { level: 2, hits: 0, cost: 8, gain: '植入第 1 项变异器官，扩展同层连携标签' },
+  { level: 3, hits: 2, cost: 14, gain: '植入第 2 项变异器官，拘束与侵犯烈度升满' },
+] as const
+
+export function monsterNextLevelRule(monster: MonsterLike) {
+  return MONSTER_LEVEL_RULES.find((rule) => rule.level === (monster.level ?? 1) + 1) ?? null
+}
+
+export function monsterLevelUpBlock(monster: MonsterLike, essence: number): string {
+  const rule = monsterNextLevelRule(monster)
+  if (!rule) return '已进化至满阶'
+  if ((monster.hits ?? 0) < rule.hits) return `还需迎击猎物 ${rule.hits - (monster.hits ?? 0)} 次`
+  if (essence < rule.cost) return `喂养进化需 ${rule.cost} 淫髓`
+  return ''
+}
 
 export function guessCategory(text: string): string {
   const rules: [RegExp, string][] = [
@@ -154,7 +187,7 @@ export function themeMatch(floorText: string, defenseTexts: string[]): DefenseTa
 // ---------- 命中 ----------
 export const PART_LABEL: Record<BodyPart, string> = { breast: '乳', clitoris: '阴蒂', urethra: '尿道', vagina: '小穴', anus: '后穴' }
 const PART_WORDS: [BodyPart, RegExp][] = [
-  ['breast', /乳|胸/], ['clitoris', /阴蒂|蒂珠|豆/], ['urethra', /尿道|尿/], ['anus', /后穴|屁穴|肛|菊/], ['vagina', /阴道|小穴|骚穴|子宫|宫口|孔穴|贯穿/],
+  ['breast', /乳|胸|奶/], ['clitoris', /阴蒂|蒂珠|豆/], ['urethra', /尿道|尿/], ['anus', /后穴|屁穴|肛|菊/], ['vagina', /阴道|小穴|骚穴|子宫|宫口|孔穴|贯穿|龙穴/],
 ]
 export function partsIn(text: string): BodyPart[] {
   return PART_WORDS.filter(([, re]) => re.test(text)).map(([part]) => part)
@@ -163,12 +196,50 @@ export function trapParts(trap: TrapLike): BodyPart[] {
   const found = partsIn(`${trap.mechanism} ${trap.prose ?? ''}`)
   return found.length ? found : trapSheet(trap).parts
 }
+export function monsterParts(monster: MonsterLike): BodyPart[] {
+  const mutParts = (monster.mutations ?? [])
+    .map((id) => MONSTER_MUTATIONS.find((m) => m.id === id))
+    .filter((m): m is MonsterMutation => !!m)
+    .flatMap((m) => m.parts)
+  const found = partsIn(`${monster.appearance ?? ''} ${monster.behavior} ${monster.habit ?? ''}`)
+  const merged = [...new Set([...found, ...mutParts])]
+  return merged.length ? merged : ['breast', 'vagina']
+}
+export function monsterHitPreview(monster: MonsterLike, character: Pick<Character, 'race' | 'bodyDevelopment' | 'sexual' | 'otherDescription' | 'weakParts' | 'weakTags'>): HitPreview {
+  const mutText = (monster.mutations ?? [])
+    .map((id) => MONSTER_MUTATIONS.find((m) => m.id === id)?.effect ?? '')
+    .join(' ')
+  const weak = new Set(weakParts(character))
+  const dev = (character.bodyDevelopment ?? {}) as Partial<Record<BodyPart, number>>
+  const parts = monsterParts(monster).map((part) => ({ part, label: PART_LABEL[part], level: dev[part] ?? 0, weak: weak.has(part) }))
+  const tags = tagsOf(`${monster.name} ${monster.appearance ?? ''} ${monster.behavior} ${mutText}`)
+  const tagHits = (character.weakTags ?? []).filter((tag) => tags.includes(tag))
+  const tagNote = tagHits.length ? `正中她对「${tagHits.map((t) => TAG_WEAK_LABELS[t]).join('、')}」的弱点` : ''
+  const rule = RACE_TAGS[character.race]
+  const race = rule?.weak.some((tag) => tags.includes(tag)) ? 'weak' : rule?.resist.some((tag) => tags.includes(tag)) ? 'resist' : ''
+  const score = Math.max(0, Math.min(3, parts.filter((p) => p.weak).length * 2 + (tagHits.length ? 1 : 0) + (parts.some((p) => p.level >= 2) ? 1 : 0) + (race === 'weak' ? 1 : race === 'resist' ? -1 : 0)))
+  return { parts, race, raceNote: race ? rule!.note : '', tagHits, tagNote, score }
+}
 
-/** 档案里写到死穴、弱点、受不了的那几句提到的部位 */
-export function weakParts(character: Pick<Character, 'sexual' | 'otherDescription'>): BodyPart[] {
+/** 档案里显式标注的 weakParts 与文本中死穴/受不了/最敏感语句提到的部位合并 */
+export function weakParts(character: Pick<Character, 'sexual' | 'otherDescription' | 'weakParts'>): BodyPart[] {
+  const explicit = Array.isArray(character.weakParts) ? character.weakParts : []
   const text = `${character.sexual ?? ''}。${character.otherDescription ?? ''}`
-  const lines = text.split(/[。；;\n]/).filter((line) => /死穴|弱点|受不了|最怕|一碰就/.test(line))
-  return [...new Set(lines.flatMap(partsIn))]
+  const lines = text.split(/[。；;\n]/).filter((line) => /死穴|弱点|受不了|最怕|一碰就|最敏感|崩得最快|敏感带/.test(line))
+  return [...new Set([...explicit, ...lines.flatMap(partsIn)])]
+}
+
+const TAG_WEAK_LABELS: Record<DefenseTag, string> = {
+  tentacle: '纠缠钻探',
+  slime: '粘液包裹',
+  bind: '拘束压制',
+  aphro: '催情香雾',
+  hypno: '催眠暗示',
+  machine: '机械调校',
+  milk: '榨乳吸吮',
+  fire: '灼热狐火',
+  shock: '电流麻痹',
+  parasite: '异物寄生',
 }
 
 const RACE_TAGS: Partial<Record<Race, { weak: DefenseTag[]; resist: DefenseTag[]; note: string }>> = {
@@ -181,22 +252,36 @@ const RACE_TAGS: Partial<Record<Race, { weak: DefenseTag[]; resist: DefenseTag[]
   succubus: { weak: ['hypno'], resist: ['aphro'], note: '魅魔对媚药早有抗性，反而怕被支配心智' },
 }
 
-export interface HitPreview { parts: { part: BodyPart; label: string; level: number; weak: boolean }[]; race: 'weak' | 'resist' | ''; raceNote: string; score: number }
-export function hitPreview(trap: TrapLike, character: Pick<Character, 'race' | 'bodyDevelopment' | 'sexual' | 'otherDescription'>): HitPreview {
+export interface HitPreview {
+  parts: { part: BodyPart; label: string; level: number; weak: boolean }[]
+  race: 'weak' | 'resist' | ''
+  raceNote: string
+  tagHits?: DefenseTag[]
+  tagNote?: string
+  score: number
+}
+export function hitPreview(trap: TrapLike, character: Pick<Character, 'race' | 'bodyDevelopment' | 'sexual' | 'otherDescription' | 'weakParts' | 'weakTags'>): HitPreview {
   const weak = new Set(weakParts(character))
   const dev = (character.bodyDevelopment ?? {}) as Partial<Record<BodyPart, number>>
   const parts = trapParts(trap).map((part) => ({ part, label: PART_LABEL[part], level: dev[part] ?? 0, weak: weak.has(part) }))
   const tags = tagsOf(`${trap.name} ${trap.mechanism}`)
+  const tagHits = (character.weakTags ?? []).filter((tag) => tags.includes(tag))
+  const tagNote = tagHits.length ? `正中她对「${tagHits.map((t) => TAG_WEAK_LABELS[t]).join('、')}」的弱点` : ''
   const rule = RACE_TAGS[character.race]
   const race = rule?.weak.some((tag) => tags.includes(tag)) ? 'weak' : rule?.resist.some((tag) => tags.includes(tag)) ? 'resist' : ''
-  const score = Math.max(0, Math.min(3, parts.filter((p) => p.weak).length * 2 + (parts.some((p) => p.level >= 2) ? 1 : 0) + (race === 'weak' ? 1 : race === 'resist' ? -1 : 0)))
-  return { parts, race, raceNote: race ? rule!.note : '', score }
+  const score = Math.max(0, Math.min(3, parts.filter((p) => p.weak).length * 2 + (tagHits.length ? 1 : 0) + (parts.some((p) => p.level >= 2) ? 1 : 0) + (race === 'weak' ? 1 : race === 'resist' ? -1 : 0)))
+  return { parts, race, raceNote: race ? rule!.note : '', tagHits, tagNote, score }
 }
 
 export function hitLine(name: string, preview: HitPreview): string {
   const parts = preview.parts.map((p) => `${p.label}（Lv${p.level}${p.weak ? '，她的死穴' : ''}）`).join('、')
   const weak = preview.parts.filter((p) => p.weak).map((p) => p.label)
-  return `「${name}」主要碰：${parts || '全身'}。${weak.length ? `碰到${weak.join('、')}时才放开崩溃台词，第一次碰到要写出她防线断开的那一下。` : '没有碰到她的死穴，崩溃台词继续锁着。'}${preview.raceNote ? `种族：${preview.raceNote}。` : ''}`
+  const unlock = weak.length
+    ? `碰到${weak.join('、')}时才放开崩溃台词，第一次碰到要写出她防线断开的那一下。${preview.tagNote ? `癖好克制：${preview.tagNote}。` : ''}`
+    : preview.tagNote
+      ? `${preview.tagNote}，命中时可放开崩溃台词，第一次命中要写出她防线断开的那一下。`
+      : '没有碰到她的死穴，崩溃台词继续锁着。'
+  return `「${name}」主要碰：${parts || '全身'}。${unlock}${preview.raceNote ? `种族：${preview.raceNote}。` : ''}`
 }
 
 // ---------- 提示词 ----------

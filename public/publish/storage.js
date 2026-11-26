@@ -54,7 +54,7 @@ window.Dungeon = window.Dungeon || {};
     return {
       chatModel: '', proseStyle: 'standard',
       imageStyle: 'none', imageTagPreset: 'none', imageStyleCustom: '',
-      imageProvider: 'pixai', imageModel: 'tsubaki_v2', tensorartModel: 'wai_nsfw_v16',
+      imageProvider: 'pixai', imageModel: 'tsubaki_v3', tensorartModel: 'wai_nsfw_v16',
       chatApiKey: '', grokApiKey: '', pixaiApiKey: '', tensorartApiKey: '',
     };
   }
@@ -66,7 +66,7 @@ window.Dungeon = window.Dungeon || {};
     if (!C.IMAGE_STYLES[m.imageStyle]) m.imageStyle = 'none';
     if (!C.IMAGE_TAG_PRESETS[m.imageTagPreset]) m.imageTagPreset = 'none';
     if (!C.IMAGE_PROVIDERS[m.imageProvider]) m.imageProvider = 'pixai';
-    if (!C.IMAGE_MODELS[m.imageModel]) m.imageModel = 'tsubaki_v2';
+    if (!C.IMAGE_MODELS[m.imageModel]) m.imageModel = 'tsubaki_v3';
     if (!C.TENSORART_MODELS[m.tensorartModel]) m.tensorartModel = 'wai_nsfw_v16';
     if (typeof m.chatModel !== 'string') m.chatModel = '';
     if (typeof m.imageStyleCustom !== 'string') m.imageStyleCustom = '';

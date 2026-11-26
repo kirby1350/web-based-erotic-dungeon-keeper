@@ -13,7 +13,7 @@ export function usePortraitManifest(): PortraitManifest | null {
   const [manifest, setManifest] = useState<PortraitManifest | null>(cached)
   useEffect(() => {
     if (cached) return
-    pending ??= fetch('/portraits-manifest.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
+    pending ??= fetch('/portraits-manifest.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))
     let live = true
     pending.then((m) => { cached = m; if (live) setManifest(m) })
     return () => { live = false }

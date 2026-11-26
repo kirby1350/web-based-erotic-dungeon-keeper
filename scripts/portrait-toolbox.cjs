@@ -423,7 +423,7 @@ async function cmdGenerate(target, flags, env) {
     convertToWebp(rawTmp, finalWebp)
 
     const avatarPath = path.join(AVATARS_DIR, `${entry.slug}.png`)
-    if ((!fs.existsSync(avatarPath) && flags['crop-avatar'] !== 'false') || flags['overwrite-avatar'] === 'true') {
+    if ((!fs.existsSync(avatarPath) && flags['crop-avatar'] !== 'false') || (flags['overwrite-avatar'] === 'true' && state === 'pure')) {
       cropAvatarFromPortrait(rawTmp, avatarPath)
       console.log(`  [${entry.slug}:${state}] 已同步裁切头像 -> public/avatars/${entry.slug}.png`)
     }
@@ -439,18 +439,72 @@ async function cmdGenerate(target, flags, env) {
   }
 }
 
-async function withRetry(fn, label, retries = 2) {
+async function withRetry(fn, label, retries = 3) {
   let lastErr
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await fn()
     } catch (err) {
       lastErr = err
-      console.warn(`  ⚠️ ${label} 第 ${attempt + 1} 次尝试失败: ${err.message || err}`)
-      if (attempt < retries) await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)))
+      const msg = String(err.message || err)
+      console.warn(`  ⚠️ ${label} 第 ${attempt + 1} 次尝试失败: ${msg}`)
+      if (/credits not enough|insufficient|balance/i.test(msg)) break
+      if (attempt < retries) await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)))
     }
   }
   throw lastErr
+}
+
+async function cmdGenerateBatch(targetListStr, flags, env) {
+  const { all } = loadCharacters()
+  const targets = (targetListStr || '').split(',').map((s) => s.trim()).filter(Boolean)
+  if (!targets.length) throw new Error('请提供角色列表，用逗号分隔')
+  const concurrency = Math.max(1, Math.min(6, Number(flags.concurrency || 4)))
+  const jobs = targets.map((t) => {
+    const entry = all.find((c) => c.name === t || c.slug === t)
+    if (!entry) throw new Error(`找不到角色: ${t}`)
+    const states = flags.states
+      ? flags.states.split(',').map((s) => s.trim()).filter(Boolean)
+      : ALL_STATES
+    return { entry, states }
+  })
+
+  console.log(`=== Tsubaki.3 批量生成队列：共 ${jobs.length} 名角色，并发数 ${concurrency} ===`)
+  let cursor = 0
+  const failed = []
+  let outOfCredits = false
+
+  async function worker(workerId) {
+    while (cursor < jobs.length && !outOfCredits) {
+      const idx = cursor++
+      const job = jobs[idx]
+      console.log(`[Worker ${workerId}] (${idx + 1}/${jobs.length}) 生成「${job.entry.name}」(${job.entry.slug}): ${job.states.join(', ')}`)
+      try {
+        for (const st of job.states) {
+          if (outOfCredits) break
+          await withRetry(
+            () => cmdGenerate(job.entry.slug, { ...flags, states: st, 'skip-manifest': 'true' }, env),
+            `${job.entry.slug}:${st}`,
+            3,
+          )
+        }
+      } catch (err) {
+        const msg = String(err.message || err)
+        console.error(`❌ [Worker ${workerId}] 「${job.entry.name}」中断:`, msg)
+        failed.push(job.entry.name)
+        if (/credits not enough|insufficient|balance|402/i.test(msg)) {
+          outOfCredits = true
+        }
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, (_, i) => worker(i + 1)))
+  execFileSync(process.execPath, [path.join(__dirname, 'build-portraits-manifest.cjs')], { stdio: 'inherit' })
+  if (failed.length > 0) {
+    throw new Error(`部分角色未完成: ${failed.join('、')}`)
+  }
+  console.log('🎉 批量队列全部生成完成！')
 }
 
 async function cmdGenerateMissing(flags, env) {
@@ -517,7 +571,8 @@ async function main() {
   if (cmd === 'check-keys') return await cmdCheckKeys(env)
   if (cmd === 'generate') return await cmdGenerate(target, flags, env)
   if (cmd === 'generate-missing') return await cmdGenerateMissing(flags, env)
-  throw new Error(`未知子命令「${cmd}」。支持：list | check-keys | generate <角色名或slug> | generate-missing`)
+  if (cmd === 'generate-batch') return await cmdGenerateBatch(target, flags, env)
+  throw new Error(`未知子命令「${cmd}」。支持：list | check-keys | generate <角色名或slug> | generate-missing | generate-batch <列表>`)
 }
 
 main().catch((err) => {

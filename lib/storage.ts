@@ -88,6 +88,11 @@ export function getDefaultSettings(): AppSettings {
     grokApiKey: '',
     pixaiApiKey: '',
     tensorartApiKey: '',
+    cloudEndpoint: '',
+    cloudBucket: '',
+    cloudAccessKey: '',
+    cloudSecretKey: '',
+    cloudPublicUrl: '',
   }
 }
 
@@ -171,6 +176,8 @@ export function exportAll(): string {
       grokApiKey: '',
       pixaiApiKey: '',
       tensorartApiKey: '',
+      cloudAccessKey: '',
+      cloudSecretKey: '',
     },
     character: getCharacter(),
     session: getSession(),
@@ -194,6 +201,8 @@ export function importAll(raw: string): boolean {
       grokApiKey: current.grokApiKey,
       pixaiApiKey: current.pixaiApiKey,
       tensorartApiKey: current.tensorartApiKey,
+      cloudAccessKey: current.cloudAccessKey,
+      cloudSecretKey: current.cloudSecretKey,
     })
   }
   if (data.character) saveGame(data.character, normalizeSession(data.session))

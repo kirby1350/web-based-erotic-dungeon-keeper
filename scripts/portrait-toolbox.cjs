@@ -57,12 +57,62 @@ function loadCharacters() {
     slug: portraitSlug(preset) || preset.name,
     lactates: characterLactates(preset),
   }))
-  return { all, negativePrompt: IMAGE_NEGATIVE_PROMPT }
+  return {
+    all,
+    negativePrompt: `${IMAGE_NEGATIVE_PROMPT}, artist name, logo, monochrome, greyscale, white background, simple background, comic, 4koma, multiple views, character sheet`,
+  }
 }
 
-const UPPER_GARMENT_RE = /^(?:white dress|black dress|blue dress|dress|white uniform|military uniform|serafuku|red kimono|kimono|japanese clothes|white robe|robe|black bodysuit|bodysuit|leotard|blue bunny suit|bunny suit|armor|heavy armor|leather armor|breastplate|cream sweater|sweater|cardigan|shawl|white jacket|black sailor collar|tight shirt|shirt|blouse|maid|nun|habit|vest|zipper|cleavage|bare shoulders)$/i
+const ARTIST_PRESETS = {
+  // 偶像大师系
+  'ichinose-shiki': 'artist:kuse (0201), kuse (0201), soft thick painting, glossy skin, detailed lace',
+  'kuwayama-chiyuki': 'artist:paint musume, paint_musume',
+  'sagisawa-fumika': 'artist:nohito, nohito',
+  'miura-azusa': 'artist:41 (taskmaster41), 41_(taskmaster41)',
+  // 碧蓝幻想系
+  narmaya: 'eno yukimi, artist:eno yukimi',
+  galleon: 'artist:obui, obui',
+  katalina: 'nanahara fuyuki, artist:nanahara fuyuki',
+  anila: 'eno yukimi, artist:eno yukimi',
+  yuel: 'tachibana yuu, artist:tachibana yuu',
+  // 蔚蓝档案系
+  'ichinose-asuna': 'artist:thirty_8ght, thirty_8ght, colorful, vibrant colors',
+  'hanekawa-hasumi': 'belko, artist:belko',
+  // 碧蓝航线 / 舰娘系
+  kashino: 'derauea, artist:derauea',
+  illustrious: 'artist:rhasta, rhasta',
+  belfast: 'artist:snowball22, snowball22',
+  takao: 'artist:nicoby, nicoby',
+  akagi: 'artist:ouma tokiichi, ouma_tokiichi',
+  amagi: 'tachibana yuu, artist:tachibana yuu',
+  shinano: 'artist:ouma tokiichi, ouma_tokiichi',
+  taihou: 'artist:rhasta, rhasta',
+  atago: 'artist:nicoby, nicoby',
+  cheshire: 'kaenuco, artist:kaenuco',
+  noshiro: 'artist:nohito, nohito',
+  'new-jersey': 'artist:snowball22, snowball22',
+  // 其他作品与讨伐小队
+  suomi: 'k-suwabe, artist:k-suwabe, colorful, thick brushstrokes',
+  lueira: 'artist:nironiro, nironiro',
+  eclipse: 'artist:kuse (0201), kuse (0201), glossy skin, detailed lace',
+  'hero-alicia': 'v-mag, artist:v-mag',
+  'saint-selena': 'kase daiki, artist:kase daiki',
+  'knight-viola': 'artist:meion, meion',
+}
 
-function buildStatePrompt(preset, state, lactates) {
+function presetArtistFor(slug, flags) {
+  if (flags['artist-map'] && fs.existsSync(flags['artist-map'])) {
+    try {
+      const map = JSON.parse(fs.readFileSync(flags['artist-map'], 'utf8'))
+      if (map[slug]) return map[slug]
+    } catch {}
+  }
+  return ARTIST_PRESETS[slug] || ''
+}
+
+const UPPER_GARMENT_RE = /^(?:white dress|black dress|blue dress|dress|white uniform|military uniform|serafuku|red kimono|kimono|japanese clothes|white robe|robe|black bodysuit|bodysuit|leotard|blue bunny suit|bunny suit|armor|heavy armor|leather armor|breastplate|cream sweater|sweater|cardigan|shawl|white jacket|white cropped jacket|open jacket|lab coat|open lab coat|white coat|black bikini top|pink plaid bikini top|bikini top|criss-cross halterneck|black sailor collar|tight shirt|shirt|blouse|maid|nun|habit|vest|zipper|cleavage|bare shoulders)$/i
+
+function buildStatePrompt(preset, state, lactates, artistTags = '') {
   const baseTags = (preset.danbooruTags || '')
     .split(',')
     .map((t) => t.trim())
@@ -70,6 +120,7 @@ function buildStatePrompt(preset, state, lactates) {
 
   const framing = [
     'masterpiece, best quality, amazing quality',
+    ...(artistTags ? [artistTags] : []),
     'upper body, cowboy shot, front view, centered composition, looking at viewer',
     'dark atmospheric gradient background, dramatic rim lighting, glossy skin, detailed anime illustration',
   ]
@@ -380,10 +431,11 @@ async function cmdGenerate(target, flags, env) {
     }
   }
 
-  console.log(`▶ 开始生成「${entry.name}」(${entry.slug}) | 引擎: ${activeProvider}${activeProvider === 'pixai' ? ` (Tsubaki.${pixaiModel === 'v3' ? '3' : '2'})` : ' (WAI-NSFW-V16)'} | 状态: ${states.join(', ')}`)
+  const artistTags = (flags.artist || presetArtistFor(entry.slug, flags)).trim()
+  console.log(`▶ 开始生成「${entry.name}」(${entry.slug}) | 引擎: ${activeProvider}${activeProvider === 'pixai' ? ` (Tsubaki.${pixaiModel === 'v3' ? '3' : '2'})` : ' (WAI-NSFW-V16)'}${artistTags ? ` | 画风: ${artistTags}` : ''} | 状态: ${states.join(', ')}`)
 
   for (const state of states) {
-    const prompt = buildStatePrompt(entry.preset, state, entry.lactates)
+    const prompt = buildStatePrompt(entry.preset, state, entry.lactates, artistTags)
     console.log(`  [${state}] 提交生成任务...`)
     let result
     if (activeProvider === 'pixai') {

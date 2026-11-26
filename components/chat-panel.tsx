@@ -1,6 +1,7 @@
 'use client'
 
 import { ReplyMarkdown } from '@/components/reply-markdown'
+import { StatePortrait } from '@/components/state-portrait'
 import { useState, useRef, useEffect, type MutableRefObject } from 'react'
 import { Send, Loader2, BookOpen, Square, RotateCcw, RefreshCw, Wrench, Zap, Sparkles, ShieldAlert, Unlock, HeartCrack } from 'lucide-react'
 import { Character, AppSettings, StatusEffect, Encounter, EXPLORE_GAIN, ENCOUNTER_CLEAR_GAIN, getFloorTheme } from '@/lib/types'
@@ -355,11 +356,11 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
               </div>
             ) : (
               <div>
-                <span className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+                <span className="text-xs text-muted-foreground mb-1.5 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {character.avatarUrl ? <img src={character.avatarUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-primary">{character.name[0]}</span>}
+                    <StatePortrait character={character} variant="avatar" className="w-full h-full text-xs" />
                   </span>
-                  {character.name}{msg.guard?.retried && (
+                  <span className="font-semibold text-foreground/90">{character.name}</span>{msg.guard?.retried && (
                   <span className="ml-2 text-[10px] text-muted-foreground/60 tracking-normal" data-testid="guard-retried"
                     title={`第一版没过检查，已自动重写一次：${msg.guard.first.join('；')}${msg.guard.failures.length ? `\n保留较好的一版，仍有：${msg.guard.failures.join('；')}` : ''}`}>· 已自动重写</span>
                 )}</span>
@@ -411,27 +412,42 @@ export function ChatPanel({ character, settings, onRequestImage, onCharacterUpda
         <div className="px-3 pb-2 grid grid-cols-2 gap-2">
           {latestOptions.map((opt, i) => {
             const colors = [
-              'border-blue-500/40 text-blue-300 hover:bg-blue-500/10',
-              'border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10',
-              'border-pink-500/40 text-pink-300 hover:bg-pink-500/10',
-              'border-red-500/40 text-red-300 hover:bg-red-500/10',
+              'border-blue-500/40 text-blue-200 hover:bg-blue-500/10',
+              'border-indigo-500/40 text-indigo-200 hover:bg-indigo-500/10',
+              'border-pink-500/40 text-pink-200 hover:bg-pink-500/10',
+              'border-red-500/40 text-red-200 hover:bg-red-500/10',
             ]
             const labels = chrome.optionLabels
+            const cmdText = `${i + 1}. ${opt}`
             return (
-              <button
-                key={i}
-                onClick={() => {
-                  setInput(`${i + 1}. ${opt}`)
-                  textareaRef.current?.focus()
-                }}
-                className={cn(
-                  'text-left px-3 py-2 rounded-lg border text-xs leading-snug transition-colors',
-                  colors[i] ?? 'border-border text-muted-foreground hover:bg-secondary'
-                )}
-              >
-                <span className="block text-[10px] opacity-60 mb-0.5 tracking-wider">{labels[i]}</span>
-                {opt}
-              </button>
+              <div key={i} className="relative group">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInput(cmdText)
+                    textareaRef.current?.focus()
+                  }}
+                  onDoubleClick={() => sendMessage(cmdText)}
+                  title="单击填入输入框微调；双击或点右上角闪电直接下达命令"
+                  className={cn(
+                    'w-full h-full text-left pl-3 pr-9 py-2 rounded-lg border text-xs leading-snug transition-colors',
+                    colors[i] ?? 'border-border text-muted-foreground hover:bg-secondary'
+                  )}
+                >
+                  <span className="block text-[10px] opacity-65 mb-0.5 tracking-wider">{labels[i]}</span>
+                  {opt}
+                </button>
+                <button
+                  type="button"
+                  disabled={summarising || !!pending}
+                  onClick={() => sendMessage(cmdText)}
+                  title={`直接下令：${opt}`}
+                  aria-label={`直接执行选项${i + 1}`}
+                  className="absolute top-1.5 right-1.5 rounded-md border border-white/15 bg-black/45 px-1.5 py-1 text-[10px] text-amber-300 opacity-75 hover:opacity-100 hover:border-amber-400/60 hover:bg-amber-500/20 transition-all disabled:opacity-30"
+                >
+                  <Zap className="w-3 h-3" />
+                </button>
+              </div>
             )
           })}
         </div>

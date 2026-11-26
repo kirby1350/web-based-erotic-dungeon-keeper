@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Bug, Crosshair, Footprints, Hand, type LucideIcon } from 'lucide-react'
 import { CHARACTER_PRESETS, PRESET_TRAPS, RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
+import { StatePortrait } from '@/components/state-portrait'
+import { sourceWork } from '@/lib/terms-dk'
 import { statusForTrap } from '@/lib/adventure-context'
 import { hitPreview, monsterHitPreview, trapRestraint, trapStatuses, type HitPreview } from '@/lib/trap-craft'
 import { floorSynergies } from '@/lib/synergy'
@@ -133,21 +136,37 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext, r
         <button type="button" onClick={onBack} className="text-xs text-muted-foreground hover:text-foreground transition-colors">回到城主厅</button>
         <div>
           <p className="text-xs tracking-widest text-primary">石门开启 · 猎物踏入</p>
-          <h1 className="text-3xl font-bold gold-text mt-1">{preset.name}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{race?.label} · {primary.source === 'library' ? '知名猎物' : '野生冒险者'} · 胸 {preset.measurements.bust} / 腰 {preset.measurements.waist} / 臀 {preset.measurements.hip}</p>
+          <div className="flex flex-wrap items-baseline gap-2.5 mt-1">
+            <h1 className="text-3xl font-bold gold-text">{preset.name}</h1>
+            <span className="text-xs rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-amber-200">
+              {primary.source === 'library' ? `${sourceWork(preset)} · 知名猎物` : '野生冒险者'}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">{race?.label} · 胸 {preset.measurements.bust} / 腰 {preset.measurements.waist} / 臀 {preset.measurements.hip}</p>
         </div>
 
-        <article className="dungeon-border rounded-xl bg-card p-4 lg:p-6 space-y-4">
-          <div className="flex gap-4">
-            <div className="w-24 h-32 lg:w-40 lg:h-52 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
-              {preset.avatarUrl
-                ? <img src={preset.avatarUrl} alt={preset.name} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-primary">{preset.name[0]}</div>}
+        <article className="dungeon-border rounded-xl bg-card p-4 lg:p-6">
+          <div className="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[260px_minmax(0,1fr)] items-start">
+            <div className="space-y-2.5 mx-auto w-48 sm:w-56 md:w-full">
+              <button
+                type="button"
+                onClick={() => setShowProfile(true)}
+                title="点击翻开完整档案与五阶立绘"
+                className="group relative block w-full aspect-[2/3] rounded-xl overflow-hidden border border-border bg-secondary hover:border-primary/60 transition-all shadow-lg"
+              >
+                <StatePortrait character={targetChar} className="w-full h-full transition-transform duration-500 group-hover:scale-[1.02]" />
+              </button>
+              <button type="button" onClick={() => setShowProfile(true)} className="w-full text-center text-xs text-primary hover:underline" data-testid="open-profile">
+                翻开完整档案与五阶立绘 →
+              </button>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{race?.description}</p>
+            <div className="space-y-3 min-w-0">
+              <p className="text-xs text-muted-foreground leading-relaxed rounded-lg border border-border/70 bg-secondary/30 px-3 py-2">
+                {preset.raceTrait || race?.description}
+              </p>
+              <IntruderDossier person={preset} />
+            </div>
           </div>
-          <button type="button" onClick={() => setShowProfile(true)} className="text-xs text-primary" data-testid="open-profile">翻开完整档案 →</button>
-          <IntruderDossier person={preset} />
         </article>
 
         {step === 'choose' && cheat && (
@@ -172,11 +191,9 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext, r
         )}
 
         {step === 'choose' && companion && companion.preset.name !== preset.name && (
-          <section className="rounded-xl border border-primary/50 bg-card p-4 flex gap-3" data-testid="party-card">
-            <div className="w-14 h-18 lg:w-20 lg:h-24 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
-              {companion.preset.avatarUrl
-                ? <img src={companion.preset.avatarUrl} alt={companion.preset.name} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-xl font-bold text-primary">{companion.preset.name[0]}</div>}
+          <section className="rounded-xl border border-primary/50 bg-card p-4 flex gap-3.5" data-testid="party-card">
+            <div className="w-16 h-24 lg:w-20 lg:h-28 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
+              <StatePortrait character={characterFromPreset(companion.preset)} className="w-full h-full" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[11px] tracking-widest text-primary">她不是一个人来的</p>
@@ -225,11 +242,11 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext, r
         )}
 
         {step === 'choose' && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <Action label="亲自上手" detail="在第一层暗处现身截住她，由你亲手开场调教。" onClick={() => begin('personal')} />
-            <Action label="投入陷阱" detail="诱她一脚踩进你指定的机关，在束缚与快感中挣扎。" onClick={() => setStep('trap')} />
-            <Action label="放出魔物" detail="命眷属迎面扑上缠住她，听候你的旨意层层侵犯。" onClick={() => setStep('monster')} />
-            <Action label="推进廊道" detail="隐于幕后静观其变，看她一步步撞上各层已布防的机关。" onClick={() => begin('corridor')} />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <Action icon={Hand} tone="text-pink-300" label="亲自上手" detail="在第一层暗处现身截住她，由你亲手开场调教。" onClick={() => begin('personal')} />
+            <Action icon={Crosshair} tone="text-amber-300" label="投入陷阱" detail="诱她一脚踩进你指定的机关，在束缚与快感中挣扎。" onClick={() => setStep('trap')} />
+            <Action icon={Bug} tone="text-rose-300" label="放出魔物" detail="命眷属迎面扑上缠住她，听候你的旨意层层侵犯。" onClick={() => setStep('monster')} />
+            <Action icon={Footprints} tone="text-blue-300" label="推进廊道" detail="隐于幕后静观其变，看她一步步撞上各层已布防的机关。" onClick={() => begin('corridor')} />
 {!raidNext && (<>
             <button type="button" onClick={() => reroll('primary')} className="py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">换一个</button>
             <button type="button" onClick={() => setPrimary(draw(primary.source === 'roll' ? 'library' : 'roll', avoided))} className="py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -285,11 +302,14 @@ export function IntruderGate({ keep, onBegin, onBack, cheat = false, raidNext, r
   )
 }
 
-function Action({ label, detail, onClick }: { label: string; detail: string; onClick: () => void }) {
+function Action({ icon: Icon, tone, label, detail, onClick }: { icon: LucideIcon; tone: string; label: string; detail: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="rounded-xl border border-border bg-card p-3 text-left hover:border-primary/60 transition-colors">
-      <p className="font-bold text-sm">{label}</p>
-      <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{detail}</p>
+    <button type="button" onClick={onClick} className="group rounded-xl border border-border bg-card p-3.5 text-left hover:border-primary/65 hover:bg-primary/5 transition-all">
+      <p className="font-bold text-sm flex items-center gap-1.5">
+        <Icon className={`w-4 h-4 ${tone} group-hover:scale-110 transition-transform`} />
+        {label}
+      </p>
+      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{detail}</p>
     </button>
   )
 }

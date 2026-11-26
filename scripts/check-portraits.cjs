@@ -56,3 +56,20 @@ console.log('portraits ok')
 // 工房分组：每个预设陷阱都落进某一组
 for (const t of types.PRESET_TRAPS) assert.notEqual(types.trapGroup(t.category), '其他', t.name)
 console.log('trap groups ok')
+
+// 场景插图归档与云端 S3 配置解析
+{
+  const SG = load('@/lib/scene-gallery')
+  const S3 = load('@/lib/s3-upload')
+  assert.equal(SG.sceneSlugFor({ name: '嘉列翁', avatarUrl: '/avatars/galleon.png' }), 'galleon')
+  assert.ok(SG.sceneSlugFor({ name: '野生冒险者', avatarUrl: null }).startsWith('char-'))
+  const merged = SG.mergeSceneImages(
+    [{ id: '1', url: '/a.webp', prompt: 'p1', timestamp: 10, characterName: '嘉列翁', slug: 'galleon' }],
+    [{ id: '1', url: '/a.webp', prompt: 'p1', timestamp: 10, characterName: '嘉列翁', slug: 'galleon' }, { id: '2', url: '/b.webp', prompt: 'p2', timestamp: 20, characterName: '嘉列翁', slug: 'galleon' }],
+  )
+  assert.deepEqual(merged.map((x) => x.id), ['2', '1'])
+  assert.equal(S3.resolveCloudConfig({}), null)
+  const cfg = S3.resolveCloudConfig({ endpoint: 'https://demo.r2.cloudflarestorage.com', bucket: 'cg', accessKeyId: 'ak', secretAccessKey: 'sk' })
+  assert.equal(cfg?.bucket, 'cg')
+  assert.equal(cfg?.region, 'auto')
+}

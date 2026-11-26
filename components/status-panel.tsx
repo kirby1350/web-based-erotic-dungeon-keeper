@@ -7,7 +7,7 @@ import { CORRUPT_TIERS, TERM_SLOTS, TERM_SLOT_LABEL } from '@/lib/terms'
 import { dkTerms } from '@/lib/terms-dk'
 import { visibleDevTraits } from '@/lib/body-development'
 import { BODY_PARTS, activeDefenses, buffTags, corruptionView } from '@/lib/status-view'
-import { CLIMAX_AT, resolvePortrait } from '@/lib/portraits'
+import { CLIMAX_AT, PORTRAIT_STAGE_ITEMS, resolvePortrait } from '@/lib/portraits'
 import { StatePortrait, usePortraitManifest } from '@/components/state-portrait'
 import { cn } from '@/lib/utils'
 
@@ -42,8 +42,11 @@ export function StatusPanel({ character, keep, log, onOpenProfile }: { character
   const defenses = activeDefenses(c, keep)
   const tags = buffTags(c)
   const devTraits = visibleDevTraits(c.bodyDevelopment)
+  const highPleasure = (c.pleasure ?? 0) >= 80
   const nearClimax = (c.pleasure ?? 0) >= CLIMAX_AT - 10
-  const hasArt = resolvePortrait(c, usePortraitManifest()).src != null
+  const resolved = resolvePortrait(c, usePortraitManifest())
+  const hasArt = resolved.src != null
+  const stageLabel = resolved.state ? (PORTRAIT_STAGE_ITEMS.find((s) => s.id === resolved.state)?.label ?? resolved.state) : null
   return (
     <div className="space-y-4 p-4" data-testid="status-panel">
       {!hasArt ? (
@@ -51,11 +54,22 @@ export function StatusPanel({ character, keep, log, onOpenProfile }: { character
           <StatePortrait character={c} variant="avatar" className="w-14 h-14 rounded-lg text-xl flex-shrink-0" />
           <div className="min-w-0"><p className="font-bold gold-text truncate">{c.name}</p><p className="text-[11px] text-muted-foreground">{RACE_INFO[c.race]?.label ?? c.race} · 第 {c.floor ?? 1} 层 · 点开档案</p></div>
         </button>
-      ) : <button type="button" onClick={onOpenProfile} title="翻开完整档案" className="group relative block w-full overflow-hidden rounded-xl border border-border bg-secondary aspect-[4/5]">
-        <StatePortrait character={c} className="w-full h-full transition-transform duration-300 group-hover:scale-[1.02]" />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-3 text-left">
+      ) : <button type="button" onClick={onOpenProfile} title="翻开完整档案（可切换五阶立绘）" className={cn(
+        'group relative block w-full overflow-hidden rounded-xl border bg-secondary aspect-[4/5] transition-all duration-500',
+        highPleasure ? 'border-pink-500/70 shadow-[0_0_22px_rgba(236,72,153,0.4)]' : 'border-border hover:border-primary/50',
+      )}>
+        <StatePortrait character={c} className="w-full h-full transition-transform duration-500 group-hover:scale-[1.02]" />
+        {stageLabel && (
+          <span className={cn(
+            'absolute top-2.5 right-2.5 rounded-full border px-2 py-0.5 text-[10px] backdrop-blur-sm',
+            nearClimax ? 'border-pink-400/70 bg-pink-950/75 text-pink-100 animate-pulse' : 'border-white/20 bg-black/55 text-pink-100/90',
+          )}>
+            {stageLabel}态
+          </span>
+        )}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/88 via-black/45 to-transparent p-3 text-left">
           <p className="font-bold gold-text text-lg leading-tight">{c.name}</p>
-          <p className="text-[11px] text-white/70">{RACE_INFO[c.race]?.label ?? c.race} · 第 {c.floor ?? 1} 层 · 点开档案</p>
+          <p className="text-[11px] text-white/75">{RACE_INFO[c.race]?.label ?? c.race} · 第 {c.floor ?? 1} 层 · 点开档案与五阶立绘</p>
         </div>
       </button>}
 

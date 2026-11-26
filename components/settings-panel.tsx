@@ -386,25 +386,31 @@ export function SettingsPanel({ settings, onSettingsChange, onClose, canImport =
 
               {/* Image Style */}
               <div>
-                <label className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5" />
-                  画风风格
+                <label className="text-xs text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5" />
+                    画风风格（共 {Object.keys(IMAGE_STYLES).length} 种画师预设）
+                  </span>
+                  <span className="text-[11px] text-primary/80 truncate max-w-[180px]">
+                    {IMAGE_STYLES[local.imageStyle]?.label}
+                  </span>
                 </label>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-1">
                   {(Object.keys(IMAGE_STYLES) as ImageStyle[]).map((key) => (
                     <button
                       key={key}
                       onClick={() => update({ imageStyle: key })}
+                      title={IMAGE_STYLES[key].tags || '使用模型默认风格'}
                       className={cn(
-                        'w-full text-left px-3 py-2.5 rounded-lg border text-xs transition-all',
+                        'w-full text-left px-2.5 py-2 rounded-lg border text-xs transition-all',
                         local.imageStyle === key
-                          ? 'border-primary bg-primary/10 text-primary'
+                          ? 'border-primary bg-primary/10 text-primary font-medium'
                           : 'border-border bg-secondary text-muted-foreground hover:border-primary/50'
                       )}
                     >
-                      <div className="flex items-center justify-between">
-                        <span>{IMAGE_STYLES[key].label}</span>
-                        {local.imageStyle === key && <span className="text-primary">✓</span>}
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className="truncate">{IMAGE_STYLES[key].label}</span>
+                        {local.imageStyle === key && <span className="text-primary shrink-0">✓</span>}
                       </div>
                     </button>
                   ))}
@@ -454,6 +460,54 @@ export function SettingsPanel({ settings, onSettingsChange, onClose, canImport =
                   示例：flat color, ink, 1990s anime style
                 </p>
               </div>
+
+              {/* Cloud Sync (S3 / Cloudflare R2) */}
+              <details className="rounded-lg border border-border bg-secondary/40 p-3 text-xs">
+                <summary className="cursor-pointer font-semibold text-foreground select-none">
+                  防丢归档与云端同步（Cloudflare R2 / S3）
+                </summary>
+                <div className="mt-2.5 space-y-2 text-muted-foreground">
+                  <p className="text-[11px] leading-relaxed">
+                    本地运行时，生成的插图会自动永久落盘至 <code className="text-primary">public/generated-scenes/</code>（防止生图平台临时外链过期）。如需同时备份至云端，可在下方或 <code className="text-primary">.env</code> 中配置 S3 兼容存储（如 Cloudflare R2）：
+                  </p>
+                  <input
+                    value={local.cloudEndpoint ?? ''}
+                    onChange={(e) => update({ cloudEndpoint: e.target.value })}
+                    placeholder="Endpoint（如 https://<account>.r2.cloudflarestorage.com）"
+                    className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={local.cloudBucket ?? ''}
+                      onChange={(e) => update({ cloudBucket: e.target.value })}
+                      placeholder="Bucket 桶名称"
+                      className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
+                    />
+                    <input
+                      value={local.cloudPublicUrl ?? ''}
+                      onChange={(e) => update({ cloudPublicUrl: e.target.value })}
+                      placeholder="公开访问域名（可选）"
+                      className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="password"
+                      value={local.cloudAccessKey ?? ''}
+                      onChange={(e) => update({ cloudAccessKey: e.target.value })}
+                      placeholder="Access Key ID（留空读 .env）"
+                      className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
+                    />
+                    <input
+                      type="password"
+                      value={local.cloudSecretKey ?? ''}
+                      onChange={(e) => update({ cloudSecretKey: e.target.value })}
+                      placeholder="Secret Access Key（留空读 .env）"
+                      className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </details>
             </>
           )}
         </div>

@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Settings, IdCard, PanelLeftClose, PanelLeftOpen, ImageIcon, ChevronDown, ChevronUp } from 'lucide-react'
+import { Settings, IdCard, PanelLeftClose, PanelLeftOpen, ImageIcon, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import { CharacterProfile, sessionHistory } from '@/components/character-profile'
 import { cn } from '@/lib/utils'
 import { Character, AppSettings } from '@/lib/types'
@@ -102,6 +102,9 @@ export function GameScreen({ character: initialCharacter, onBack, onSettle, chea
         <div className="flex items-center gap-2 flex-shrink-0">
           <h1 className="text-base font-bold gold-text tracking-widest">地下城城主</h1>
           <span className={cn('text-[10px] px-2 py-0.5 rounded-full border', training ? 'border-rose-400/40 text-rose-200 bg-rose-500/15' : 'border-amber-400/40 text-amber-200 bg-amber-500/10')}>{chrome.tab}</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/10 px-2.5 py-0.5 text-[11px] text-amber-200 tabular-nums" title="当前持有的淫髓">
+            <Sparkles className="w-3 h-3 text-primary" />淫髓 {keepView.progress.essence}
+          </span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           {!(isDesktop && navOpen) && <FateActions character={character} disabled={busy} reasons={false} onSettle={(fate) => onSettle(character, fate)} />}

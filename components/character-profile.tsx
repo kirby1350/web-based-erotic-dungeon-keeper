@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Maximize2, X } from 'lucide-react'
 import { RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
 import { characterFromPreset, FATE_LABEL, CAGES, type CaptiveRecord } from '@/lib/keeper'
@@ -10,6 +10,7 @@ import { CREST_ITEM, applyCrest, corruptionOf, dkTerms, removeCrest, sourceWork 
 import { visibleDevTraits } from '@/lib/body-development'
 import { availablePortraitStages, portraitState, type PortraitStageId } from '@/lib/portraits'
 import { usePortraitManifest } from '@/components/state-portrait'
+import { getLocalSceneImages, mergeSceneImages, sceneSlugFor, type ArchivedSceneImage } from '@/lib/scene-gallery'
 import { IntruderDossier } from '@/components/intruder-dossier'
 
 export interface ProfileHistory { title: string; text: string }
@@ -103,6 +104,23 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
   const defaultStageId: PortraitStageId = liveState.climax ? 'climax' : liveState.tier
   const [pickedStage, setPickedStage] = useState<PortraitStageId | 'avatar' | null>(null)
   const [lightbox, setLightbox] = useState(false)
+  const [sceneAlbum, setSceneAlbum] = useState<ArchivedSceneImage[]>([])
+  const [zoomSceneUrl, setZoomSceneUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    const local = getLocalSceneImages(person.name)
+    setSceneAlbum(local)
+    const slug = sceneSlugFor(person)
+    fetch(`/api/image/save?slug=${encodeURIComponent(slug)}&character=${encodeURIComponent(person.name)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!alive || !Array.isArray(data?.items) || data.items.length === 0) return
+        setSceneAlbum(mergeSceneImages(data.items, getLocalSceneImages(person.name)))
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [person.name, person.avatarUrl])
 
   const activeStageKey: PortraitStageId | 'avatar' = pickedStage
     ?? (stages.find((s) => s.id === defaultStageId)?.id ?? stages[0]?.id ?? 'avatar')
@@ -111,6 +129,12 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 overflow-y-auto" data-testid="character-profile" role="dialog" aria-label={`${person.name}的档案`}>
+      {zoomSceneUrl && (
+        <div className="fixed inset-0 z-[65] bg-black/92 flex flex-col items-center justify-center p-4 gap-3" onClick={() => setZoomSceneUrl(null)}>
+          <img src={zoomSceneUrl} alt="场景插图" onClick={(e) => e.stopPropagation()} className="max-h-[85vh] max-w-[94vw] rounded-xl border border-border object-contain shadow-2xl" />
+          <button type="button" onClick={() => setZoomSceneUrl(null)} className="text-xs text-white/70 hover:text-white">点击任意处关闭</button>
+        </div>
+      )}
       {lightbox && displaySrc && (
         <div
           className="fixed inset-0 z-[60] bg-black/92 flex flex-col items-center justify-center p-4 gap-3"
@@ -246,6 +270,24 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
           </aside>
           <main className="space-y-6 mt-6 lg:mt-0">
             <IntruderDossier person={person} hideCollapse={hideCollapse} />
+            {sceneAlbum.length > 0 && (
+              <section data-testid="profile-scene-album">
+                <h2 className="text-[11px] tracking-widest text-muted-foreground mb-2">已归档场景插图（{sceneAlbum.length} 张）</h2>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {sceneAlbum.map((img) => (
+                    <button
+                      key={img.id || img.url}
+                      type="button"
+                      onClick={() => setZoomSceneUrl(img.url)}
+                      title={img.prompt}
+                      className="group relative aspect-[2/3] rounded-lg overflow-hidden border border-border bg-secondary hover:border-primary/60 transition-all"
+                    >
+                      <img src={img.url} alt="" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
             {character.brands?.length ? (
               <section>
                 <h2 className="text-[11px] tracking-widest text-muted-foreground mb-1">烙印</h2>

@@ -1,6 +1,6 @@
 'use client'
 
-import { Bug, Settings, Swords } from 'lucide-react'
+import { Bug, DoorOpen, Flame, Layers, Lock, Settings, Sparkles, Swords, type LucideIcon } from 'lucide-react'
 import { RACE_INFO } from '@/lib/types'
 import { buyUpgrade, lureOnFloor, quickStarterSetup, upgradeCost, type IntruderFate, type KeeperSave, type UpgradeKey } from '@/lib/keeper'
 import { FateActions } from '@/components/fate-actions'
@@ -20,12 +20,12 @@ interface KeepHallProps {
   onOpenSettings: () => void
 }
 
-const UPGRADES: { key: UpgradeKey; label: string; max: number; hint: string }[] = [
-  { key: 'trapSlots', label: '陷阱栏位', max: 6, hint: '同时启用的机关上限' },
-  { key: 'monsterSlots', label: '魔物栏位', max: 4, hint: '同时驻守的眷属上限' },
-  { key: 'depth', label: '地下城深度', max: 10, hint: '向下开拓的迷宫层数' },
-  { key: 'monsterRank', label: '魔物强度', max: 5, hint: '眷属拘束与侵犯烈度' },
-  { key: 'intruderSlots', label: '在狱格子', max: 3, hint: '可同时扣押的猎物数' },
+const UPGRADES: { key: UpgradeKey; label: string; max: number; hint: string; icon: LucideIcon }[] = [
+  { key: 'trapSlots', label: '陷阱栏位', max: 6, hint: '同时启用的机关上限', icon: Swords },
+  { key: 'monsterSlots', label: '魔物栏位', max: 4, hint: '同时驻守的眷属上限', icon: Bug },
+  { key: 'depth', label: '地下城深度', max: 10, hint: '向下开拓的迷宫层数', icon: Layers },
+  { key: 'monsterRank', label: '魔物强度', max: 5, hint: '眷属拘束与侵犯烈度', icon: Flame },
+  { key: 'intruderSlots', label: '在狱格子', max: 3, hint: '可同时扣押的猎物数', icon: Lock },
 ]
 
 export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTraps, onOpenMonsters, onOpenCollection, onOpenArchive, onOpenDungeon, onOpenSettings }: KeepHallProps) {
@@ -59,29 +59,43 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
               className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
             />
           </label>
-          <div className="rounded-lg border border-primary/40 bg-card px-4 py-2">
-            <p className="text-[11px] tracking-widest text-primary">淫髓</p>
-            <p className="text-2xl font-bold tabular-nums">{keep.progress.essence}</p>
+          <div className="rounded-xl border border-primary/45 bg-gradient-to-br from-amber-950/35 via-card to-card px-4 py-2 shadow-[0_0_16px_rgba(234,179,8,0.12)]">
+            <p className="text-[11px] tracking-widest text-primary flex items-center gap-1"><Sparkles className="w-3 h-3" />淫髓</p>
+            <p className="text-2xl font-bold tabular-nums gold-text">{keep.progress.essence}</p>
           </div>
         </div>
 
-        <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {UPGRADES.map((item) => {
             const value = keep.progress[item.key]
             const cost = upgradeCost(keep.progress, item.key)
             const affordable = cost != null && keep.progress.essence >= cost
+            const Icon = item.icon
             return (
               <button
                 key={item.key}
                 type="button"
                 disabled={!affordable}
                 onClick={() => onKeep(buyUpgrade(keep, item.key))}
-                className="rounded-xl border border-border bg-card p-3 text-left disabled:opacity-60"
+                className={`rounded-xl border bg-card p-3 text-left transition-all ${
+                  affordable
+                    ? 'border-primary/55 shadow-[0_0_14px_rgba(234,179,8,0.14)] hover:border-primary hover:bg-primary/5'
+                    : 'border-border disabled:opacity-65'
+                }`}
               >
-                <p className="text-[11px] text-muted-foreground">{item.label}</p>
-                <p className="text-lg font-bold mt-1 tabular-nums">{value}/{item.max}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">{item.hint}</p>
-                <p className="text-[11px] mt-2 text-primary">{cost == null ? '已满级' : affordable ? `消耗 ${cost} 淫髓` : `需 ${cost} 淫髓`}</p>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1"><Icon className="w-3.5 h-3.5 text-primary/80" />{item.label}</span>
+                  <span className="font-bold tabular-nums text-foreground">{value}/{item.max}</span>
+                </div>
+                <div className="mt-2 flex gap-0.5" aria-hidden>
+                  {Array.from({ length: item.max }, (_, idx) => (
+                    <span key={idx} className={`h-1.5 flex-1 rounded-full ${idx < value ? 'bg-primary' : 'bg-secondary'}`} />
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">{item.hint}</p>
+                <p className={`text-[11px] mt-1.5 font-medium ${cost == null ? 'text-emerald-300/90' : affordable ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {cost == null ? '✦ 已满级' : affordable ? `✦ 消耗 ${cost} 淫髓升级` : `需 ${cost} 淫髓`}
+                </p>
               </button>
             )
           })}
@@ -91,17 +105,17 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
         {keep.roster.map((entry) => (
           <section key={entry.id} className="dungeon-border rounded-xl bg-card p-4 flex flex-col gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-12 h-12 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
-                <StatePortrait character={entry.character} variant="avatar" className="w-full h-full" />
+              <div className="w-14 h-18 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
+                <StatePortrait character={entry.character} className="w-full h-full" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">{entry.station} · {RACE_INFO[entry.character.race]?.label ?? entry.character.race}</p>
-                <p className="font-bold gold-text truncate">{entry.character.name}</p>
-                <p className="text-[11px] text-muted-foreground">快感 {entry.character.pleasure} · 第 {entry.character.floor ?? 1} 层</p>
+                <p className="font-bold gold-text text-lg truncate">{entry.character.name}</p>
+                <p className="text-[11px] text-muted-foreground">快感 {entry.character.pleasure} · 欲望 {entry.character.desire ?? 0} · 第 {entry.character.floor ?? 1} 层</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => onResume(entry.id)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold">继续调教</button>
+              <button type="button" onClick={() => onResume(entry.id)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold glow-btn">继续调教</button>
               <FateActions character={entry.character} onSettle={(fate) => onSettle(entry.id, fate)} />
             </div>
           </section>
@@ -111,14 +125,21 @@ export function KeepHall({ keep, onKeep, onEnter, onResume, onSettle, onOpenTrap
           type="button"
           onClick={onEnter}
           disabled={full}
-          className="w-full h-full dungeon-border rounded-xl bg-card p-6 text-left disabled:opacity-50 hover:border-primary/50 transition-colors"
+          className="group relative w-full h-full overflow-hidden dungeon-border rounded-xl bg-gradient-to-br from-rose-950/35 via-card to-amber-950/20 p-6 text-left disabled:opacity-50 hover:border-primary/70 transition-all"
         >
-          <p className="text-xs tracking-widest text-primary">城门异动</p>
-          <p className="text-2xl font-bold mt-1">迎接入侵者</p>
-          <p className="text-sm text-muted-foreground mt-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs tracking-widest text-primary inline-flex items-center gap-1.5">
+              <DoorOpen className="w-4 h-4" />城门异动
+            </p>
+            <span className="rounded-full border border-primary/35 bg-primary/10 px-2.5 py-0.5 text-[10px] text-amber-200 tabular-nums">
+              在狱 {keep.roster.length}/{keep.progress.intruderSlots}
+            </span>
+          </div>
+          <p className="text-2xl font-bold gold-text mt-1.5 group-hover:translate-x-0.5 transition-transform">迎接入侵者</p>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
             {full
               ? `在狱栏位已满（${keep.roster.length}/${keep.progress.intruderSlots}）。请先将狱中猎物收押、玩坏或放逐，或扩建在狱格子。`
-              : `当前在狱 ${keep.roster.length}/${keep.progress.intruderSlots}。推开沉重石门，看看今天是哪位不知死活的猎物踏入了你的领地。`}
+              : `推开沉重石门，看看今天是哪位高傲猎物踏入了你的深渊领地。`}
           </p>
         </button>
         </div>

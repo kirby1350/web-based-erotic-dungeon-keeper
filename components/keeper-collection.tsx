@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { RACE_INFO, type AppSettings } from '@/lib/types'
 import { CAGES, FATE_LABEL, appendRecall, cageKind, collectionActions, collectionNeedsSlot, pickDiscardScene, planReturn, setCaptiveLureFloor, stampBrand, type CageKind, type CaptiveRecord, type CollectionAction, type KeeperSave, type KeeperTrap } from '@/lib/keeper'
 import { CharacterProfile, captiveHistory } from '@/components/character-profile'
+import { StatePortrait } from '@/components/state-portrait'
 import { dkTermsLine } from '@/lib/terms-dk'
 import { buildAftermathPrompt, buildWatchPrompt } from '@/lib/prompts'
 import { useAftermath } from '@/hooks/use-aftermath'
@@ -18,6 +19,14 @@ interface KeeperCollectionProps {
   onUpdate: (record: CaptiveRecord, patch: Partial<Pick<CaptiveRecord, 'fate' | 'character' | 'recall' | 'cage' | 'ledger' | 'lureFloor'>>) => void
   onKeep?: (keep: KeeperSave) => void
   onBack: () => void
+}
+
+const CAGE_ACTIVE_STYLE: Record<CageKind, string> = {
+  cell: 'border-slate-400/60 bg-slate-500/15 text-slate-100 font-bold',
+  machine: 'border-cyan-400/60 bg-cyan-500/15 text-cyan-200 font-bold',
+  ranch: 'border-amber-400/60 bg-amber-500/15 text-amber-200 font-bold',
+  tentacle: 'border-fuchsia-400/60 bg-fuchsia-500/15 text-fuchsia-200 font-bold',
+  breeding: 'border-rose-400/60 bg-rose-500/15 text-rose-200 font-bold',
 }
 
 function passiveYieldNote(record: CaptiveRecord): string {
@@ -126,17 +135,28 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
           {blocked && <p className="text-sm text-amber-200 mt-2">在狱栏位已满。请先回城主厅结算一名在狱猎物，再提审或召回。</p>}
         </div>
         {keep.collection.length === 0 && <p className="text-sm text-muted-foreground">收藏室还是空的。</p>}
-        <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
+        <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3.5 lg:items-start">
           {keep.collection.map((record) => (
-            <article key={record.id} className="dungeon-border rounded-xl bg-card p-4 flex gap-3">
-              <div className="w-14 h-14 rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0">
-                {record.avatarUrl ? <img src={record.avatarUrl} alt={record.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-primary">{record.name[0]}</div>}
-              </div>
+            <article key={record.id} className="dungeon-border rounded-xl bg-card p-4 flex gap-3.5">
+              <button
+                type="button"
+                onClick={() => setProfileId(record.id)}
+                title="翻阅档案与阶段立绘"
+                className="w-20 sm:w-24 aspect-[2/3] rounded-lg overflow-hidden border border-border bg-secondary flex-shrink-0 hover:border-primary/60 transition-colors self-start"
+              >
+                <StatePortrait character={{ ...record.character, pleasure: record.pleasure, desire: record.desire }} className="w-full h-full" />
+              </button>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-bold truncate">{record.name}</h2>
-                  <button type="button" onClick={() => setProfileId(record.id)} className="text-[11px] text-primary" data-testid="open-profile">档案</button>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">{FATE_LABEL[record.fate]}</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-bold gold-text text-base truncate">{record.name}</h2>
+                  <button type="button" onClick={() => setProfileId(record.id)} className="text-[11px] text-primary hover:underline" data-testid="open-profile">档案</button>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                    record.fate === 'broken'
+                      ? 'border-pink-400/50 bg-pink-500/15 text-pink-200'
+                      : record.fate === 'kept'
+                        ? 'border-amber-400/50 bg-amber-500/15 text-amber-200'
+                        : 'border-border text-muted-foreground'
+                  }`}>{FATE_LABEL[record.fate]}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{RACE_INFO[record.race]?.label ?? record.race} · 快感 {record.pleasure} · 欲望 {record.desire}{record.cage ? ` · ${CAGES[record.cage].label}` : ''}</p>
                 {record.character.brands?.length ? <p className="text-xs text-pink-200/80 mt-1">烙印 {record.character.brands.map((brand) => brand.split('：')[0]).join('、')}</p> : null}
@@ -154,7 +174,7 @@ export function KeeperCollection({ keep, settings, blocked, onBringBack, onUpdat
                           type="button"
                           onClick={() => setCage(record, kind)}
                           title={CAGES[kind].holds}
-                          className={`text-[11px] px-2 py-1 rounded-full border ${record.cage === kind ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}
+                          className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${record.cage === kind ? CAGE_ACTIVE_STYLE[kind] : 'border-border text-muted-foreground hover:border-primary/40'}`}
                         >
                           {CAGES[kind].label}
                         </button>

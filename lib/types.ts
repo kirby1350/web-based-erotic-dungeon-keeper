@@ -123,7 +123,36 @@ export interface GeneratedImage {
   timestamp: number
 }
 
-export type ImageStyle = 'none' | 'dk.senie' | 'hakai_shin' | 'shiokonbu' | 'piromizu' | 'nohito' | 'masami_chie' | 'thirty_8ght'
+export type ImageStyle =
+  | 'none'
+  | 'kuse_0201'
+  | 'obui'
+  | 'eno_yukimi'
+  | 'thirty_8ght'
+  | 'derauea'
+  | 'belko'
+  | 'rhasta'
+  | 'nicoby'
+  | 'nohito'
+  | 'snowball22'
+  | 'nanahara_fuyuki'
+  | 'ouma_tokiichi'
+  | 'nironiro'
+  | 'v_mag'
+  | 'kase_daiki'
+  | 'tachibana_yuu'
+  | 'taskmaster41'
+  | 'paint_musume'
+  | 'meion'
+  | 'gmkj'
+  | 'kaenuco'
+  | 'k_suwabe'
+  | 'shinkawa_youji'
+  | 'dk.senie'
+  | 'hakai_shin'
+  | 'shiokonbu'
+  | 'piromizu'
+  | 'masami_chie'
 export type ImageModel = 'tsubaki_v3' | 'tsubaki_v2'
 
 export type ImageProvider = 'pixai' | 'tensorart'
@@ -159,6 +188,11 @@ export interface AppSettings {
   grokApiKey: string
   pixaiApiKey: string
   tensorartApiKey: string
+  cloudEndpoint?: string
+  cloudBucket?: string
+  cloudAccessKey?: string
+  cloudSecretKey?: string
+  cloudPublicUrl?: string
 }
 
 export const IMAGE_MODELS: Record<ImageModel, { label: string; modelId: string; family: ImagePromptFamily; apiVersion?: 'v1' | 'v2' }> = {
@@ -177,34 +211,118 @@ export const IMAGE_MODELS: Record<ImageModel, { label: string; modelId: string; 
 }
 
 export const IMAGE_STYLES: Record<ImageStyle, { label: string; tags: string }> = {
-  none: { label: '无', tags: '' },
+  none: { label: '无（模型默认）', tags: '' },
+  kuse_0201: {
+    label: 'kuse (0201) · 柔和厚涂/光泽蕾丝',
+    tags: 'artist:kuse (0201), kuse (0201), glossy skin, detailed lace, soft thick painting, half-closed eyes, light blush',
+  },
+  obui: {
+    label: 'obui · 爆乳粗腿大乳晕 (GBF)',
+    tags: 'artist:obui, obui, huge breasts, thick thighs, large areolae, glossy skin, erotic illustration',
+  },
+  eno_yukimi: {
+    label: 'eno yukimi · 牛娘/德拉夫爆乳',
+    tags: 'eno yukimi, artist:eno yukimi, huge breasts, voluptuous, detailed anime illustration',
+  },
+  thirty_8ght: {
+    label: 'thirty_8ght · 爆乳肉感重口 (BA)',
+    tags: 'artist:thirty_8ght, thirty_8ght, colorful, vibrant colors, glossy skin, curvy, huge breasts, large areolae, erotic illustration',
+  },
+  derauea: {
+    label: 'derauea · 拔作立绘爆乳',
+    tags: 'derauea, artist:derauea, official art, huge breasts, glossy skin, erotic illustration',
+  },
+  belko: {
+    label: 'belko · 巨乳挤压重口 NSFW',
+    tags: 'belko, artist:belko, large breasts, breasts squeezed together, glossy skin, erotic illustration',
+  },
+  rhasta: {
+    label: 'rhasta · 碧蓝丝袜高跟美腿',
+    tags: 'artist:rhasta, rhasta, large breasts, thighhighs, pantyhose, detailed legs, anime illustration',
+  },
+  nicoby: {
+    label: 'nicoby · 舰娘制服大胸',
+    tags: 'artist:nicoby, nicoby, large breasts, crisp shading, anime illustration',
+  },
+  nohito: {
+    label: 'nohito · 黑长发文静色气 (偶大)',
+    tags: 'artist:nohito, nohito, expressive face, fine details, dramatic lighting, large breasts, anime art style',
+  },
+  snowball22: {
+    label: 'snowball22 · 游戏官方立绘丰满',
+    tags: 'artist:snowball22, snowball22, official art, large breasts, crisp lineart, detailed costume',
+  },
+  nanahara_fuyuki: {
+    label: '七原冬雪 · 奇幻华丽厚涂 (GBF)',
+    tags: 'nanahara fuyuki, artist:nanahara fuyuki, ornate fantasy illustration, dramatic lighting, detailed costume',
+  },
+  ouma_tokiichi: {
+    label: 'ouma tokiichi · 抱枕构图重 NSFW',
+    tags: 'artist:ouma tokiichi, ouma_tokiichi, huge breasts, dakimakura style, lush shading, erotic illustration',
+  },
+  nironiro: {
+    label: 'nironiro · 差分式色气立绘',
+    tags: 'artist:nironiro, nironiro, large breasts, expressive blush, erotic illustration',
+  },
+  v_mag: {
+    label: 'v-mag · 明艳大胸过膝袜擦边',
+    tags: 'v-mag, artist:v-mag, large breasts, thighhighs, vibrant colors, glossy shading',
+  },
+  kase_daiki: {
+    label: 'kase daiki · 制服连裤袜臀腿',
+    tags: 'kase daiki, artist:kase daiki, large breasts, thick thighs, pantyhose, detailed fabric',
+  },
+  tachibana_yuu: {
+    label: '橘由宇 · 兽耳破衣色气',
+    tags: 'tachibana yuu, artist:tachibana yuu, large breasts, thighhighs, torn clothes, anime illustration',
+  },
+  taskmaster41: {
+    label: '41 (taskmaster41) · 丰满熟女御姐',
+    tags: 'artist:41 (taskmaster41), 41_(taskmaster41), huge breasts, mature female, soft shading',
+  },
+  paint_musume: {
+    label: 'paint_musume · 内衣日常柔光擦边',
+    tags: 'artist:paint musume, paint_musume, large breasts, soft digital painting, anime illustration',
+  },
+  meion: {
+    label: 'meion · 泳装美腿玉足特写',
+    tags: 'artist:meion, meion, large breasts, thighhighs, detailed legs, clean anime style',
+  },
+  gmkj: {
+    label: 'gmkj · 重口全裸差分 NSFW',
+    tags: 'artist:gmkj, gmkj, erotic illustration, expressive face, detailed body',
+  },
+  kaenuco: {
+    label: 'kaenuco · 东方兽耳虎牙轻甜',
+    tags: 'kaenuco, artist:kaenuco, cute anime style, expressive eyes, soft colors',
+  },
+  k_suwabe: {
+    label: 'K-SUWABE · 金属锋利硬派厚涂',
+    tags: 'k-suwabe, artist:k-suwabe, colorful, thick brushstrokes, rough painting, red accent, dynamic pose',
+  },
+  shinkawa_youji: {
+    label: '新川洋司 · 水墨干笔硬派速写',
+    tags: 'shinkawa youji, artist:shinkawa youji, ink wash painting, sumi-e, brush strokes, rough sketch, splatter',
+  },
   'dk.senie': {
-    label: 'dk.senie',
+    label: 'dk.senie · 梦幻水彩柔光',
     tags: 'dk.senie, watercolor, soft lineart, pastel colors, dreamy lighting',
   },
   hakai_shin: {
-    label: 'Hakai Shin',
+    label: 'Hakai Shin · 鲜艳动态光影',
     tags: 'hakai_shin, detailed shading, dynamic pose, vibrant colors, anime illustration',
   },
   shiokonbu: {
-    label: 'shiokonbu',
+    label: 'shiokonbu · 清透萌系细线',
     tags: 'shiokonbu, detailed lineart, soft shading, moe style, clean illustration',
   },
   piromizu: {
-    label: 'piromizu',
+    label: 'piromizu · 水润油亮色气',
     tags: 'piromizu, glossy skin, detailed body, soft gradient, erotic illustration',
   },
-  nohito: {
-    label: 'nohito',
-    tags: 'nohito, expressive face, fine details, dramatic lighting, anime art style',
-  },
   masami_chie: {
-    label: 'masami chie',
+    label: 'masami chie · 暖调细腻柔线',
     tags: 'masami chie, soft lineart, delicate shading, warm palette, detailed illustration',
-  },
-  thirty_8ght: {
-    label: 'thirty_8ght',
-    tags: 'thirty_8ght, glossy skin, detailed shading, thick thighs, erotic illustration',
   },
 }
 
@@ -595,9 +713,9 @@ export const CHARACTER_PRESETS: CharacterPreset[] = [
     measurements: { bust: '85', waist: '57', hip: '84' },
     weakParts: ['clitoris', 'vagina'],
     weakTags: ['aphro'],
-    danbooruTags: 'ichinose_shiki, idolmaster_cinderella_girls, 1girl, short hair, purple hair, gradient hair, purple eyes, multiple ear piercings, medium breasts, white jacket, plaid skirt',
+    danbooruTags: 'ichinose_shiki, ichinose shiki, idolmaster_cinderella_girls, idolmaster cinderella girls, 1girl, long hair, wavy hair, two side up, burgundy hair, reddish-brown hair, pink gradient hair, ahoge, hair ornament, blue eyes, :3, fang, playful smile, medium breasts, open lab coat, white coat, pink plaid bikini top, criss-cross halterneck, bare midriff, pink plaid miniskirt, black thighhighs',
     backstory: '十八岁的化学天才兼偶像，兴趣是「失踪」。她说是闻到地下城里有很好闻的味道才跳进来的，把这里当成可以取样的实验场。她会看陷阱的结构、偷改药剂，也可能把春药抹到魔物或机关上。开场她在记数据。',
-    appearance: '短发从深紫渐到浅，紫眼，左耳扣着一排银耳钉。举止像猫，爱凑到人身边轻嗅。胸是中等，腰极细。发梢带着她自己调配的甜冽香气。',
+    appearance: '酒红偏红棕的微卷长发束成俏皮半双马尾，发尾透着亮粉渐变，头顶翘着呆毛，澄澈猫系水蓝眼眸总弯着虎牙坏笑。举止像猫，爱凑到人身边轻嗅。胸是中等，腰极细。发梢带着她自己调配的甜冽香气。',
     personality: '任性、跳脱，像猫一样随心所欲，嘴上像在做实验，把别人的反应当数据。嗅觉极灵，爱闻气味。真被弄到站不稳时，记录会断。',
     speech: `自称：我，兴奋时说「志希酱」
 称呼：把城主叫做「你」，带着「你你～」的叠音

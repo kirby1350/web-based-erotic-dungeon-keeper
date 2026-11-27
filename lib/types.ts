@@ -327,12 +327,11 @@ export const IMAGE_STYLES: Record<ImageStyle, { label: string; tags: string }> =
 }
 
 // Extra danbooru tag groups the player can toggle on top of the scene prompt.
-// lactation 不放在这里：只给牛人族、德拉夫族和原作泌乳角色，由 prompts.ts 的 presetTagsFor 按角色追加。
 export const IMAGE_TAG_PRESETS: Record<ImageTagPreset, { label: string; tags: string }> = {
   none: { label: '无', tags: '' },
   curvy: {
     label: '丰乳肥臀',
-    tags: 'curvy, huge breasts, huge nipples, huge areolae, large clitoris, clitoris, fat mons, female ejaculation',
+    tags: 'gigantic breasts, gigantic hips, huge hips, huge ass, thick thighs, curvy, huge areolae, gigantic nipples, protruding nipples, lactation, size difference, large clitoris, clitoris, fat mons, female ejaculation',
   },
 }
 

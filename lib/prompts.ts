@@ -116,10 +116,10 @@ export const IMAGE_PROMPT_PROFILES: Record<ImagePromptFamily, { qualityPrefix: s
   },
 }
 
-/** Illustrious 出图时固定追加的身材串（文香审核 §2 + 主人偏好）。 */
-export const IMAGE_BODY_TAGS = 'gigantic breasts, wide hips, huge hips, huge ass, thick thighs, curvy'
-/** 新泽西按主人之前的反馈保留 large breasts，跳过公共身材串。 */
-const BODY_TAG_EXEMPT = /^new_jersey_\(azur_lane\)$/i
+/** Illustrious 出图时固定追加的身材串（参考 Notion《喜好》）。 */
+export const IMAGE_BODY_TAGS = 'gigantic breasts, gigantic hips, huge hips, huge ass, thick thighs, curvy'
+/** NSFW 露胸/战损/全裸阶段追加的加强词（全员生效，参考 Notion《喜好》）。 */
+export const IMAGE_NSFW_BODY_TAGS = 'huge areolae, gigantic nipples, protruding nipples, lactation'
 
 type ImageCharacter = {
   name?: string
@@ -151,7 +151,7 @@ export function adaptAnchorForBattleDamage(
   if (stripped) {
     return {
       anchor: anchorTags.filter((tag) => !OUTER_GARMENT_TAG.test(tag.trim())),
-      damageTags: ['nude', 'completely nude', 'bare breasts'],
+      damageTags: ['nude', 'completely nude', 'bare breasts', ...splitPromptTags(IMAGE_NSFW_BODY_TAGS)],
     }
   }
   const hasRuntimeState = character && (character.pleasure !== undefined || character.bodyDevelopment !== undefined || character.encounter !== undefined)
@@ -166,7 +166,7 @@ export function adaptAnchorForBattleDamage(
       : anchorTags
     return {
       anchor: nextAnchor,
-      damageTags: ['torn clothes', 'open clothes', 'disheveled', 'exposed breasts'],
+      damageTags: ['torn clothes', 'open clothes', 'disheveled', 'exposed breasts', ...splitPromptTags(IMAGE_NSFW_BODY_TAGS)],
     }
   }
   if (hasRuntimeState && ((character.pleasure ?? 0) >= 38 || Boolean(character.encounter))) {
@@ -178,22 +178,14 @@ export function adaptAnchorForBattleDamage(
   return { anchor: anchorTags, damageTags: [] }
 }
 
-const LACTATOR_TAG = /^(?:draph|cow girl|narmaya_\(granblue_fantasy\)|kashino_\(azur_lane\)|shinano_\(azur_lane\)|galleon_\(granblue_fantasy\))$/i
-const LACTATOR_NAME = /娜露梅亚|樫野|信浓|嘉列翁/
-
-/** 泌乳只给牛人族、德拉夫族、原作泌乳角色（娜露梅亚、樫野）和信浓。 */
+/** 全员 NSFW 阶段一律支持泌乳加强（按主人偏好，不再限种族/角色）。 */
 export function characterLactates(character?: ImageCharacter): boolean {
-  if (!character) return false
-  if (character.race === 'tauren') return true
-  if (character.name && LACTATOR_NAME.test(character.name)) return true
-  return (character.danbooruTags ?? '').split(',').some((tag) => LACTATOR_TAG.test(tag.trim()))
+  return Boolean(character)
 }
 
-/** 玩家选的标签组；curvy 只在角色符合泌乳规则时追加 lactation。 */
-export function presetTagsFor(preset: string, character?: ImageCharacter): string {
-  const base = (IMAGE_TAG_PRESETS[preset as keyof typeof IMAGE_TAG_PRESETS] ?? IMAGE_TAG_PRESETS.none).tags
-  if (preset === 'curvy' && characterLactates(character)) return `${base}, lactation`
-  return base
+/** 玩家选的标签组；curvy 已内置全套身材与 NSFW 加强词（含 lactation）。 */
+export function presetTagsFor(preset: string, _character?: ImageCharacter): string {
+  return (IMAGE_TAG_PRESETS[preset as keyof typeof IMAGE_TAG_PRESETS] ?? IMAGE_TAG_PRESETS.none).tags
 }
 
 /** 当前自建模型都是 Illustrious 系；服务端没收到负面词时用这一份。 */
@@ -278,7 +270,7 @@ export function buildImagePrompt(options: {
   }
   // 质量前缀不经过 splitPromptTags，否则 masterpiece、best quality 会被当成模型误写删掉。
   const prefix = profile.qualityPrefix.split(',').map((tag) => tag.trim()).filter(Boolean)
-  const bodyTags = family === 'illustrious' && !adaptedAnchorTags.some((tag) => BODY_TAG_EXEMPT.test(tag))
+  const bodyTags = family === 'illustrious'
     ? splitPromptTags(IMAGE_BODY_TAGS)
     : []
   const tags = dedupeTags([

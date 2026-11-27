@@ -244,13 +244,14 @@ const illustrated = buildImagePrompt({
   extraTags: ['curvy'],
   family: 'illustrious',
 })
-assert.equal(illustrated.prompt, 'masterpiece, best quality, amazing quality, long hair, white hair, purple eyes, adult, narmaya, gigantic breasts, wide hips, huge hips, huge ass, thick thighs, curvy, cave, tentacles')
+assert.equal(illustrated.prompt, 'masterpiece, best quality, amazing quality, long hair, white hair, purple eyes, adult, narmaya, gigantic breasts, gigantic hips, huge hips, huge ass, thick thighs, curvy, cave, tentacles')
 assert.equal((illustrated.prompt.match(/masterpiece/g) || []).length, 1)
 assert.ok(illustrated.negative.includes('extra fingers'))
 for (const tag of ['worst quality', 'low quality', 'username', 'patreon username', 'speech bubble', 'multiple girls', 'flat chest', 'petite']) assert.ok(illustrated.negative.split(', ').includes(tag), tag)
 assert.equal(new Set(illustrated.negative.split(', ')).size, illustrated.negative.split(', ').length)
 const nj = buildImagePrompt({ scene: 'cave', character: { danbooruTags: 'new_jersey_(azur_lane), large breasts' }, family: 'illustrious' })
-assert.equal(nj.prompt.includes('gigantic breasts'), false)
+assert.equal(nj.prompt.includes('gigantic breasts'), true)
+assert.equal(nj.prompt.includes('gigantic hips'), true)
 // 出图服装战损自动同步：根据处境记忆与快感状态自适应切换破损/全裸标签
 {
   const runtimeChar = {
@@ -282,14 +283,14 @@ assert.equal(nj.prompt.includes('gigantic breasts'), false)
 {
   const { presetTagsFor, characterLactates } = load('@/lib/prompts')
   const { IMAGE_TAG_PRESETS } = load('@/lib/types')
-  assert.equal(IMAGE_TAG_PRESETS.curvy.tags.includes('lactation'), false)
-  assert.equal(characterLactates({ name: 'Cheshire', race: 'cat', danbooruTags: 'cheshire_(azur_lane)' }), false)
+  assert.equal(IMAGE_TAG_PRESETS.curvy.tags.includes('lactation'), true)
+  assert.equal(IMAGE_TAG_PRESETS.curvy.tags.includes('gigantic breasts'), true)
+  assert.equal(IMAGE_TAG_PRESETS.curvy.tags.includes('gigantic hips'), true)
+  assert.equal(IMAGE_TAG_PRESETS.curvy.tags.includes('protruding nipples'), true)
+  assert.equal(characterLactates({ name: 'Cheshire', race: 'cat', danbooruTags: 'cheshire_(azur_lane)' }), true)
   assert.equal(characterLactates({ name: '某牛娘', race: 'tauren' }), true)
-  assert.equal(characterLactates({ name: 'Anila', race: 'human', danbooruTags: 'anila_(granblue_fantasy), draph' }), true)
-  assert.equal(characterLactates({ name: '信浓', race: 'fox' }), true)
-  assert.equal(characterLactates({ danbooruTags: 'kashino_(azur_lane), cow ears' }), true)
-  assert.ok(presetTagsFor('curvy', { name: '娜露梅亚', race: 'tauren' }).endsWith(', lactation'))
-  assert.equal(presetTagsFor('curvy', { name: 'Cheshire', race: 'cat' }).includes('lactation'), false)
+  assert.equal(characterLactates(), false)
+  assert.ok(presetTagsFor('curvy', { name: 'Cheshire', race: 'cat' }).includes('lactation'))
   assert.equal(presetTagsFor('none', { race: 'tauren' }), '')
 }
 const sdxl = buildImagePrompt({ scene: 'cave', character: { danbooruTags: 'long hair' }, family: 'sdxl' })

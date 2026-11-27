@@ -59,45 +59,45 @@ function loadCharacters() {
   }))
   return {
     all,
-    negativePrompt: `${IMAGE_NEGATIVE_PROMPT}, artist name, logo, monochrome, greyscale, white background, simple background, comic, 4koma, multiple views, character sheet`,
+    negativePrompt: `${IMAGE_NEGATIVE_PROMPT}, artist name, logo, monochrome, greyscale, white background, simple background, bright background, pink background, neon glow, flat color, manga, doujinshi, comic, 4koma, multiple views, character sheet`,
   }
 }
 
 const ARTIST_PRESETS = {
   // 偶像大师系
-  'ichinose-shiki': 'artist:kuse (0201), kuse (0201), soft thick painting, glossy skin, detailed lace',
-  'kuwayama-chiyuki': 'artist:paint musume, paint_musume',
-  'sagisawa-fumika': 'artist:nohito, nohito',
-  'miura-azusa': 'artist:41 (taskmaster41), 41_(taskmaster41)',
+  'ichinose-shiki': 'artist:kuse (0201), soft thick painting, glossy skin, detailed lace',
+  'kuwayama-chiyuki': 'artist:paint musume, artist:paint_musume, soft digital painting',
+  'sagisawa-fumika': 'artist:nohito',
+  'miura-azusa': 'artist:41 (taskmaster41)',
   // 碧蓝幻想系
-  narmaya: 'eno yukimi, artist:eno yukimi',
-  galleon: 'artist:obui, obui',
-  katalina: 'nanahara fuyuki, artist:nanahara fuyuki',
-  anila: 'eno yukimi, artist:eno yukimi',
-  yuel: 'tachibana yuu, artist:tachibana yuu',
+  narmaya: 'artist:eno yukimi',
+  galleon: 'artist:obui',
+  katalina: 'artist:nanahara fuyuki',
+  anila: 'artist:eno yukimi',
+  yuel: 'artist:tachibana yuu',
   // 蔚蓝档案系
-  'ichinose-asuna': 'artist:thirty_8ght, thirty_8ght, colorful, vibrant colors',
-  'hanekawa-hasumi': 'belko, artist:belko',
+  'ichinose-asuna': 'artist:thirty_8ght, colorful, vibrant colors',
+  'hanekawa-hasumi': 'artist:belko',
   // 碧蓝航线 / 舰娘系
-  kashino: 'derauea, artist:derauea',
-  illustrious: 'artist:rhasta, rhasta',
-  belfast: 'artist:snowball22, snowball22',
-  takao: 'artist:nicoby, nicoby',
-  akagi: 'artist:ouma tokiichi, ouma_tokiichi',
-  amagi: 'tachibana yuu, artist:tachibana yuu',
-  shinano: 'artist:ouma tokiichi, ouma_tokiichi',
-  taihou: 'artist:rhasta, rhasta',
-  atago: 'artist:nicoby, nicoby',
-  cheshire: 'kaenuco, artist:kaenuco',
-  noshiro: 'artist:nohito, nohito',
-  'new-jersey': 'artist:snowball22, snowball22',
+  kashino: 'artist:derauea',
+  illustrious: 'artist:rhasta',
+  belfast: 'artist:snowball22',
+  takao: 'artist:nicoby',
+  akagi: 'artist:ouma tokiichi',
+  amagi: 'artist:tachibana yuu',
+  shinano: 'artist:ouma tokiichi',
+  taihou: 'artist:rhasta',
+  atago: 'artist:nicoby',
+  cheshire: 'artist:kaenuco',
+  noshiro: 'artist:nohito',
+  'new-jersey': 'artist:snowball22',
   // 其他作品与讨伐小队
-  suomi: 'k-suwabe, artist:k-suwabe, colorful, thick brushstrokes',
-  lueira: 'artist:nironiro, nironiro',
-  eclipse: 'artist:kuse (0201), kuse (0201), glossy skin, detailed lace',
-  'hero-alicia': 'v-mag, artist:v-mag',
-  'saint-selena': 'kase daiki, artist:kase daiki',
-  'knight-viola': 'artist:meion, meion',
+  suomi: 'artist:k-suwabe, colorful, thick brushstrokes',
+  lueira: 'artist:nironiro',
+  eclipse: 'artist:kuse (0201), glossy skin, detailed lace',
+  'hero-alicia': 'artist:v-mag',
+  'saint-selena': 'artist:kase daiki',
+  'knight-viola': 'artist:meion',
 }
 
 function presetArtistFor(slug, flags) {
@@ -110,25 +110,29 @@ function presetArtistFor(slug, flags) {
   return ARTIST_PRESETS[slug] || ''
 }
 
-const UPPER_GARMENT_RE = /^(?:white dress|black dress|blue dress|dress|white uniform|military uniform|serafuku|red kimono|kimono|japanese clothes|white robe|robe|black bodysuit|bodysuit|leotard|blue bunny suit|bunny suit|armor|heavy armor|leather armor|breastplate|cream sweater|sweater|cardigan|shawl|white jacket|white cropped jacket|open jacket|lab coat|open lab coat|white coat|black bikini top|pink plaid bikini top|bikini top|criss-cross halterneck|black sailor collar|tight shirt|shirt|blouse|maid|nun|habit|vest|zipper|cleavage|bare shoulders)$/i
+const BREAST_SIZE_RE = /^(?:flat chest|small breasts|medium breasts|large breasts|huge breasts|gigantic breasts|wide hips|huge hips|gigantic hips|huge ass|thick thighs|curvy)$/i
+const PORTRAIT_BODY_TAGS = ['gigantic breasts', 'gigantic hips', 'huge hips', 'huge ass', 'thick thighs', 'curvy']
+const PORTRAIT_NSFW_BODY_TAGS = ['huge areolae', 'gigantic nipples', 'protruding nipples', 'lactation']
 
-function buildStatePrompt(preset, state, lactates, artistTags = '') {
+function buildStatePrompt(preset, state, _lactates, artistTags = '', hasReference = false) {
   const baseTags = (preset.danbooruTags || '')
     .split(',')
     .map((t) => t.trim())
-    .filter(Boolean)
+    .filter((t) => t && !BREAST_SIZE_RE.test(t))
 
   const framing = [
-    'masterpiece, best quality, amazing quality',
     ...(artistTags ? [artistTags] : []),
+    'masterpiece, best quality, amazing quality',
     'upper body, cowboy shot, front view, centered composition, looking at viewer',
-    'dark atmospheric gradient background, dramatic rim lighting, glossy skin, detailed anime illustration',
+    'dark atmospheric gradient background, dramatic rim lighting, glossy skin',
+    ...(hasReference ? ['keep exact same artist style, same lineart, same shading, same lighting, same dark background, same face and hair'] : []),
   ]
 
   if (state === 'pure') {
     return [
       ...framing,
       ...baseTags,
+      ...PORTRAIT_BODY_TAGS,
       'adult, composed expression, subtle confident smile, dignified posture, intact outfit',
     ].join(', ')
   }
@@ -137,6 +141,7 @@ function buildStatePrompt(preset, state, lactates, artistTags = '') {
     return [
       ...framing,
       ...baseTags,
+      ...PORTRAIT_BODY_TAGS,
       'adult, blush, light sweat, embarrassed expression, furrowed brows, biting lip, slightly disheveled clothes, trembling',
     ].join(', ')
   }
@@ -145,35 +150,58 @@ function buildStatePrompt(preset, state, lactates, artistTags = '') {
     return [
       ...framing,
       ...baseTags,
-      'adult, torn clothes, open clothes, off shoulder, clothes pulled down, exposed breasts, nipples, heavy blush, sweat, glistening skin, half-closed eyes, parted lips, heavy breathing, seductive gaze',
+      ...PORTRAIT_BODY_TAGS,
+      'adult, torn clothes, open clothes, off shoulder, clothes pulled down, breasts out, exposed breasts',
+      ...PORTRAIT_NSFW_BODY_TAGS,
+      'milk dripping from nipples, heavy blush, sweat, glistening skin, half-closed eyes, parted lips, heavy breathing, seductive gaze',
     ].join(', ')
   }
 
-  const strippedTags = baseTags.filter((t) => !UPPER_GARMENT_RE.test(t))
   if (state === 'broken') {
     return [
       ...framing,
-      ...strippedTags,
-      'adult, torn clothes around waist, topless, bare breasts, huge nipples, puffy nipples, ahegao, heart-shaped pupils, rolling eyes, open mouth, tongue out, saliva trail, tears, heavy blush, drenched in sweat, glowing pink lewd crest on chest',
-      ...(lactates ? ['lactation, milk dripping from nipples'] : []),
+      ...baseTags,
+      ...PORTRAIT_BODY_TAGS,
+      'adult, torn clothes, clothes pulled down around waist, breasts out, bare breasts',
+      ...PORTRAIT_NSFW_BODY_TAGS,
+      'milk dripping from nipples, half-closed eyes, heart-shaped pupils, flushed face, open mouth, tongue out, saliva trail, tears, heavy blush, drenched in sweat, trembling, overwhelmed with pleasure',
     ].join(', ')
   }
 
   // climax
   return [
     ...framing,
-    ...strippedTags,
-    'adult, torn clothes, topless, bare breasts, nipples, climax, intense ecstasy, head tilted back, arched back, eyes half-closed, tears of pleasure, crying with open mouth, heavy blush, sweat droplets, trembling',
-    ...(lactates ? ['lactation, spraying milk'] : []),
+    ...baseTags,
+    ...PORTRAIT_BODY_TAGS,
+    'adult, torn clothes, clothes pulled down, breasts out, bare breasts',
+    ...PORTRAIT_NSFW_BODY_TAGS,
+    'spraying milk, climax, intense ecstasy, head tilted slightly back, arched back, eyes half-closed, tears of pleasure, parted mouth, heavy blush, sweat droplets, trembling',
   ].join(', ')
 }
 
-async function generateViaPixaiV2({ apiKey, prompt, negativePrompt, contextImages = [] }) {
+function buildAvatarPrompt(preset, artistTags = '', hasReference = false) {
+  const baseTags = (preset.danbooruTags || '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t && !BREAST_SIZE_RE.test(t))
+
+  return [
+    ...(artistTags ? [artistTags] : []),
+    'masterpiece, best quality, amazing quality',
+    'portrait, head and shoulders, upper chest, front view, centered composition, looking at viewer',
+    'dark atmospheric gradient background, dramatic rim lighting, glossy skin',
+    ...(hasReference ? ['keep exact same artist style, same soft lineart, same shading, same lighting, same dark background, same face and hair'] : []),
+    ...baseTags,
+    'adult, composed expression, subtle confident smile',
+  ].join(', ')
+}
+
+async function generateViaPixaiV2({ apiKey, prompt, negativePrompt, contextImages = [], aspectRatio = '2:3' }) {
   const body = {
     modelVersionId: TSUBAKI_V3_ID,
     prompt,
     negativePrompt,
-    aspectRatio: '2:3',
+    aspectRatio,
     ...(contextImages.length ? { contextImages } : {}),
   }
   const res = await fetch('https://api.pixai.art/v2/image/create', {
@@ -308,16 +336,53 @@ async function downloadFile(url, destPath) {
   fs.writeFileSync(destPath, buf)
 }
 
-function convertToWebp(inputPath, outputWebpPath) {
-  fs.mkdirSync(path.dirname(outputWebpPath), { recursive: true })
-  execFileSync('convert', [inputPath, '-quality', '86', outputWebpPath], { stdio: 'pipe' })
+function isWebpFile(filePath) {
+  const buf = fs.readFileSync(filePath)
+  return buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP'
+}
+
+function findImageMagick() {
+  const candidates = process.platform === 'win32' ? ['magick'] : ['magick', 'convert']
+  for (const bin of candidates) {
+    try {
+      execFileSync(bin, ['-version'], { stdio: 'pipe' })
+      return bin
+    } catch {}
+  }
+  return null
+}
+
+function savePortraitImage(inputPath, subDir, state) {
+  fs.mkdirSync(subDir, { recursive: true })
+  const webpPath = path.join(subDir, `${state}.webp`)
+  const pngPath = path.join(subDir, `${state}.png`)
+  if (isWebpFile(inputPath)) {
+    fs.copyFileSync(inputPath, webpPath)
+    if (fs.existsSync(pngPath)) fs.unlinkSync(pngPath)
+    return webpPath
+  }
+  const im = findImageMagick()
+  if (im) {
+    execFileSync(im, [inputPath, '-quality', '86', webpPath], { stdio: 'pipe' })
+    if (fs.existsSync(pngPath)) fs.unlinkSync(pngPath)
+    return webpPath
+  }
+  // 无 ImageMagick 时直接保存 .png（build-portraits-manifest 与前端原生兼容 .png，并清理旧 .webp 避免被优先命中）
+  fs.copyFileSync(inputPath, pngPath)
+  if (fs.existsSync(webpPath)) fs.unlinkSync(webpPath)
+  return pngPath
 }
 
 function cropAvatarFromPortrait(inputPath, avatarPngPath) {
+  const im = findImageMagick()
+  if (!im) {
+    console.warn('  ⚠️ 未检测到 ImageMagick，跳过自动裁切头像')
+    return false
+  }
   fs.mkdirSync(path.dirname(avatarPngPath), { recursive: true })
   // 从 2:3 上半身立绘顶部偏上区域裁出正方形头像 (宽度的 76%，垂直偏移约 4%)
   execFileSync(
-    'convert',
+    im,
     [
       inputPath,
       '-gravity', 'North',
@@ -330,6 +395,7 @@ function cropAvatarFromPortrait(inputPath, avatarPngPath) {
     ],
     { stdio: 'pipe' },
   )
+  return true
 }
 
 function parseArgs(argv) {
@@ -399,7 +465,9 @@ async function cmdGenerate(target, flags, env) {
 
   const providerPref = flags.provider || 'auto' // pixai | tensorart | auto
   const pixaiModel = flags.model || 'v3' // v3 | v2
-  const states = (flags.states ? flags.states.split(',') : ALL_STATES).map((s) => s.trim()).filter(Boolean)
+  const states = flags['avatar-only'] === 'true' || flags.states === 'none'
+    ? []
+    : (flags.states !== undefined ? (flags.states ? flags.states.split(',') : []) : ALL_STATES).map((s) => s.trim()).filter(Boolean)
   for (const s of states) {
     if (!ALL_STATES.includes(s)) throw new Error(`未知状态「${s}」，仅支持：${ALL_STATES.join(', ')}`)
   }
@@ -407,6 +475,9 @@ async function cmdGenerate(target, flags, env) {
   const subDir = path.join(PORTRAITS_DIR, entry.slug)
   const metaPath = path.join(subDir, '.toolbox-meta.json')
   const meta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {}
+  if (!meta.stateVersions || typeof meta.stateVersions !== 'object') meta.stateVersions = {}
+  const styleVersion = flags['style-version'] || 'v2-notion'
+  const skipVersion = flags['skip-version'] || ''
   let refMediaId = flags['ref-media'] || meta.pureMediaId || null
   let lockedSeed = flags.seed ? Number(flags.seed) : (meta.seed || Math.floor(10000000 + Math.random() * 89999999))
   let activeProvider = providerPref
@@ -435,13 +506,18 @@ async function cmdGenerate(target, flags, env) {
   console.log(`▶ 开始生成「${entry.name}」(${entry.slug}) | 引擎: ${activeProvider}${activeProvider === 'pixai' ? ` (Tsubaki.${pixaiModel === 'v3' ? '3' : '2'})` : ' (WAI-NSFW-V16)'}${artistTags ? ` | 画风: ${artistTags}` : ''} | 状态: ${states.join(', ')}`)
 
   for (const state of states) {
-    const prompt = buildStatePrompt(entry.preset, state, entry.lactates, artistTags)
+    if (skipVersion && meta.stateVersions[state] === skipVersion) {
+      console.log(`  [${entry.slug}:${state}] ⏭️ 已是 ${skipVersion}，跳过`)
+      continue
+    }
+    const hasRef = activeProvider === 'pixai' && pixaiModel === 'v3' && state !== 'pure' && Boolean(refMediaId)
+    const prompt = buildStatePrompt(entry.preset, state, entry.lactates, artistTags, hasRef)
     console.log(`  [${state}] 提交生成任务...`)
     let result
     if (activeProvider === 'pixai') {
       if (!env.PIXAI_API_KEY) throw new Error('缺少 PIXAI_API_KEY')
       if (pixaiModel === 'v3') {
-        const ctxImgs = state !== 'pure' && refMediaId ? [refMediaId] : []
+        const ctxImgs = hasRef ? [refMediaId] : []
         result = await generateViaPixaiV2({
           apiKey: env.PIXAI_API_KEY,
           prompt,
@@ -469,21 +545,61 @@ async function cmdGenerate(target, flags, env) {
       }
     }
 
-    const rawTmp = path.join(subDir, `.tmp-${state}.png`)
-    const finalWebp = path.join(subDir, `${state}.webp`)
+    const rawTmp = path.join(subDir, `.tmp-${state}.img`)
     await downloadFile(result.url, rawTmp)
-    convertToWebp(rawTmp, finalWebp)
+    const savedPath = savePortraitImage(rawTmp, subDir, state)
 
     const avatarPath = path.join(AVATARS_DIR, `${entry.slug}.png`)
-    if ((!fs.existsSync(avatarPath) && flags['crop-avatar'] !== 'false') || (flags['overwrite-avatar'] === 'true' && state === 'pure')) {
-      cropAvatarFromPortrait(rawTmp, avatarPath)
-      console.log(`  [${entry.slug}:${state}] 已同步裁切头像 -> public/avatars/${entry.slug}.png`)
+    if (flags['avatar-mode'] !== 'generate' && ((!fs.existsSync(avatarPath) && flags['crop-avatar'] !== 'false') || (flags['overwrite-avatar'] === 'true' && state === 'pure'))) {
+      if (cropAvatarFromPortrait(rawTmp, avatarPath)) {
+        console.log(`  [${entry.slug}:${state}] 已同步裁切头像 -> public/avatars/${entry.slug}.png`)
+      }
     }
     fs.unlinkSync(rawTmp)
     meta.updatedAt = new Date().toISOString()
     meta.lastProvider = result.provider
+    meta.stateVersions[state] = styleVersion
     fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n')
-    console.log(`  [${entry.slug}:${state}] ✅ 已保存 -> public/portraits/${entry.slug}/${state}.webp`)
+    console.log(`  [${entry.slug}:${state}] ✅ 已保存 -> ${path.relative(ROOT, savedPath)}`)
+  }
+
+  if (flags['avatar-mode'] === 'generate') {
+    if (skipVersion && meta.avatarVersion === skipVersion) {
+      console.log(`  [${entry.slug}:avatar] ⏭️ 头像已是 ${skipVersion}，跳过`)
+    } else {
+      const hasRef = activeProvider === 'pixai' && pixaiModel === 'v3' && Boolean(refMediaId)
+      const avatarPrompt = buildAvatarPrompt(entry.preset, artistTags, hasRef)
+      console.log(`  [avatar] 提交 1:1 近景头像生成任务...`)
+      let result
+      if (activeProvider === 'pixai' && pixaiModel === 'v3') {
+        result = await generateViaPixaiV2({
+          apiKey: env.PIXAI_API_KEY,
+          prompt: avatarPrompt,
+          negativePrompt,
+          contextImages: hasRef ? [refMediaId] : [],
+          aspectRatio: '1:1',
+        })
+      } else if (activeProvider === 'pixai') {
+        result = await generateViaPixaiV1({ apiKey: env.PIXAI_API_KEY, prompt: avatarPrompt, negativePrompt })
+      } else {
+        result = await generateViaTensorArt({ apiKey: env.TENSORART_API_KEY, prompt: avatarPrompt, negativePrompt, seed: lockedSeed })
+      }
+      const avatarPath = path.join(AVATARS_DIR, `${entry.slug}.png`)
+      const rawTmp = path.join(subDir, `.tmp-avatar.img`)
+      await downloadFile(result.url, rawTmp)
+      const im = findImageMagick()
+      if (im) {
+        execFileSync(im, [rawTmp, '-resize', '512x512^', '-gravity', 'Center', '-extent', '512x512', avatarPath], { stdio: 'pipe' })
+      } else {
+        fs.mkdirSync(path.dirname(avatarPath), { recursive: true })
+        fs.copyFileSync(rawTmp, avatarPath)
+      }
+      fs.unlinkSync(rawTmp)
+      meta.avatarVersion = styleVersion
+      meta.updatedAt = new Date().toISOString()
+      fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n')
+      console.log(`  [${entry.slug}:avatar] ✅ 已保存 1:1 头像 -> public/avatars/${entry.slug}.png`)
+    }
   }
 
   if (flags['skip-manifest'] !== 'true') {
@@ -509,8 +625,10 @@ async function withRetry(fn, label, retries = 3) {
 
 async function cmdGenerateBatch(targetListStr, flags, env) {
   const { all } = loadCharacters()
-  const targets = (targetListStr || '').split(',').map((s) => s.trim()).filter(Boolean)
-  if (!targets.length) throw new Error('请提供角色列表，用逗号分隔')
+  const targets = targetListStr === 'ALL'
+    ? all.map((c) => c.slug)
+    : (targetListStr || '').split(',').map((s) => s.trim()).filter(Boolean)
+  if (!targets.length) throw new Error('请提供角色列表（用逗号分隔）或 ALL')
   const concurrency = Math.max(1, Math.min(6, Number(flags.concurrency || 4)))
   const jobs = targets.map((t) => {
     const entry = all.find((c) => c.name === t || c.slug === t)
@@ -521,7 +639,7 @@ async function cmdGenerateBatch(targetListStr, flags, env) {
     return { entry, states }
   })
 
-  console.log(`=== Tsubaki.3 批量生成队列：共 ${jobs.length} 名角色，并发数 ${concurrency} ===`)
+  console.log(`=== Tsubaki.3 批量生成队列：共 ${jobs.length} 名角色，并发数 ${concurrency}${flags['avatar-mode'] === 'generate' ? '（含 1:1 独立头像）' : ''} ===`)
   let cursor = 0
   const failed = []
   let outOfCredits = false
@@ -532,11 +650,20 @@ async function cmdGenerateBatch(targetListStr, flags, env) {
       const job = jobs[idx]
       console.log(`[Worker ${workerId}] (${idx + 1}/${jobs.length}) 生成「${job.entry.name}」(${job.entry.slug}): ${job.states.join(', ')}`)
       try {
+        const baseFlags = { ...flags, 'skip-manifest': 'true' }
+        delete baseFlags['avatar-mode']
         for (const st of job.states) {
           if (outOfCredits) break
           await withRetry(
-            () => cmdGenerate(job.entry.slug, { ...flags, states: st, 'skip-manifest': 'true' }, env),
+            () => cmdGenerate(job.entry.slug, { ...baseFlags, states: st }, env),
             `${job.entry.slug}:${st}`,
+            3,
+          )
+        }
+        if (!outOfCredits && flags['avatar-mode'] === 'generate') {
+          await withRetry(
+            () => cmdGenerate(job.entry.slug, { ...flags, states: '', 'skip-manifest': 'true' }, env),
+            `${job.entry.slug}:avatar`,
             3,
           )
         }

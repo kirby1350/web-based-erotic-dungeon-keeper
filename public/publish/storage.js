@@ -53,7 +53,7 @@ window.Dungeon = window.Dungeon || {};
   function defaultSettings() {
     return {
       chatModel: '', proseStyle: 'standard',
-      imageStyle: 'none', imageTagPreset: 'none', imageStyleCustom: '',
+      imageStyle: 'character', imageStyleVersion: 2, imageTagPreset: 'none', imageStyleCustom: '',
       imageProvider: 'pixai', imageModel: 'tsubaki_v3', tensorartModel: 'wai_nsfw_v16',
       chatApiKey: '', grokApiKey: '', pixaiApiKey: '', tensorartApiKey: '',
     };
@@ -62,8 +62,12 @@ window.Dungeon = window.Dungeon || {};
     var d = defaultSettings();
     var m = Object.assign(d, s || {});
     var C = D.config;
+    if (!s || !s.imageStyleVersion) {
+      if (!s || !s.imageStyle || s.imageStyle === 'none') m.imageStyle = 'character';
+      m.imageStyleVersion = 2;
+    }
     if (!C.PROSE_STYLE_LABELS[m.proseStyle]) m.proseStyle = 'standard';
-    if (!C.IMAGE_STYLES[m.imageStyle]) m.imageStyle = 'none';
+    if (!C.IMAGE_STYLES[m.imageStyle]) m.imageStyle = 'character';
     if (!C.IMAGE_TAG_PRESETS[m.imageTagPreset]) m.imageTagPreset = 'none';
     if (!C.IMAGE_PROVIDERS[m.imageProvider]) m.imageProvider = 'pixai';
     if (!C.IMAGE_MODELS[m.imageModel]) m.imageModel = 'tsubaki_v3';

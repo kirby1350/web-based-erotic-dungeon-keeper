@@ -22,7 +22,7 @@ window.Dungeon = window.Dungeon || {};
   function buildPrompt(scene) {
     var s = D.state.settings || {};
     var c = D.state.character || {};
-    var styleTags = (D.config.IMAGE_STYLES[s.imageStyle] || D.config.IMAGE_STYLES.none).tags;
+    var styleTags = D.config.resolveStyleTagsForCharacter(s.imageStyle, c);
     var presetTags = (D.config.IMAGE_TAG_PRESETS[s.imageTagPreset] || D.config.IMAGE_TAG_PRESETS.none).tags;
     var custom = (s.imageStyleCustom || '').trim();
     return D.config.buildImagePrompt({

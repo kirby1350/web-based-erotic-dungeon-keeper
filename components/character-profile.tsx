@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Maximize2, X } from 'lucide-react'
-import { RACE_INFO, type Character, type CharacterPreset } from '@/lib/types'
+import { IMAGE_STYLES, RACE_INFO, boundStyleKeyFor, type Character, type CharacterPreset } from '@/lib/types'
 import { characterFromPreset, FATE_LABEL, CAGES, type CaptiveRecord } from '@/lib/keeper'
 import { getKeep, saveKeep } from '@/lib/storage'
 import { CORRUPT_TIERS, AROUSAL_TIERS, TERM_SLOTS, TERM_SLOT_LABEL, TERM_SOURCE_LABEL, addOverrides, itemActive, resetSlot, toggleLock, type TermSlot } from '@/lib/terms'
@@ -122,7 +122,9 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
     return () => { alive = false }
   }, [person.name, person.avatarUrl])
 
-  const activeStageKey: PortraitStageId | 'avatar' = pickedStage
+  const boundKey = boundStyleKeyFor(person)
+  const boundArtistLabel = boundKey ? IMAGE_STYLES[boundKey]?.label?.split('·')[0]?.trim() : null
+  const activeStageKey: PortraitStageId | 'avatar' = (pickedStage === 'avatar' && stages.length > 0 ? undefined : pickedStage)
     ?? (stages.find((s) => s.id === defaultStageId)?.id ?? stages[0]?.id ?? 'avatar')
   const currentStageObj = activeStageKey === 'avatar' ? null : stages.find((s) => s.id === activeStageKey)
   const displaySrc = currentStageObj?.src ?? person.avatarUrl ?? null
@@ -158,15 +160,6 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
                   {st.label}
                 </button>
               ))}
-              {person.avatarUrl && (
-                <button
-                  type="button"
-                  onClick={() => setPickedStage('avatar')}
-                  className={`px-3 py-1 rounded-full border text-xs transition-colors ${activeStageKey === 'avatar' ? 'border-primary bg-primary/20 text-primary font-bold' : 'border-white/20 bg-black/60 text-white/75 hover:text-white'}`}
-                >
-                  头像
-                </button>
-              )}
             </div>
           )}
           <button type="button" onClick={() => setLightbox(false)} className="text-xs text-white/60 hover:text-white">点击任意处关闭原图</button>
@@ -202,9 +195,9 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
             </div>
             {stages.length > 0 && (
               <div className="space-y-1" data-testid="portrait-stage-tabs">
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>阶段立绘切换（点击图片可看完整大图）</span>
-                  {currentStageObj && <span className="text-pink-200">{currentStageObj.label}态</span>}
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground gap-2">
+                  <span>阶段立绘切换{boundArtistLabel ? ` · 绑定画师 ${boundArtistLabel}` : ''}</span>
+                  {currentStageObj && <span className="text-pink-200 shrink-0">{currentStageObj.label}态</span>}
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {stages.map((st) => {
@@ -226,20 +219,6 @@ export function CharacterProfile({ person, status, history = [], hideCollapse, c
                       </button>
                     )
                   })}
-                  {person.avatarUrl && (
-                    <button
-                      type="button"
-                      aria-pressed={activeStageKey === 'avatar'}
-                      onClick={() => setPickedStage('avatar')}
-                      className={`px-2 py-1 rounded-md border text-[11px] transition-colors ${
-                        activeStageKey === 'avatar'
-                          ? 'border-primary bg-primary/15 text-primary font-bold'
-                          : 'border-border bg-secondary/50 text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      头像
-                    </button>
-                  )}
                 </div>
               </div>
             )}

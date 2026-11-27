@@ -59,7 +59,7 @@ function loadCharacters() {
   }))
   return {
     all,
-    negativePrompt: `${IMAGE_NEGATIVE_PROMPT}, artist name, logo, monochrome, greyscale, white background, simple background, comic, 4koma, multiple views, character sheet`,
+    negativePrompt: `${IMAGE_NEGATIVE_PROMPT}, artist name, logo, english text, signature, watermark, monochrome, greyscale, white background, simple background, comic, 4koma, multiple views, character sheet`,
   }
 }
 
@@ -88,11 +88,11 @@ const ARTIST_PRESETS = {
   shinano: 'artist:ouma tokiichi, ouma_tokiichi',
   taihou: 'artist:rhasta, rhasta',
   atago: 'artist:nicoby, nicoby',
-  cheshire: 'kaenuco, artist:kaenuco',
+  cheshire: 'v-mag, artist:v-mag',
   noshiro: 'artist:nohito, nohito',
   'new-jersey': 'artist:snowball22, snowball22',
   // 其他作品与讨伐小队
-  suomi: 'k-suwabe, artist:k-suwabe, colorful, thick brushstrokes',
+  suomi: 'k-suwabe, artist:k-suwabe, colorful, thick brushstrokes, clean image',
   lueira: 'artist:nironiro, nironiro',
   eclipse: 'artist:kuse (0201), kuse (0201), glossy skin, detailed lace',
   'hero-alicia': 'v-mag, artist:v-mag',
@@ -110,7 +110,7 @@ function presetArtistFor(slug, flags) {
   return ARTIST_PRESETS[slug] || ''
 }
 
-const UPPER_GARMENT_RE = /^(?:white dress|black dress|blue dress|dress|white uniform|military uniform|serafuku|red kimono|kimono|japanese clothes|white robe|robe|black bodysuit|bodysuit|leotard|blue bunny suit|bunny suit|armor|heavy armor|leather armor|breastplate|cream sweater|sweater|cardigan|shawl|white jacket|white cropped jacket|open jacket|lab coat|open lab coat|white coat|black bikini top|pink plaid bikini top|bikini top|criss-cross halterneck|black sailor collar|tight shirt|shirt|blouse|maid|nun|habit|vest|zipper|cleavage|bare shoulders)$/i
+const UPPER_GARMENT_RE = /^(?:white dress|black dress|blue dress|dress|white uniform|military uniform|serafuku|red kimono|blue kimono|kimono|japanese clothes|wide sleeves|detached sleeves|obi|fur trim|off shoulder|white robe|robe|black bodysuit|bodysuit|leotard|blue bunny suit|bunny suit|armor|heavy armor|leather armor|breastplate|cream sweater|sweater|burgundy cardigan|cardigan|shawl|white blouse|holding book|white jacket|white cropped jacket|open jacket|lab coat|open lab coat|white coat|black bikini top|pink plaid bikini top|bikini top|criss-cross halterneck|black sailor collar|tight shirt|shirt|blouse|maid|nun|habit|vest|zipper|cleavage|bare shoulders)$/i
 
 function buildStatePrompt(preset, state, lactates, artistTags = '') {
   const baseTags = (preset.danbooruTags || '')
@@ -616,6 +616,27 @@ async function cmdGenerateMissing(flags, env) {
   console.log('🎉 全部缺失角色的 5 阶动态立绘已批量生成完毕！')
 }
 
+function cmdSyncAvatars(targetListStr) {
+  const { all } = loadCharacters()
+  const filter = targetListStr ? new Set(targetListStr.split(',').map((s) => s.trim()).filter(Boolean)) : null
+  let count = 0
+  for (const c of all) {
+    if (filter && !filter.has(c.slug) && !filter.has(c.name)) continue
+    const pureWebp = path.join(PORTRAITS_DIR, c.slug, 'pure.webp')
+    const purePng = path.join(PORTRAITS_DIR, c.slug, 'pure.png')
+    const src = fs.existsSync(pureWebp) ? pureWebp : fs.existsSync(purePng) ? purePng : null
+    if (!src) {
+      console.warn(`  ⚠️ 跳过「${c.name}」(${c.slug})：未找到 pure 立绘`)
+      continue
+    }
+    const dest = path.join(AVATARS_DIR, `${c.slug}.png`)
+    cropAvatarFromPortrait(src, dest)
+    count++
+    console.log(`  ✅ 已从立绘同步裁切头像: ${c.name} (${c.slug}) -> public/avatars/${c.slug}.png`)
+  }
+  console.log(`🎉 共完成 ${count} 名角色的头像与绑定画师立绘统一同步！`)
+}
+
 async function main() {
   const env = loadEnv()
   const { cmd, target, flags } = parseArgs(process.argv.slice(2))
@@ -624,7 +645,8 @@ async function main() {
   if (cmd === 'generate') return await cmdGenerate(target, flags, env)
   if (cmd === 'generate-missing') return await cmdGenerateMissing(flags, env)
   if (cmd === 'generate-batch') return await cmdGenerateBatch(target, flags, env)
-  throw new Error(`未知子命令「${cmd}」。支持：list | check-keys | generate <角色名或slug> | generate-missing | generate-batch <列表>`)
+  if (cmd === 'sync-avatars') return cmdSyncAvatars(target)
+  throw new Error(`未知子命令「${cmd}」。支持：list | check-keys | generate <角色名或slug> | generate-missing | generate-batch <列表> | sync-avatars [列表]`)
 }
 
 main().catch((err) => {

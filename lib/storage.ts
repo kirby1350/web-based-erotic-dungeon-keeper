@@ -53,7 +53,11 @@ export function getSettings(): AppSettings {
     const parsed = JSON.parse(raw)
     const merged = { ...getDefaultSettings(), ...parsed }
     // Sanitise enum values that may be stale from a previous build
-    if (!VALID_IMAGE_STYLES.includes(merged.imageStyle)) merged.imageStyle = 'none'
+    if (!parsed?.imageStyleVersion) {
+      if (!parsed?.imageStyle || parsed.imageStyle === 'none') merged.imageStyle = 'character'
+      merged.imageStyleVersion = 2
+    }
+    if (!VALID_IMAGE_STYLES.includes(merged.imageStyle)) merged.imageStyle = 'character'
     if (!VALID_IMAGE_MODELS.includes(merged.imageModel)) merged.imageModel = 'tsubaki_v3'
     if (!VALID_IMAGE_TAG_PRESETS.includes(merged.imageTagPreset)) merged.imageTagPreset = 'none'
     if (!VALID_PROSE_STYLES.includes(merged.proseStyle)) merged.proseStyle = 'standard'
@@ -77,7 +81,8 @@ export function getDefaultSettings(): AppSettings {
   return {
     chatModel: 'x-apex-surge-0505-16k',
     imageModel: 'tsubaki_v3',
-    imageStyle: 'none',
+    imageStyle: 'character',
+    imageStyleVersion: 2,
     imageStyleCustom: '',
     imageTagPreset: 'none',
     proseStyle: 'standard',

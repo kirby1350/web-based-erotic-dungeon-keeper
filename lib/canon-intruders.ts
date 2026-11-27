@@ -15,7 +15,7 @@ export const CANON_INTRUDERS: CharacterPreset[] = [
     bonds: [
       { name: '赤城', relation: '宿命情敌', togetherLine: '宿敌赤城就在一旁，大凤死咬嘴唇也不肯输给那个狐狸精，可越是较劲、身体被触碰时的敏感与嫉妒就烧得越旺。', captiveLine: '得知赤城也栽在了这座狱里，大凤既暗自快意又不甘落于人后，占有欲扭曲得愈发炽烈。' },
     ],
-    danbooruTags: 'taihou_(azur_lane), azur_lane, 1girl, long hair, black hair, twintails, red eyes, huge breasts, red kimono, off shoulder, red hair ornament, ahoge',
+    danbooruTags: 'taihou_(azur_lane), azur_lane, 1girl, very long hair, black hair, twintails, red eyes, huge breasts, red kimono, japanese clothes, wide sleeves, black thighhighs, red hair ornament, ahoge',
     backstory: '重樱的装甲空母。她听说她的指挥官在这座地下城里失踪，独自闯了进来，要把人带回去。',
     appearance: '乌黑长发两侧扎成双马尾，赤红眼睛带着执拗热度。胸乳硕大沉甸，细腰盈握，臀线丰润饱满。身上有幽甜的熏香。',
     personality: '对外人客气得近乎冷淡，一切心思都系在指挥官身上，占有欲深得发烫。被人从「指挥官」身边隔开时，那份执念会先烧起来，不是先害怕。',

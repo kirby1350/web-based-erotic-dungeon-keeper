@@ -50,6 +50,7 @@ window.Dungeon = window.Dungeon || {};
   };
 
   var IMAGE_STYLES = {
+    character: { label: '绑定角色专属画师（推荐）', tags: '' },
     none: { label: '无（模型默认）', tags: '' },
     kuse_0201: { label: 'kuse (0201) · 柔和厚涂/光泽蕾丝', tags: 'artist:kuse (0201), kuse (0201), glossy skin, detailed lace, soft thick painting, half-closed eyes, light blush' },
     obui: { label: 'obui · 爆乳粗腿大乳晕 (GBF)', tags: 'artist:obui, obui, huge breasts, thick thighs, large areolae, glossy skin, erotic illustration' },
@@ -80,6 +81,48 @@ window.Dungeon = window.Dungeon || {};
     piromizu: { label: 'piromizu · 水润油亮色气', tags: 'piromizu, glossy skin, detailed body, soft gradient, erotic illustration' },
     masami_chie: { label: 'masami chie · 暖调细腻柔线', tags: 'masami chie, soft lineart, delicate shading, warm palette, detailed illustration' },
   };
+
+  var CHARACTER_BOUND_STYLE = {
+    'ichinose-shiki': 'kuse_0201',
+    'kuwayama-chiyuki': 'paint_musume',
+    'sagisawa-fumika': 'nohito',
+    'miura-azusa': 'taskmaster41',
+    narmaya: 'eno_yukimi',
+    galleon: 'obui',
+    katalina: 'nanahara_fuyuki',
+    anila: 'eno_yukimi',
+    yuel: 'tachibana_yuu',
+    'ichinose-asuna': 'thirty_8ght',
+    'hanekawa-hasumi': 'belko',
+    kashino: 'derauea',
+    illustrious: 'rhasta',
+    belfast: 'snowball22',
+    takao: 'nicoby',
+    akagi: 'ouma_tokiichi',
+    amagi: 'tachibana_yuu',
+    shinano: 'ouma_tokiichi',
+    taihou: 'rhasta',
+    atago: 'nicoby',
+    cheshire: 'v_mag',
+    noshiro: 'nohito',
+    'new-jersey': 'snowball22',
+    suomi: 'k_suwabe',
+    lueira: 'nironiro',
+    eclipse: 'kuse_0201',
+    'hero-alicia': 'v_mag',
+    'saint-selena': 'kase_daiki',
+    'knight-viola': 'meion',
+  };
+
+  function resolveStyleTagsForCharacter(style, character) {
+    if (style === 'character') {
+      var av = (character && character.avatarUrl) || '';
+      var m = av.match(/\/avatars\/([\w-]+)\.(?:png|jpe?g|webp)$/i);
+      var key = m && CHARACTER_BOUND_STYLE[m[1]];
+      return (key && IMAGE_STYLES[key] && IMAGE_STYLES[key].tags) || '';
+    }
+    return (IMAGE_STYLES[style] && IMAGE_STYLES[style].tags) || '';
+  }
 
   var IMAGE_TAG_PRESETS = {
     none: { label: '无', tags: '' },
@@ -207,6 +250,8 @@ window.Dungeon = window.Dungeon || {};
     PROSE_STYLE_LABELS: PROSE_STYLE_LABELS,
     PROSE_STYLE_PROMPTS: PROSE_STYLE_PROMPTS,
     IMAGE_STYLES: IMAGE_STYLES,
+    CHARACTER_BOUND_STYLE: CHARACTER_BOUND_STYLE,
+    resolveStyleTagsForCharacter: resolveStyleTagsForCharacter,
     IMAGE_TAG_PRESETS: IMAGE_TAG_PRESETS,
     IMAGE_MODELS: IMAGE_MODELS,
     TENSORART_MODELS: TENSORART_MODELS,

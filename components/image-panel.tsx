@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { Image as ImageIcon, Loader2, RefreshCw, Wand2, ChevronDown, ChevronUp, Cloud, HardDrive, Download, Maximize2, X } from 'lucide-react'
-import { AppSettings, IMAGE_MODELS, IMAGE_STYLES, TENSORART_MODELS, Character, type ImagePromptFamily } from '@/lib/types'
+import { AppSettings, IMAGE_MODELS, IMAGE_STYLES, TENSORART_MODELS, Character, resolveStyleTagsForCharacter, type ImagePromptFamily } from '@/lib/types'
 import { getKeep, getSession } from '@/lib/storage'
 import { keeperPromptContext, sceneChrome } from '@/lib/keeper'
 import { buildImagePrompt, DEFAULT_SCENE_PROMPT, presetTagsFor, resolveImagePromptFamily } from '@/lib/prompts'
@@ -92,7 +92,7 @@ export function ImagePanel({ settings, character, pendingScene, onSceneHandled }
     setLoading(true)
     setError(null)
     try {
-      const styleTags = (IMAGE_STYLES[settings.imageStyle] ?? IMAGE_STYLES['none']).tags
+      const styleTags = resolveStyleTagsForCharacter(settings.imageStyle, character)
       const presetTags = presetTagsFor(settings.imageTagPreset, character)
       const customTags = settings.imageStyleCustom?.trim() ?? ''
       const provider = settings.imageProvider ?? 'pixai'

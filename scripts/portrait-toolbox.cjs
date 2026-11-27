@@ -59,7 +59,7 @@ function loadCharacters() {
   }))
   return {
     all,
-    negativePrompt: `${IMAGE_NEGATIVE_PROMPT}, artist name, logo, monochrome, greyscale, white background, simple background, bright background, pink background, neon glow, flat color, manga, doujinshi, comic, 4koma, multiple views, character sheet`,
+    negativePrompt: `${IMAGE_NEGATIVE_PROMPT}, artist name, logo, english text, signature, watermark, monochrome, greyscale, white background, simple background, bright background, pink background, neon glow, flat color, manga, doujinshi, comic, 4koma, multiple views, character sheet`,
   }
 }
 
@@ -92,7 +92,7 @@ const ARTIST_PRESETS = {
   noshiro: 'artist:nohito',
   'new-jersey': 'artist:snowball22',
   // 其他作品与讨伐小队
-  suomi: 'artist:k-suwabe, colorful, thick brushstrokes',
+  suomi: 'artist:k-suwabe, colorful, thick brushstrokes, clean image',
   lueira: 'artist:nironiro',
   eclipse: 'artist:kuse (0201), glossy skin, detailed lace',
   'hero-alicia': 'artist:v-mag',
@@ -743,6 +743,27 @@ async function cmdGenerateMissing(flags, env) {
   console.log('🎉 全部缺失角色的 5 阶动态立绘已批量生成完毕！')
 }
 
+function cmdSyncAvatars(targetListStr) {
+  const { all } = loadCharacters()
+  const filter = targetListStr ? new Set(targetListStr.split(',').map((s) => s.trim()).filter(Boolean)) : null
+  let count = 0
+  for (const c of all) {
+    if (filter && !filter.has(c.slug) && !filter.has(c.name)) continue
+    const pureWebp = path.join(PORTRAITS_DIR, c.slug, 'pure.webp')
+    const purePng = path.join(PORTRAITS_DIR, c.slug, 'pure.png')
+    const src = fs.existsSync(pureWebp) ? pureWebp : fs.existsSync(purePng) ? purePng : null
+    if (!src) {
+      console.warn(`  ⚠️ 跳过「${c.name}」(${c.slug})：未找到 pure 立绘`)
+      continue
+    }
+    const dest = path.join(AVATARS_DIR, `${c.slug}.png`)
+    cropAvatarFromPortrait(src, dest)
+    count++
+    console.log(`  ✅ 已从立绘同步裁切头像: ${c.name} (${c.slug}) -> public/avatars/${c.slug}.png`)
+  }
+  console.log(`🎉 共完成 ${count} 名角色的头像与绑定画师立绘统一同步！`)
+}
+
 async function main() {
   const env = loadEnv()
   const { cmd, target, flags } = parseArgs(process.argv.slice(2))
@@ -751,7 +772,8 @@ async function main() {
   if (cmd === 'generate') return await cmdGenerate(target, flags, env)
   if (cmd === 'generate-missing') return await cmdGenerateMissing(flags, env)
   if (cmd === 'generate-batch') return await cmdGenerateBatch(target, flags, env)
-  throw new Error(`未知子命令「${cmd}」。支持：list | check-keys | generate <角色名或slug> | generate-missing | generate-batch <列表>`)
+  if (cmd === 'sync-avatars') return cmdSyncAvatars(target)
+  throw new Error(`未知子命令「${cmd}」。支持：list | check-keys | generate <角色名或slug> | generate-missing | generate-batch <列表> | sync-avatars [列表]`)
 }
 
 main().catch((err) => {

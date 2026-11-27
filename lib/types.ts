@@ -124,6 +124,7 @@ export interface GeneratedImage {
 }
 
 export type ImageStyle =
+  | 'character'
   | 'none'
   | 'kuse_0201'
   | 'obui'
@@ -177,6 +178,7 @@ export interface AppSettings {
   chatModel: string
   imageModel: ImageModel
   imageStyle: ImageStyle
+  imageStyleVersion?: number
   imageStyleCustom: string
   imageTagPreset: ImageTagPreset
   proseStyle: ProseStyle
@@ -211,6 +213,7 @@ export const IMAGE_MODELS: Record<ImageModel, { label: string; modelId: string; 
 }
 
 export const IMAGE_STYLES: Record<ImageStyle, { label: string; tags: string }> = {
+  character: { label: '绑定角色专属画师（推荐）', tags: '' },
   none: { label: '无（模型默认）', tags: '' },
   kuse_0201: {
     label: 'kuse (0201) · 柔和厚涂/光泽蕾丝',
@@ -324,6 +327,59 @@ export const IMAGE_STYLES: Record<ImageStyle, { label: string; tags: string }> =
     label: 'masami chie · 暖调细腻柔线',
     tags: 'masami chie, soft lineart, delicate shading, warm palette, detailed illustration',
   },
+}
+
+/** 每位角色固定绑定的专属画师风格（确保同一角色的头像、5阶动态立绘与局内生成插图画风完全统一） */
+export const CHARACTER_BOUND_STYLE: Record<string, Exclude<ImageStyle, 'none' | 'character'>> = {
+  // 偶像大师系
+  'ichinose-shiki': 'kuse_0201',
+  'kuwayama-chiyuki': 'paint_musume',
+  'sagisawa-fumika': 'nohito',
+  'miura-azusa': 'taskmaster41',
+  // 碧蓝幻想系
+  narmaya: 'eno_yukimi',
+  galleon: 'obui',
+  katalina: 'nanahara_fuyuki',
+  anila: 'eno_yukimi',
+  yuel: 'tachibana_yuu',
+  // 蔚蓝档案系
+  'ichinose-asuna': 'thirty_8ght',
+  'hanekawa-hasumi': 'belko',
+  // 碧蓝航线 / 舰娘系
+  kashino: 'derauea',
+  illustrious: 'rhasta',
+  belfast: 'snowball22',
+  takao: 'nicoby',
+  akagi: 'ouma_tokiichi',
+  amagi: 'tachibana_yuu',
+  shinano: 'ouma_tokiichi',
+  taihou: 'rhasta',
+  atago: 'nicoby',
+  cheshire: 'v_mag',
+  noshiro: 'nohito',
+  'new-jersey': 'snowball22',
+  // 其他作品与讨伐小队
+  suomi: 'k_suwabe',
+  lueira: 'nironiro',
+  eclipse: 'kuse_0201',
+  'hero-alicia': 'v_mag',
+  'saint-selena': 'kase_daiki',
+  'knight-viola': 'meion',
+}
+
+export function boundStyleKeyFor(character?: { avatarUrl?: string | null; name?: string } | null): Exclude<ImageStyle, 'none' | 'character'> | null {
+  if (!character) return null
+  const m = character.avatarUrl?.match(/\/avatars\/([\w-]+)\.(?:png|jpe?g|webp)$/i)
+  if (m && CHARACTER_BOUND_STYLE[m[1]]) return CHARACTER_BOUND_STYLE[m[1]]
+  return null
+}
+
+export function resolveStyleTagsForCharacter(style: ImageStyle, character?: { avatarUrl?: string | null; name?: string } | null): string {
+  if (style === 'character') {
+    const key = boundStyleKeyFor(character)
+    return key ? IMAGE_STYLES[key]?.tags ?? '' : ''
+  }
+  return IMAGE_STYLES[style]?.tags ?? ''
 }
 
 // Extra danbooru tag groups the player can toggle on top of the scene prompt.
@@ -772,7 +828,7 @@ export const CHARACTER_PRESETS: CharacterPreset[] = [
     measurements: { bust: '105', waist: '60', hip: '97' },
     weakParts: ['vagina', 'breast'],
     weakTags: ['hypno', 'milk'],
-    danbooruTags: 'shinano_(azur_lane), 1girl, very long hair, grey hair, blunt bangs, blue eyes, huge breasts, animal ears, fox ears, fox mask, japanese clothes, wide sleeves, detached sleeves, white thighhighs, katana, hair ornament',
+    danbooruTags: 'shinano_(azur_lane), azur_lane, 1girl, very long hair, grey hair, silver hair, blunt bangs, sleepy eyes, blue eyes, huge breasts, animal ears, fox ears, multiple tails, white fox tail, fox mask, japanese clothes, wide sleeves, detached sleeves, white thighhighs, katana, hair ornament',
     backstory: '古神社被这座地下城吞了进来。她从寝殿走出来查看异动，把城主当成闯进神社的人。',
     appearance: '银灰长发垂落及膝，齐刘海下蓝眼睛半阖着困意。胸前硕大沉重，腰肢纤细。头顶一对绒白狐耳，身后数条蓬松白尾轻轻摆动，周身萦绕清冷线香与温软乳香。',
     personality: '说话像梦呓，做错事会先道歉。她怕自己没有用，但这不是开场就愿意被供上祭坛。被说成「还有用」时，那层怕会露出来。',
